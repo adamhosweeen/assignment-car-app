@@ -66,6 +66,9 @@ class FakeListingsRepository implements ListingsRepository {
     if (missing != null) {
       return Err('$missing is missing. Go back and complete every step.');
     }
+    if ((draft.priceMyr ?? 0) > kMaxPriceMyr) {
+      return const Err('That price is too high to publish. Enter a smaller amount.');
+    }
 
     final now = DateTime.now().toUtc();
     final media = <ListingMedia>[

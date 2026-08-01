@@ -96,7 +96,7 @@ class _SellFlowScreenState extends ConsumerState<SellFlowScreen> {
       d.registrationRegion != null &&
           d.state != null &&
           (d.city?.isNotEmpty ?? false),
-    5 => d.priceMyr != null && d.priceMyr! > 0,
+    5 => d.priceMyr != null && d.priceMyr! > 0 && d.priceMyr! <= kMaxPriceMyr,
     _ => true,
   };
 

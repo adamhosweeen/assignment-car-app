@@ -5,6 +5,10 @@ import 'listing_enums.dart';
 part 'listing_draft.freezed.dart';
 part 'listing_draft.g.dart';
 
+/// Maximum asking price (RM). Above this we reject in-app rather than let the
+/// Postgres `int` column (max ~2.15 billion) overflow when publishing.
+const int kMaxPriceMyr = 100000000; // RM 100,000,000
+
 /// An in-progress sell form, persisted to Hive after every step so a crash or
 /// app kill never loses input (CLAUDE.md §3, V1_SPEC §4.5).
 ///

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/formatters.dart';
 import '../../../../../shared/widgets/grouped_section.dart';
 import '../../../../../theme/app_spacing.dart';
 import '../../../../../theme/app_theme.dart';
+import '../../../domain/listing_draft.dart';
 import '../sell_controller.dart';
 import '../sell_step_scaffold.dart';
 
@@ -54,6 +56,15 @@ class _StepPriceState extends ConsumerState<StepPrice> {
           ),
           onChanged: (v) => _notifier.setPrice(int.tryParse(v)),
         ),
+        if ((draft.priceMyr ?? 0) > kMaxPriceMyr) ...[
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            'That price is too high. Enter an amount under ${formatPrice(kMaxPriceMyr)}.',
+            style: Theme.of(
+              context,
+            ).textTheme.footnote.copyWith(color: AppColors.destructive),
+          ),
+        ],
         const SizedBox(height: AppSpacing.space20),
         GroupedSection(
           children: [
