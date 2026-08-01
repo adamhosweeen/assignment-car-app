@@ -94,7 +94,7 @@ final class MyListingsProvider
   }
 }
 
-String _$myListingsHash() => r'4b584b4644a295e5b5bdd14ddfce6fee989f24e3';
+String _$myListingsHash() => r'5b2648542e02e0b53d0a1278716f6d76f6e55138';
 
 /// A single listing by id (Listing detail).
 
@@ -172,4 +172,87 @@ final class ListingByIdFamily extends $Family
 
   @override
   String toString() => r'listingByIdProvider';
+}
+
+/// Resolve a Supabase storage bucket path to a temporary signed URL (1 hour).
+/// Returns null when Supabase isn't configured (fake backend uses local files).
+
+@ProviderFor(signedImageUrl)
+final signedImageUrlProvider = SignedImageUrlFamily._();
+
+/// Resolve a Supabase storage bucket path to a temporary signed URL (1 hour).
+/// Returns null when Supabase isn't configured (fake backend uses local files).
+
+final class SignedImageUrlProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
+    with $FutureModifier<String?>, $FutureProvider<String?> {
+  /// Resolve a Supabase storage bucket path to a temporary signed URL (1 hour).
+  /// Returns null when Supabase isn't configured (fake backend uses local files).
+  SignedImageUrlProvider._({
+    required SignedImageUrlFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'signedImageUrlProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$signedImageUrlHash();
+
+  @override
+  String toString() {
+    return r'signedImageUrlProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<String?> create(Ref ref) {
+    final argument = this.argument as String;
+    return signedImageUrl(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SignedImageUrlProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$signedImageUrlHash() => r'791d87f4d48489e761ba0c6d36eefb63cb66570f';
+
+/// Resolve a Supabase storage bucket path to a temporary signed URL (1 hour).
+/// Returns null when Supabase isn't configured (fake backend uses local files).
+
+final class SignedImageUrlFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<String?>, String> {
+  SignedImageUrlFamily._()
+    : super(
+        retry: null,
+        name: r'signedImageUrlProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Resolve a Supabase storage bucket path to a temporary signed URL (1 hour).
+  /// Returns null when Supabase isn't configured (fake backend uses local files).
+
+  SignedImageUrlProvider call(String path) =>
+      SignedImageUrlProvider._(argument: path, from: this);
+
+  @override
+  String toString() => r'signedImageUrlProvider';
 }

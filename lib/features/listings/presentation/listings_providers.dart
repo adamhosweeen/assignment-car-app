@@ -1,7 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../../../app/providers.dart';
 import '../../../core/result.dart';
+import '../../../core/supabase/supabase_config.dart';
 import '../domain/listing.dart';
 
 part 'listings_providers.g.dart';
@@ -28,4 +30,18 @@ Future<Listing> listingById(Ref ref, String id) async {
     Ok(:final value) => value,
     Err(:final message) => throw Exception(message),
   };
+}
+
+/// Resolve a Supabase storage bucket path to a temporary signed URL (1 hour).
+/// Returns null when Supabase isn't configured (fake backend uses local files).
+@riverpod
+Future<String?> signedImageUrl(Ref ref, String path) async {
+  if (!SupabaseConfig.isConfigured) return null;
+  try {
+    return await Supabase.instance.client.storage
+        .from('listing-media')
+        .createSignedUrl(path, 3600);
+  } catch (_) {
+    return null;
+  }
 }

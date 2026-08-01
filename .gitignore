@@ -46,3 +46,6 @@ app.*.map.json
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Supabase dev credentials (--dart-define-from-file)
+env.json

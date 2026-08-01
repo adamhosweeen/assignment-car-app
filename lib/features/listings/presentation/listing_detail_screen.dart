@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +15,7 @@ import '../domain/listing_media.dart';
 import 'listings_providers.dart';
 import 'sell/sell_controller.dart';
 import 'widgets/cover_image.dart';
+import 'widgets/media_image.dart';
 
 /// Standalone listing detail, reachable from the Buy feed and My Listings
 /// (V1_SPEC §4.7). Takes only a listing id.
@@ -451,21 +450,14 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
       body: PageView.builder(
         controller: _controller,
         itemCount: widget.photos.length,
-        itemBuilder: (_, i) {
-          final path = widget.photos[i].storagePath;
-          final exists = path.isNotEmpty && File(path).existsSync();
-          return InteractiveViewer(
-            child: Center(
-              child: exists
-                  ? Image.file(File(path), fit: BoxFit.contain)
-                  : const Icon(
-                      Icons.directions_car_outlined,
-                      size: AppSpacing.iconXl,
-                      color: AppColors.tertiaryLabel,
-                    ),
+        itemBuilder: (_, i) => InteractiveViewer(
+          child: Center(
+            child: MediaImage(
+              path: widget.photos[i].storagePath,
+              fit: BoxFit.contain,
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
