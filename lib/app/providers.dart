@@ -18,15 +18,20 @@ part 'providers.g.dart';
 /// depend only on abstractions — swapping the fakes for Supabase later touches
 /// this file alone.
 
-/// Opened Hive boxes. Overridden in `main()` with the initialised instance.
+/// The open sqflite database plus its initial rows. Overridden in `main()`
+/// with the initialised instance.
 @Riverpod(keepAlive: true)
 AppStorage appStorage(Ref ref) =>
     throw UnimplementedError('appStorageProvider must be overridden in main()');
 
 @Riverpod(keepAlive: true)
-AuthRepository authRepository(Ref ref) => SupabaseConfig.isConfigured
-    ? SupabaseAuthRepository(Supabase.instance.client)
-    : FakeAuthRepository(ref.watch(appStorageProvider).sessionBox);
+AuthRepository authRepository(Ref ref) {
+  if (SupabaseConfig.isConfigured) {
+    return SupabaseAuthRepository(Supabase.instance.client);
+  }
+  final storage = ref.watch(appStorageProvider);
+  return FakeAuthRepository(storage.db, storage.initialSessionRow);
+}
 
 @Riverpod(keepAlive: true)
 ListingsRepository listingsRepository(Ref ref) => SupabaseConfig.isConfigured
@@ -34,8 +39,14 @@ ListingsRepository listingsRepository(Ref ref) => SupabaseConfig.isConfigured
     : FakeListingsRepository();
 
 @Riverpod(keepAlive: true)
-DraftRepository draftRepository(Ref ref) =>
-    DraftRepository(ref.watch(appStorageProvider).draftBox);
+DraftRepository draftRepository(Ref ref) {
+  final storage = ref.watch(appStorageProvider);
+  return DraftRepository(
+    storage.db,
+    storage.initialDraftRow,
+    storage.initialDraftPhotoPaths,
+  );
+}
 
 /// The signed-in profile as a stream (null when signed out).
 @riverpod

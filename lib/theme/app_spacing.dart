@@ -67,6 +67,12 @@ abstract final class AppSpacing {
   /// Splash logo / large empty-state glyphs.
   static const double iconXl = 64;
 
+  /// Profile screen avatar diameter.
+  static const double avatarLg = 96;
+
+  /// Avatar ring stroke width.
+  static const double avatarRingWidth = 2;
+
   // ── Media sizes ──────────────────────────────────────────────────────────
   /// Photo thumbnail (sell photo grid, review strip).
   static const double thumbMd = 96;

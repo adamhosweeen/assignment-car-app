@@ -20,7 +20,7 @@ import 'steps/step_specs.dart';
 const int _lastStep = 6;
 
 /// The 7-step create-listing flow. One step per screen, a thin progress bar,
-/// back preserves data, and the draft is written to Hive after every step.
+/// back preserves data, and the draft is written to sqflite after every step.
 class SellFlowScreen extends ConsumerStatefulWidget {
   const SellFlowScreen({super.key});
 

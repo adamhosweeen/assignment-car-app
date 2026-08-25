@@ -59,6 +59,7 @@ class GroupedRow extends StatelessWidget {
   const GroupedRow({
     super.key,
     required this.label,
+    this.labelColor,
     this.value,
     this.valueColor,
     this.trailing,
@@ -67,6 +68,7 @@ class GroupedRow extends StatelessWidget {
   });
 
   final String label;
+  final Color? labelColor;
   final String? value;
   final Color? valueColor;
   final Widget? trailing;
@@ -83,7 +85,12 @@ class GroupedRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label, style: text.body),
+          Text(
+            label,
+            style: labelColor == null
+                ? text.body
+                : text.body.copyWith(color: labelColor),
+          ),
           const SizedBox(width: AppSpacing.space12),
           Expanded(
             child: Text(

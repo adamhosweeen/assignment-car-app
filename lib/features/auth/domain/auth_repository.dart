@@ -19,5 +19,12 @@ abstract interface class AuthRepository {
     required String code,
   });
 
+  /// Update the signed-in user's editable profile fields. Fields left null are
+  /// unchanged.
+  Future<Result<Profile>> updateProfile({
+    String? displayName,
+    String? avatarUrl,
+  });
+
   Future<void> signOut();
 }

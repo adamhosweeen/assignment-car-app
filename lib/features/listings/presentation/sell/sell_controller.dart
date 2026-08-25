@@ -7,9 +7,9 @@ import '../../domain/listing_enums.dart';
 
 part 'sell_controller.g.dart';
 
-/// Owns the in-progress [ListingDraft] and persists it to Hive after every
+/// Owns the in-progress [ListingDraft] and persists it to sqflite after every
 /// change, so a crash or force-quit never loses input (V1_SPEC §4.5). The
-/// controller is ephemeral; the draft survives in Hive and is reloaded on
+/// controller is ephemeral; the draft survives on-device and is reloaded on
 /// re-entry.
 @riverpod
 class SellController extends _$SellController {

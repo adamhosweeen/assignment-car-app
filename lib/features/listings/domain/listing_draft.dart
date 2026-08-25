@@ -9,8 +9,8 @@ part 'listing_draft.g.dart';
 /// Postgres `int` column (max ~2.15 billion) overflow when publishing.
 const int kMaxPriceMyr = 100000000; // RM 100,000,000
 
-/// An in-progress sell form, persisted to Hive after every step so a crash or
-/// app kill never loses input (CLAUDE.md §3, V1_SPEC §4.5).
+/// An in-progress sell form, persisted to sqflite after every step so a crash
+/// or app kill never loses input (CLAUDE.md §3, V1_SPEC §4.5).
 ///
 /// Every field is nullable because the form is filled in incrementally. [id]
 /// doubles as the listing id when the draft is published.

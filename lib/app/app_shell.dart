@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 
-/// The signed-in shell: the three tabs (Buy / Sell / Chat) over a flat,
-/// iOS-style bottom bar. Each tab keeps its own navigation stack via
+/// The signed-in shell: the four tabs (Buy / Sell / Chat / Profile) over a
+/// flat, iOS-style bottom bar. Each tab keeps its own navigation stack via
 /// [StatefulNavigationShell].
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});
@@ -32,6 +32,7 @@ const List<_NavDef> _tabs = [
   _NavDef(Icons.storefront_outlined, Icons.storefront, 'Buy'),
   _NavDef(Icons.sell_outlined, Icons.sell, 'Sell'),
   _NavDef(Icons.chat_bubble_outline, Icons.chat_bubble, 'Chat'),
+  _NavDef(Icons.person_outline, Icons.person, 'Profile'),
 ];
 
 class _BottomNav extends StatelessWidget {

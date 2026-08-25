@@ -134,7 +134,7 @@ restarting the whole submission.
 ### 4.1 Splash
 
 Logo centred on white. While shown, restore the Supabase session and check for a saved
-Hive draft. Route to Home if a valid session exists, otherwise to Login. Hard cap the
+draft. Route to Home if a valid session exists, otherwise to Login. Hard cap the
 display at **2 seconds** — never block on a slow network.
 
 ### 4.2 Login — phone OTP
@@ -157,13 +157,14 @@ no network.
 
 ### 4.3 App shell — bottom navigation
 
-Three tabs using a `StatefulShellRoute` so each tab keeps its own navigation stack.
+Four tabs using a `StatefulShellRoute` so each tab keeps its own navigation stack.
 
 | Tab | v1 content |
 |---|---|
 | **Buy** | Minimal feed of all active listings (§4.4). Landing tab. |
 | **Sell** | Entry point → My Listings, with a prominent "Sell your car" button |
 | **Chat** | Placeholder: centred icon + "Chat is coming soon." |
+| **Profile** | Edit display name, view phone/member-since, log out (§4.8) |
 
 ### 4.4 Buy — minimal feed
 
@@ -188,7 +189,7 @@ the query filter and the absence of row actions and status badges.
 ### 4.5 Sell — create listing (the core of v1)
 
 Seven steps, one screen each, with a thin progress bar. Back preserves entered data.
-**The draft is written to Hive after every step transition.**
+**The draft is written to sqflite after every step transition.**
 
 | # | Step | Fields |
 |---|---|---|
@@ -209,7 +210,7 @@ models, plus an "Other" free-text option. Do not build a database-backed catalog
 only after every upload succeeds. A partial upload must never produce a live listing with
 missing photos.
 
-**Resume behaviour:** if a Hive draft exists on app launch, show a dismissible prompt —
+**Resume behaviour:** if a saved draft exists on app launch, show a dismissible prompt —
 "You have an unfinished listing. Continue?"
 
 ### 4.6 My Listings
@@ -246,6 +247,22 @@ Layout top to bottom:
 If the viewer is the seller, show Edit / Mark as sold. If not, show a disabled "Chat with
 seller" button labelled "Coming soon" — the placement is reserved for v2.
 
+### 4.8 Profile
+
+The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
+
+- Avatar: initials fallback (no avatar upload in v1 — `avatar_url` stays nullable and
+  unused until a storage bucket/upload flow is scoped).
+- **Display name**: editable text field with a Save button, disabled until changed.
+  Persists to `profiles.display_name`.
+- **Phone**: read-only — identity is OTP-verified and not user-editable.
+- **Member since**: `profiles.created_at`, formatted month/year.
+- **Log out**: destructive row with a confirmation dialog. Signs out via the auth
+  repository; the router's redirect guard sends the user to Login automatically.
+
+Loading/empty/error states follow the same explicit-three-states rule as every other
+screen (`CLAUDE.md` §6).
+
 ---
 
 ## 5. Acceptance criteria for v1
@@ -271,6 +288,9 @@ The version is done when all of the following are true:
 11. A signed-in user cannot edit or delete another user's listing (verify by calling the
     API directly, not just by the UI hiding the button).
 12. `flutter analyze` reports zero issues.
+13. Editing the display name in Profile persists across a force-quit and relaunch.
+14. Logging out from Profile returns to the login screen, and the redirect guard blocks
+    navigating back to Home until the user signs in again.
 
 ---
 
@@ -284,7 +304,7 @@ Each step should be a separate session, verified on a real device before moving 
 4. Bottom nav shell with the Chat placeholder tab
 5. Freezed models + listings repository (no UI)
 6. Sell flow steps 2–6 (forms first — no media yet)
-7. Hive draft persistence + resume prompt
+7. sqflite draft persistence + resume prompt
 8. Sell step 1: photo picking, compression, reordering
 9. Media upload with progress and per-file retry, then publish
 10. Listing card widget + My Listings with realtime subscription

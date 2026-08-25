@@ -22,7 +22,7 @@ chat. Comparable products: Carsome, Carro, Carousell Motors, Mudah.my.
 
 - Splash screen
 - Phone OTP authentication (login + signup are the same flow)
-- Bottom navigation shell with three tabs: **Buy**, **Sell**, **Chat**
+- Bottom navigation shell with four tabs: **Buy**, **Sell**, **Chat**, **Profile**
 - **Sell module** — multi-step create-listing flow (the core of v1)
 - **My Listings** — seller sees their own listings, can mark sold or delete
 - **Listing detail** — full view of a single listing with photo gallery
@@ -55,7 +55,7 @@ chat. Comparable products: Carsome, Carro, Carousell Motors, Mudah.my.
 | Routing | `go_router` | Declarative routes, auth redirect guard |
 | Backend | **Supabase** | Postgres + Auth + Storage + Realtime |
 | Supabase region | `ap-southeast-1` (Singapore) | Lowest latency to Malaysia |
-| Local cache / drafts | `hive_ce` + `hive_ce_flutter` | Community fork; original `hive` is unmaintained |
+| Local cache / drafts | `sqflite` | Relational on-device store for listing drafts and cached session |
 | Models | `freezed` + `json_serializable` | Immutable models, no hand-written `fromJson` |
 | Images | `image_picker`, `flutter_image_compress`, `cached_network_image` | |
 | Fonts | `google_fonts` (Inter) | See §5 |
@@ -65,17 +65,18 @@ and wait.
 
 ### Source of truth
 
-Supabase Postgres is the **only** source of truth. Hive is a cache and draft store only:
+Supabase Postgres is the **only** source of truth. sqflite is a cache and draft store
+only:
 
 1. **Listing drafts** — an in-progress sell form, persisted locally after every step so
    a crash or app kill never loses the user's input.
 2. **Read cache** — last-fetched listings, so screens render instantly on cold start
    before the network responds.
 
-Never treat Hive as authoritative. Never write user-facing state to Hive that isn't
-also going to Postgres. Unlike Firestore, the Supabase SDK has **no built-in offline
-write queue** — do not assume writes will replay when connectivity returns. If a write
-fails, surface the error to the user and let them retry.
+Never treat the local database as authoritative. Never write user-facing state to it
+that isn't also going to Postgres. Unlike Firestore, the Supabase SDK has **no built-in
+offline write queue** — do not assume writes will replay when connectivity returns. If a
+write fails, surface the error to the user and let them retry.
 
 ### Realtime
 
@@ -98,7 +99,7 @@ lib/
     app_spacing.dart          # spacing + radius constants
   core/
     supabase/                 # client, error mapping
-    storage/                  # Hive boxes
+    storage/                  # sqflite database + tables
     result.dart               # Result<T> for fallible operations
   features/
     auth/       { data/ domain/ presentation/ }

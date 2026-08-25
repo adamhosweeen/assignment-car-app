@@ -46,6 +46,10 @@ abstract final class AppColors {
 
   /// Text / icons drawn on top of [primary] or [destructive].
   static const Color onPrimary = Color(0xFFFFFFFF);
+
+  /// [primary] at 12% opacity — tinted fills behind primary-coloured content
+  /// (e.g. the profile avatar), alpha baked in to avoid `withOpacity`.
+  static const Color primaryMuted = Color(0x1F007AFF);
 }
 
 /// A single colour token, used to drive the design demo.

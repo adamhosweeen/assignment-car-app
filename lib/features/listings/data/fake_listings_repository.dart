@@ -16,7 +16,7 @@ import '../domain/listings_repository.dart';
 ///
 /// NOTE: data lives only in memory, so published listings do not survive an app
 /// restart (that is Supabase's job in the real build). Drafts DO survive, via
-/// [DraftRepository] + Hive.
+/// [DraftRepository] + sqflite.
 class FakeListingsRepository implements ListingsRepository {
   FakeListingsRepository() {
     _seed();
@@ -67,7 +67,9 @@ class FakeListingsRepository implements ListingsRepository {
       return Err('$missing is missing. Go back and complete every step.');
     }
     if ((draft.priceMyr ?? 0) > kMaxPriceMyr) {
-      return const Err('That price is too high to publish. Enter a smaller amount.');
+      return const Err(
+        'That price is too high to publish. Enter a smaller amount.',
+      );
     }
 
     final now = DateTime.now().toUtc();
@@ -183,10 +185,12 @@ class FakeListingsRepository implements ListingsRepository {
       required bool negotiable,
       required String description,
       required Duration ago,
+      required String photoUrl,
     }) {
       final ts = now.subtract(ago);
+      final listingId = newId();
       return Listing(
-        id: newId(),
+        id: listingId,
         sellerId: sellerId,
         status: ListingStatus.active,
         make: make,
@@ -208,6 +212,15 @@ class FakeListingsRepository implements ListingsRepository {
         description: description,
         createdAt: ts,
         updatedAt: ts,
+        media: [
+          ListingMedia(
+            id: newId(),
+            listingId: listingId,
+            storagePath: photoUrl,
+            position: 0,
+            createdAt: ts,
+          ),
+        ],
       );
     }
 
@@ -233,6 +246,8 @@ class FakeListingsRepository implements ListingsRepository {
         description:
             'One careful owner, full service record, tip-top condition.',
         ago: const Duration(hours: 2),
+        photoUrl:
+            'https://commons.wikimedia.org/wiki/Special:FilePath/2021_Perodua_Myvi_1.3G_silver_front_view_in_Brunei.jpg',
       ),
       s(
         sellerId: 'seed-2',
@@ -254,6 +269,8 @@ class FakeListingsRepository implements ListingsRepository {
         negotiable: false,
         description: 'Well kept family sedan, low mileage for the year.',
         ago: const Duration(hours: 9),
+        photoUrl:
+            'https://upload.wikimedia.org/wikipedia/commons/6/61/Honda_City_GN2_FL_1.5_E_Lunar_Silver_Metallic.jpg',
       ),
       s(
         sellerId: 'seed-3',
@@ -275,6 +292,8 @@ class FakeListingsRepository implements ListingsRepository {
         negotiable: true,
         description: '4x4, strong engine, ready for work or off-road.',
         ago: const Duration(days: 1, hours: 3),
+        photoUrl:
+            'https://upload.wikimedia.org/wikipedia/commons/f/fd/2020_Toyota_Hilux_Revo_4x4_Double-Cab_2.8_Rocco.jpg',
       ),
       s(
         sellerId: 'seed-1',
@@ -295,6 +314,8 @@ class FakeListingsRepository implements ListingsRepository {
         negotiable: false,
         description: 'Long range, under warranty, free charging balance.',
         ago: const Duration(days: 2),
+        photoUrl:
+            'https://upload.wikimedia.org/wikipedia/commons/4/46/Blue_Tesla_Model_3_at_night.jpg',
       ),
       s(
         sellerId: 'seed-2',
@@ -316,6 +337,8 @@ class FakeListingsRepository implements ListingsRepository {
         negotiable: true,
         description: 'Turbocharged, loaded with features, still like new.',
         ago: const Duration(days: 3, hours: 6),
+        photoUrl:
+            'https://upload.wikimedia.org/wikipedia/commons/4/45/2021_Proton_X50_1.5_Standard_7AT_silver_front_view_in_Brunei.jpg',
       ),
     ]);
   }

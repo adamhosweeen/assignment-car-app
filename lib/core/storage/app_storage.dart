@@ -1,20 +1,49 @@
-import 'package:hive_ce_flutter/hive_ce_flutter.dart';
+import 'package:sqflite/sqflite.dart';
 
-/// Opened Hive boxes for the app. Initialised once in `main()` before `runApp`.
+import 'app_database.dart';
+
+/// The open sqflite database plus whatever rows were already on disk at
+/// launch, so the repositories below can decode them synchronously.
 ///
-/// Hive is a cache/draft store only — never the source of truth (CLAUDE.md §3).
-/// - [draftBox]   — the current in-progress sell form (JSON string).
-/// - [sessionBox] — the signed-in profile, so a returning user skips login.
+/// sqflite has no synchronous read API, but two call sites
+/// (`DraftRepository.hasDraft`/`.load()`, used inside Riverpod `build()`
+/// methods) need a synchronous answer. Since [init] is already awaited once in
+/// `main()` before `runApp`, it does the one-time async row fetch here; the
+/// repositories decode and cache in memory, then read that cache from then on
+/// (CLAUDE.md §3: sqflite is a cache/draft store, never the source of truth).
 class AppStorage {
-  const AppStorage._(this.draftBox, this.sessionBox);
+  const AppStorage._(
+    this.db,
+    this.initialDraftRow,
+    this.initialDraftPhotoPaths,
+    this.initialSessionRow,
+  );
 
-  final Box<dynamic> draftBox;
-  final Box<dynamic> sessionBox;
+  final Database db;
+  final Map<String, Object?>? initialDraftRow;
+  final List<String> initialDraftPhotoPaths;
+  final Map<String, Object?>? initialSessionRow;
 
   static Future<AppStorage> init() async {
-    await Hive.initFlutter();
-    final draftBox = await Hive.openBox<dynamic>('draft');
-    final sessionBox = await Hive.openBox<dynamic>('session');
-    return AppStorage._(draftBox, sessionBox);
+    final db = await AppDatabase.open();
+
+    final draftRows = await db.query('listing_draft');
+    final draftRow = draftRows.isEmpty ? null : draftRows.first;
+
+    var photoPaths = const <String>[];
+    if (draftRow != null) {
+      final photoRows = await db.query(
+        'listing_draft_photo',
+        where: 'draft_id = ?',
+        whereArgs: [draftRow['id']],
+        orderBy: 'position ASC',
+      );
+      photoPaths = [for (final p in photoRows) p['path'] as String];
+    }
+
+    final sessionRows = await db.query('cached_session');
+    final sessionRow = sessionRows.isEmpty ? null : sessionRows.first;
+
+    return AppStorage._(db, draftRow, photoPaths, sessionRow);
   }
 }

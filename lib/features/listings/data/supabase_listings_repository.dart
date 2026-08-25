@@ -119,7 +119,9 @@ class SupabaseListingsRepository implements ListingsRepository {
       return Err('$missing is missing. Go back and complete every step.');
     }
     if ((draft.priceMyr ?? 0) > kMaxPriceMyr) {
-      return const Err('That price is too high to publish. Enter a smaller amount.');
+      return const Err(
+        'That price is too high to publish. Enter a smaller amount.',
+      );
     }
     final id = draft.id;
     try {
@@ -134,7 +136,9 @@ class SupabaseListingsRepository implements ListingsRepository {
         final String objectPath;
         if (file.existsSync()) {
           objectPath = '$sellerId/$id/${newId()}.jpg';
-          await _client.storage.from(_bucket).upload(
+          await _client.storage
+              .from(_bucket)
+              .upload(
                 objectPath,
                 file,
                 fileOptions: const FileOptions(contentType: 'image/jpeg'),

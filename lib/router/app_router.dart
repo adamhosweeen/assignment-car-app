@@ -12,6 +12,8 @@ import '../features/listings/presentation/buy_feed_screen.dart';
 import '../features/listings/presentation/listing_detail_screen.dart';
 import '../features/listings/presentation/sell/sell_flow_screen.dart';
 import '../features/listings/presentation/sell_home_screen.dart';
+import '../features/profile/presentation/edit_profile_screen.dart';
+import '../features/profile/presentation/profile_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -55,6 +57,10 @@ GoRouter goRouter(Ref ref) {
         builder: (_, state) =>
             ListingDetailScreen(id: state.pathParameters['id']!),
       ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (_, _) => const EditProfileScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
@@ -79,6 +85,14 @@ GoRouter goRouter(Ref ref) {
               GoRoute(
                 path: '/home/chat',
                 builder: (_, _) => const ChatScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home/profile',
+                builder: (_, _) => const ProfileScreen(),
               ),
             ],
           ),
