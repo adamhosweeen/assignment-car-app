@@ -174,8 +174,15 @@ bar, back preserves data):
 On submit, `signUp` sends the registration data as user metadata; the signup trigger
 creates the `profiles` row. The router's auth redirect lands the new user on Home.
 
+**Forgot password:** "Forgot password?" on the login screen → enter email →
+Supabase emails a 6-digit recovery code (the Reset Password template must
+include `{{ .Token }}`) → enter code + new password (same strength rule) →
+verified via `verifyOTP(recovery)` + `updateUser(password)`, which signs the
+user in and lands them on Home. No deep links required.
+
 Error cases to handle explicitly: invalid email, weak password, email already
-registered, wrong credentials on login, rate limited, no network.
+registered, wrong credentials on login, expired/wrong recovery code, rate
+limited, no network.
 
 > **Development note:** disable "Confirm email" in the Supabase dashboard
 > (Authentication → Sign In / Providers → Email) — the app expects a live session
@@ -299,6 +306,12 @@ The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
   read-only** (it protects the 18+ gate).
 - **Log out**: destructive row with a confirmation dialog. Signs out via the auth
   repository; the router's redirect guard sends the user to Login automatically.
+- **Delete account**: destructive row with a strong confirmation dialog. The app
+  removes the user's uploaded photos via the Storage API, then calls the
+  `delete_account()` SECURITY DEFINER function, which deletes their messages,
+  conversations, listings (+media rows), and finally the auth user (cascading
+  the profile). Local caches and any sell draft are cleared; the redirect guard
+  returns to Login. Irreversible.
 
 The last fetched profile is mirrored into a sqflite read-cache (`profile_cache`),
 so identity, details, and interests render instantly on cold start and remain

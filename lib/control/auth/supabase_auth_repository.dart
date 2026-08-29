@@ -179,6 +179,40 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<void>> sendPasswordReset(String email) async {
+    try {
+      await _client.auth.resetPasswordForEmail(email);
+      return const Ok(null);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<Profile>> confirmPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await _client.auth.verifyOTP(
+        type: OtpType.recovery,
+        email: email,
+        token: code,
+      );
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+      await _refreshEnriched();
+      final profile = _toProfile(_client.auth.currentUser);
+      if (profile == null) {
+        return const Err('Password reset failed. Please try again.');
+      }
+      return Ok(profile);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
   Future<Result<Profile>> updateProfile({
     String? firstName,
     String? lastName,
@@ -213,6 +247,54 @@ class SupabaseAuthRepository implements AuthRepository {
         return const Err('Could not save your profile. Please try again.');
       }
       return Ok(profile);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteAccount() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const Err('You need to be signed in to delete your account.');
+    }
+    try {
+      // 1. Best-effort: delete uploaded photos via the Storage API (SQL
+      //    cannot touch storage rows; orphans are harmless if this fails).
+      try {
+        final listingRows = await _client
+            .from('listings')
+            .select('id')
+            .eq('seller_id', user.id);
+        final ids = [for (final r in listingRows) r['id'] as String];
+        if (ids.isNotEmpty) {
+          final mediaRows = await _client
+              .from('listing_media')
+              .select('storage_path')
+              .inFilter('listing_id', ids);
+          final paths = [
+            for (final r in mediaRows) r['storage_path'] as String,
+          ];
+          if (paths.isNotEmpty) {
+            await _client.storage.from('listing-media').remove(paths);
+          }
+        }
+      } catch (_) {
+        // Continue — row cleanup below is what matters.
+      }
+
+      // 2. Server-side cascade: messages, conversations, listings (+media
+      //    rows), then the auth user (+profile). SECURITY DEFINER function;
+      //    it only ever deletes auth.uid()'s own data.
+      await _client.rpc<void>('delete_account');
+
+      // 3. Local cleanup. The session token now points at a deleted user, so
+      //    the server may reject sign-out — clear what we can regardless.
+      await _cache.clear();
+      try {
+        await _client.auth.signOut();
+      } catch (_) {}
+      return const Ok(null);
     } catch (e) {
       return Err(mapError(e));
     }

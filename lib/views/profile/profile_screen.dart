@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/providers.dart';
+import 'package:assignment/utils/result.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -16,6 +17,54 @@ import 'package:assignment/model/profile/profile.dart';
 /// "Edit" app bar action.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently deletes your profile, your listings, their '
+          'photos, and your login. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final res = await ref.read(authRepositoryProvider).deleteAccount();
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    switch (res) {
+      case Ok():
+        // Also discard any local sell draft; the router redirect handles
+        // navigation back to the login screen.
+        await ref.read(draftRepositoryProvider).clear();
+      case Err(:final message):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
 
   Future<void> _confirmLogOut(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
@@ -160,6 +209,28 @@ class ProfileScreen extends ConsumerWidget {
                       child: Center(
                         child: Text(
                           'Log out',
+                          style: Theme.of(context).textTheme.headline.copyWith(
+                            color: AppColors.destructive,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space24),
+              GroupedSection(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _confirmDeleteAccount(context, ref),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.space12,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Delete account',
                           style: Theme.of(context).textTheme.headline.copyWith(
                             color: AppColors.destructive,
                           ),

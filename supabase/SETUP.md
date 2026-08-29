@@ -28,6 +28,14 @@ backend).
   session; with confirmation on, new users are told to check their inbox and the
   flow stalls.
 - Optional: set minimum password length to 8 to match the client-side rule.
+- **Forgot-password codes:** Authentication → Emails → **Reset Password**
+  template — make sure the body includes `{{ .Token }}` (the 6-digit code),
+  e.g. `Your reset code is {{ .Token }}`. The app's forgot-password flow asks
+  for this code; the default template only contains a link.
+- **Account deletion:** the `delete_account()` function is part of
+  `0001_init.sql`. If your schema is already applied and you don't want a full
+  reset, paste just the "Account deletion" block from that file into the SQL
+  editor and run it alone — it's additive (`create or replace`).
 
 ## 4. Hand the keys back
 Give me the **Project URL** and **anon key**. They're injected at build time via

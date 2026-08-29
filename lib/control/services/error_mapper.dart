@@ -21,6 +21,12 @@ String mapError(Object error) {
     if (m.contains('email not confirmed')) {
       return 'Confirm your email first — check your inbox.';
     }
+    if (m.contains('expired')) {
+      return 'That code has expired. Request a new one.';
+    }
+    if (m.contains('otp') || m.contains('token')) {
+      return "That code isn't right. Check it and try again.";
+    }
     if (m.contains('password')) {
       return 'That password is too weak. Use at least 8 characters with '
           'letters and numbers.';

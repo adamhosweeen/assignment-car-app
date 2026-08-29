@@ -25,6 +25,9 @@ chat. Comparable products: Carsome, Carro, Carousell Motors, Mudah.my.
 - Email + password authentication, with a multi-step registration flow collecting
   first/last name, date of birth (18+ enforced), phone number, location (GPS with
   Malaysian-state-picker fallback), and a car-interest questionnaire
+- Forgot-password reset via an emailed 6-digit recovery code (no deep links)
+- Delete account (removes the user's listings, photos, chats, profile, and login
+  via a `delete_account()` SECURITY DEFINER function)
 - "Recommended for you" row at the top of the Buy feed, scored client-side from
   the user's saved interests and location
 - Bottom navigation shell with four tabs: **Buy**, **Sell**, **Chat**, **Profile**

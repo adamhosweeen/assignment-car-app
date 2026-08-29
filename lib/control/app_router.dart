@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:assignment/views/app_shell.dart';
 import 'package:assignment/control/providers.dart';
+import 'package:assignment/views/auth/forgot_password_screen.dart';
 import 'package:assignment/views/auth/login_screen.dart';
 import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
@@ -47,6 +48,10 @@ GoRouter goRouter(Ref ref) {
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(
+        path: '/login/forgot',
+        builder: (_, _) => const ForgotPasswordScreen(),
+      ),
       GoRoute(path: '/register', builder: (_, _) => const RegisterFlowScreen()),
       GoRoute(path: '/sell/new', builder: (_, _) => const SellFlowScreen()),
       GoRoute(

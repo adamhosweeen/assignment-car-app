@@ -26,6 +26,16 @@ abstract interface class AuthRepository {
     required RegistrationData data,
   });
 
+  /// Email a 6-digit recovery code for a forgotten password.
+  Future<Result<void>> sendPasswordReset(String email);
+
+  /// Verify the recovery code and set a new password; signs the user in.
+  Future<Result<Profile>> confirmPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  });
+
   /// Update the signed-in user's editable profile fields. Fields left null are
   /// unchanged. Email and date of birth are not editable.
   Future<Result<Profile>> updateProfile({
@@ -36,6 +46,10 @@ abstract interface class AuthRepository {
     CarInterests? interests,
     String? avatarUrl,
   });
+
+  /// Permanently delete the signed-in user's account: their listings, photos,
+  /// chats, profile, and login. Irreversible.
+  Future<Result<void>> deleteAccount();
 
   Future<void> signOut();
 }
