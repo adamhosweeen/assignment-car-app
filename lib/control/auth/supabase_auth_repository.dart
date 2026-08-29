@@ -1,0 +1,212 @@
+import 'dart:async';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:assignment/utils/result.dart';
+import 'package:assignment/control/services/error_mapper.dart';
+import 'package:assignment/model/profile/car_interests.dart';
+import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/auth/registration_data.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+
+/// Real email+password auth via Supabase. Supabase persists its own session,
+/// so a returning user is not asked to log in again (V1_SPEC §5.2).
+class SupabaseAuthRepository implements AuthRepository {
+  SupabaseAuthRepository(this._client) {
+    _refreshEnriched();
+    _client.auth.onAuthStateChange.listen((_) => _refreshEnriched());
+  }
+
+  final SupabaseClient _client;
+
+  static const String _profileColumns =
+      'id, email, first_name, last_name, dob, phone, state, interests, '
+      'avatar_url, created_at';
+
+  /// The `profiles` row, layered over what `auth.users` alone provides.
+  /// Registration extras (name, DOB, state, interests) live only there, so
+  /// without this an edited profile would never show up on the read side.
+  Profile? _enriched;
+
+  Profile? _toProfile(User? user) {
+    if (user == null) return null;
+    final enriched = _enriched != null && _enriched!.id == user.id
+        ? _enriched
+        : null;
+    if (enriched != null) return enriched;
+    // Row not fetched yet (e.g. trigger hasn't run) — build a minimal profile
+    // from the auth user and the metadata sent at sign-up.
+    final meta = user.userMetadata ?? const <String, dynamic>{};
+    return Profile(
+      id: user.id,
+      email: user.email ?? '',
+      firstName: meta['first_name'] as String?,
+      lastName: meta['last_name'] as String?,
+      dob: DateTime.tryParse(meta['dob'] as String? ?? ''),
+      phone: meta['phone'] as String?,
+      state: meta['state'] as String?,
+      interests: _decodeInterests(meta['interests']),
+      createdAt:
+          DateTime.tryParse(user.createdAt)?.toUtc() ?? DateTime.now().toUtc(),
+    );
+  }
+
+  static CarInterests _decodeInterests(Object? value) {
+    if (value is Map<String, dynamic>) {
+      try {
+        return CarInterests.fromJson(value);
+      } catch (_) {
+        return const CarInterests();
+      }
+    }
+    return const CarInterests();
+  }
+
+  static Profile _rowToProfile(Map<String, dynamic> row) => Profile(
+    id: row['id'] as String,
+    email: row['email'] as String? ?? '',
+    firstName: row['first_name'] as String?,
+    lastName: row['last_name'] as String?,
+    dob: DateTime.tryParse(row['dob'] as String? ?? ''),
+    phone: row['phone'] as String?,
+    state: row['state'] as String?,
+    interests: _decodeInterests(row['interests']),
+    avatarUrl: row['avatar_url'] as String?,
+    createdAt:
+        DateTime.tryParse(row['created_at'] as String? ?? '')?.toUtc() ??
+        DateTime.now().toUtc(),
+  );
+
+  Future<void> _refreshEnriched() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      _enriched = null;
+      return;
+    }
+    try {
+      final row = await _client
+          .from('profiles')
+          .select(_profileColumns)
+          .eq('id', user.id)
+          .single();
+      _enriched = _rowToProfile(row);
+    } catch (_) {
+      // Row not there yet (e.g. trigger hasn't run) — fall back to metadata.
+      _enriched = null;
+    }
+  }
+
+  @override
+  Profile? get currentUser => _toProfile(_client.auth.currentUser);
+
+  @override
+  Stream<Profile?> authState() async* {
+    yield currentUser;
+    yield* _client.auth.onAuthStateChange.asyncMap((s) async {
+      await _refreshEnriched();
+      return _toProfile(s.session?.user);
+    });
+  }
+
+  @override
+  Future<Result<Profile>> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final res = await _client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      await _refreshEnriched();
+      final profile = _toProfile(res.user);
+      if (profile == null) {
+        return const Err('Sign-in failed. Please try again.');
+      }
+      return Ok(profile);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<Profile>> signUp({
+    required String email,
+    required String password,
+    required RegistrationData data,
+  }) async {
+    try {
+      // The security-definer `handle_new_user` trigger inserts the profiles
+      // row from this metadata — the client has no INSERT policy by design.
+      final res = await _client.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'first_name': data.firstName,
+          'last_name': data.lastName,
+          'dob': data.dob.toIso8601String().substring(0, 10),
+          'phone': data.phoneE164,
+          'state': data.state,
+          'interests': data.interests.toJson(),
+        },
+      );
+      if (res.session == null) {
+        return const Err(
+          'Your account was created but needs email confirmation. '
+          'Check your inbox, then log in.',
+        );
+      }
+      await _refreshEnriched();
+      final profile = _toProfile(res.user);
+      if (profile == null) {
+        return const Err('Sign-up failed. Please try again.');
+      }
+      return Ok(profile);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<Profile>> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? state,
+    CarInterests? interests,
+    String? avatarUrl,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const Err('You need to be signed in to update your profile.');
+    }
+    try {
+      final current = _toProfile(user);
+      final updates = <String, Object?>{};
+      if (firstName != null) updates['first_name'] = firstName;
+      if (lastName != null) updates['last_name'] = lastName;
+      if (phone != null) updates['phone'] = phone;
+      if (state != null) updates['state'] = state;
+      if (interests != null) updates['interests'] = interests.toJson();
+      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+      if (firstName != null || lastName != null) {
+        updates['display_name'] = [
+          firstName ?? current?.firstName,
+          lastName ?? current?.lastName,
+        ].whereType<String>().join(' ').trim();
+      }
+      await _client.from('profiles').update(updates).eq('id', user.id);
+      await _refreshEnriched();
+      final profile = _toProfile(user);
+      if (profile == null) {
+        return const Err('Could not save your profile. Please try again.');
+      }
+      return Ok(profile);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<void> signOut() => _client.auth.signOut();
+}

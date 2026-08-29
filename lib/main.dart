@@ -2,20 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
-import 'app/providers.dart';
-import 'core/storage/app_storage.dart';
-import 'core/supabase/supabase_config.dart';
-import 'router/app_router.dart';
-import 'theme/app_theme.dart';
+import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/services/app_storage.dart';
+import 'package:assignment/control/services/supabase_config.dart';
+import 'package:assignment/control/app_router.dart';
+import 'package:assignment/utils/app_spacing.dart';
+import 'package:assignment/utils/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (SupabaseConfig.isConfigured) {
-    await Supabase.initialize(
-      url: SupabaseConfig.url,
-      publishableKey: SupabaseConfig.anonKey,
-    );
+  if (!SupabaseConfig.isConfigured) {
+    // The backend is required; fail loudly and legibly rather than crashing.
+    runApp(const MissingConfigApp());
+    return;
   }
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    publishableKey: SupabaseConfig.anonKey,
+  );
   final storage = await AppStorage.init();
   runApp(
     ProviderScope(
@@ -23,6 +27,58 @@ Future<void> main() async {
       child: const AssignmentApp(),
     ),
   );
+}
+
+/// Shown when the app is launched without Supabase credentials. There is no
+/// offline backend — the keys are required (README "Getting started").
+class MissingConfigApp extends StatelessWidget {
+  const MissingConfigApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Assignment',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: Builder(
+        builder: (context) {
+          final text = Theme.of(context).textTheme;
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.screenPadding),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off,
+                      size: AppSpacing.iconXl,
+                      color: AppColors.tertiaryLabel,
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+                    Text(
+                      'Supabase keys missing',
+                      style: text.headline,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    Text(
+                      'Run the app with --dart-define-from-file=env.json. '
+                      'See the README for setup steps.',
+                      style: text.subhead.copyWith(
+                        color: AppColors.secondaryLabel,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 /// Root of the app. [MaterialApp.router] with Material widgets styled to feel

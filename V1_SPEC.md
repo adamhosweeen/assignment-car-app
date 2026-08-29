@@ -17,10 +17,22 @@ Mirrors `auth.users`, created by trigger on signup.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | FK → `auth.users.id`, cascade delete |
-| `phone` | `text` | E.164, e.g. `+60123456789` |
-| `display_name` | `text` | Nullable; defaults to masked phone |
+| `email` | `text` | Login identity, from `auth.users.email` |
+| `first_name` | `text` | From registration |
+| `last_name` | `text` | From registration |
+| `dob` | `date` | 18+ enforced by CHECK constraint and the client |
+| `phone` | `text` | E.164, e.g. `+60123456789`; plain profile field (no OTP) |
+| `state` | `text` | One of the 16 Malaysian states/FTs (§2) |
+| `interests` | `jsonb` | Car-interest questionnaire answers, default `'{}'` |
+| `display_name` | `text` | Nullable; kept in sync with first + last name |
 | `avatar_url` | `text` | Nullable |
 | `created_at` | `timestamptz` | default `now()` |
+
+The full schema lives in the single `supabase/migrations/0001_init.sql`, which
+resets the project (drops tables, accounts, and uploaded images) before creating
+everything. The signup trigger copies `email` and the registration metadata
+(`raw_user_meta_data`) into this row. There is deliberately no INSERT policy —
+the trigger is the only inserter.
 
 ### `listings`
 
@@ -137,23 +149,37 @@ Logo centred on white. While shown, restore the Supabase session and check for a
 draft. Route to Home if a valid session exists, otherwise to Login. Hard cap the
 display at **2 seconds** — never block on a slow network.
 
-### 4.2 Login — phone OTP
+### 4.2 Login & registration — email + password
 
-**Step 1:** `+60` prefix fixed, phone number field, numeric keyboard. Validate Malaysian
-mobile format before enabling Continue.
+*(Amended: replaces the original phone-OTP flow.)*
 
-**Step 2:** 6-digit OTP entry, auto-advancing boxes. Resend countdown of 60 seconds.
-Editable "wrong number?" link back to step 1.
+**Login:** email + password fields, password visibility toggle, inline error text.
+"New here? Create an account" link to the registration flow.
 
-On success, upsert a `profiles` row and route to Home.
+**Registration** is a 4-step flow (mirrors the sell flow's step mechanics — progress
+bar, back preserves data):
 
-Error cases to handle explicitly: invalid number, wrong OTP, expired OTP, rate limited,
-no network.
+1. **Account** — email (format-validated), password (min 8 chars with at least one
+   letter and one digit), confirm password. Inline weak-password / mismatch hints.
+2. **About you** — first name, last name, date of birth (date picker capped at
+   18 years ago; **under-18 is blocked**), phone number (`+60` prefix, Malaysian
+   mobile format validated; no OTP — plain profile data).
+3. **Location** — "Use my location" (GPS, coarse; mapped to the nearest state
+   centroid) with the manual state picker as fallback when detection fails or is
+   denied.
+4. **Car interests** *(all optional)* — preferred brands (multi-select), body types
+   (multi-select), transmission and fuel preference, budget range in RM. Powers the
+   Buy feed's Recommended row (§4.4); editable later from Profile.
 
-> **Development note:** configure test phone numbers with fixed OTPs in the Supabase
-> dashboard (Authentication → Sign In / Providers → Phone) so development doesn't consume
-> real SMS credits. A live SMS provider (Twilio or similar) is required before release
-> and is a paid dependency — budget for it.
+On submit, `signUp` sends the registration data as user metadata; the signup trigger
+creates the `profiles` row. The router's auth redirect lands the new user on Home.
+
+Error cases to handle explicitly: invalid email, weak password, email already
+registered, wrong credentials on login, rate limited, no network.
+
+> **Development note:** disable "Confirm email" in the Supabase dashboard
+> (Authentication → Sign In / Providers → Email) — the app expects a live session
+> straight back from `signUp`.
 
 ### 4.3 App shell — bottom navigation
 
@@ -164,12 +190,18 @@ Four tabs using a `StatefulShellRoute` so each tab keeps its own navigation stac
 | **Buy** | Minimal feed of all active listings (§4.4). Landing tab. |
 | **Sell** | Entry point → My Listings, with a prominent "Sell your car" button |
 | **Chat** | Placeholder: centred icon + "Chat is coming soon." |
-| **Profile** | Edit display name, view phone/member-since, log out (§4.8) |
+| **Profile** | View/edit name, phone, location, car interests; log out (§4.8) |
 
 ### 4.4 Buy — minimal feed
 
 Newest-first list of every listing where `status = 'active'`, from all sellers. Tapping a
 card opens Listing Detail.
+
+*(Amended)* A **"Recommended for you"** horizontal row sits above the newest-first
+list when the user has saved interests or a location: the already-fetched active
+listings are scored client-side (brand +3, body type +2, within budget +2, same
+state +2, fuel +1, transmission +1; score ≥ 1 qualifies, top 10 shown, own listings
+excluded). No extra backend query. The feed below is unchanged.
 
 **Explicitly not in v1:** search bar, filters, sort control, price range, location
 picker, saved searches, map view, infinite-scroll pagination UI. Fetch the most recent
@@ -253,10 +285,14 @@ The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
 
 - Avatar: initials fallback (no avatar upload in v1 — `avatar_url` stays nullable and
   unused until a storage bucket/upload flow is scoped).
-- **Display name**: editable text field with a Save button, disabled until changed.
-  Persists to `profiles.display_name`.
-- **Phone**: read-only — identity is OTP-verified and not user-editable.
-- **Member since**: `profiles.created_at`, formatted month/year.
+- Header: full name (derived from first + last name, falling back to the email
+  prefix) with the email beneath.
+- **Details** (grouped): phone, location, date of birth, member since.
+- **Car interests** (grouped): brands, body types, transmission, fuel, budget.
+- **Edit Profile** (pushed route): first/last name, phone, and location are
+  editable; the car-interest fields reuse the registration questionnaire widget.
+  **Email is read-only** (it's the login identity) and **date of birth is
+  read-only** (it protects the 18+ gate).
 - **Log out**: destructive row with a confirmation dialog. Signs out via the auth
   repository; the router's redirect guard sends the user to Login automatically.
 
@@ -269,7 +305,9 @@ screen (`CLAUDE.md` §6).
 
 The version is done when all of the following are true:
 
-1. A new user signs in with phone OTP and lands on Home.
+1. A new user completes the 4-step email registration (an under-18 date of birth is
+   blocked with a clear message) and lands on Home; a returning user logs in with
+   email + password.
 2. A returning user reopens the app and is not asked to log in again.
 3. A user completes all 7 sell steps and publishes a listing with 3+ photos.
 4. Force-quitting the app mid-form and reopening it offers to resume the draft with all
@@ -288,7 +326,8 @@ The version is done when all of the following are true:
 11. A signed-in user cannot edit or delete another user's listing (verify by calling the
     API directly, not just by the UI hiding the button).
 12. `flutter analyze` reports zero issues.
-13. Editing the display name in Profile persists across a force-quit and relaunch.
+13. Editing the name, phone, location, or car interests in Profile persists across a
+    force-quit and relaunch, and the Recommended row reflects the updated interests.
 14. Logging out from Profile returns to the login screen, and the redirect guard blocks
     navigating back to Home until the user signs in again.
 

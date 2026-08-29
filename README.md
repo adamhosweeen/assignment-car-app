@@ -21,8 +21,8 @@ brief and `V1_SPEC.md` for screen specs and database schema.
    In Android Studio: Run/Debug Configurations → Additional run args →
    `--dart-define-from-file=env.json`.
 
-Without `env.json`, the app still runs — it falls back to an in-memory fake backend
-instead of Supabase, so you won't see listings from other teammates.
+Without `env.json`, the app shows a "Supabase keys missing" screen at launch —
+the backend is required.
 
 ## Code generation
 

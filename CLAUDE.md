@@ -1,3 +1,4 @@
+
 # CLAUDE.md
 
 Project brief for a Malaysian used-car marketplace app. Read this before every task.
@@ -21,7 +22,11 @@ chat. Comparable products: Carsome, Carro, Carousell Motors, Mudah.my.
 ### In v1 — build these
 
 - Splash screen
-- Phone OTP authentication (login + signup are the same flow)
+- Email + password authentication, with a multi-step registration flow collecting
+  first/last name, date of birth (18+ enforced), phone number, location (GPS with
+  Malaysian-state-picker fallback), and a car-interest questionnaire
+- "Recommended for you" row at the top of the Buy feed, scored client-side from
+  the user's saved interests and location
 - Bottom navigation shell with four tabs: **Buy**, **Sell**, **Chat**, **Profile**
 - **Sell module** — multi-step create-listing flow (the core of v1)
 - **My Listings** — seller sees their own listings, can mark sold or delete
@@ -55,9 +60,10 @@ chat. Comparable products: Carsome, Carro, Carousell Motors, Mudah.my.
 | Routing | `go_router` | Declarative routes, auth redirect guard |
 | Backend | **Supabase** | Postgres + Auth + Storage + Realtime |
 | Supabase region | `ap-southeast-1` (Singapore) | Lowest latency to Malaysia |
-| Local cache / drafts | `sqflite` | Relational on-device store for listing drafts and cached session |
+| Local cache / drafts | `sqflite` | Relational on-device store for listing drafts |
 | Models | `freezed` + `json_serializable` | Immutable models, no hand-written `fromJson` |
 | Images | `image_picker`, `flutter_image_compress`, `cached_network_image` | |
+| Location | `geolocator` | State-level detection at registration; manual picker fallback |
 | Fonts | `google_fonts` (Inter) | See §5 |
 
 **Do not add a package without asking first.** If a task seems to need one, propose it
@@ -91,26 +97,47 @@ subscription open behind a disposed widget.
 ```
 lib/
   main.dart
-  app.dart                    # MaterialApp.router + theme wiring
-  router/
-    app_router.dart           # go_router config + auth redirect
-  theme/
-    app_theme.dart            # ThemeData — the ONLY place colours/type are defined
-    app_spacing.dart          # spacing + radius constants
-  core/
-    supabase/                 # client, error mapping
-    storage/                  # sqflite database + tables
-    result.dart               # Result<T> for fallible operations
-  features/
-    auth/       { data/ domain/ presentation/ }
-    listings/   { data/ domain/ presentation/ }
-    profile/    { data/ domain/ presentation/ }
-  shared/
-    widgets/                  # reusable UI primitives
+  control/                    # everything that isn't UI, models, or helpers,
+                              # grouped by feature
+    app_router.dart           #   go_router config + auth redirect
+    providers.dart            #   app-level Riverpod providers (composition root)
+    auth/                     #   Supabase auth repository,
+                              #     registration_controller, location_service
+    listings/                 #   Supabase listings repository, draft repository,
+                              #     listings_providers, sell_controller,
+                              #     recommendations_provider
+    services/                 #   cross-feature infra: supabase_config,
+                              #     error_mapper, sqflite app_database + app_storage
+  model/                      # freezed models and pure domain data, by feature
+    malaysian_states.dart     #   shared across features
+    listing/                  #   listing, listing_draft, listing_media,
+                              #     listing_enums, car_catalog, draft_from_listing
+    profile/                  #   profile, car_interests
+    auth/                     #   registration_data
+  utils/                      # flat: formatters, ids, validators, result.dart
+                              #   (Result<T>), app_theme.dart (the ONLY place
+                              #   colours/type are defined), app_spacing.dart
+  widgets/                    # reusable UI primitives, by feature
+    common/                   #   button_spinner, grouped_section, select_sheet,
+                              #     multi_select_sheet, text_prompt,
+                              #     sell_step_scaffold
+    listing/                  #   listing_card, listing_card_compact,
+                              #     cover_image, media_image, status_badge
+    profile/                  #   car_interest_fields
+  views/                      # screens, grouped by area
+    app_shell.dart            #   bottom-nav shell
+    auth/                     #   splash, login, register_flow + register_steps/
+    buy/                      #   buy_feed, listing_detail
+    sell/                     #   sell_home, sell_flow + steps/
+    chat/                     #   chat placeholder
+    profile/                  #   profile, edit_profile
+    dev/                      #   design_demo_screen
 ```
 
-Feature-first. A feature never imports another feature's `data/` or `presentation/` —
-cross-feature access goes through `domain/`.
+Layer-first. Screens live in `views/`, all state management and data access in
+`control/`, immutable data types in `model/`. Views never talk to Supabase or sqflite
+directly — always through a repository or provider in `control/`. Imports of project
+files use `package:assignment/...` form, not relative paths.
 
 ---
 
