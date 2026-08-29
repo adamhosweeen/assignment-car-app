@@ -2,9 +2,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import 'package:assignment/control/services/app_storage.dart';
+import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
+import 'package:assignment/control/listings/listings_cache_repository.dart';
 import 'package:assignment/control/listings/supabase_listings_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -25,12 +27,32 @@ AppStorage appStorage(Ref ref) =>
     throw UnimplementedError('appStorageProvider must be overridden in main()');
 
 @Riverpod(keepAlive: true)
-AuthRepository authRepository(Ref ref) =>
-    SupabaseAuthRepository(Supabase.instance.client);
+ProfileCacheRepository profileCacheRepository(Ref ref) {
+  final storage = ref.watch(appStorageProvider);
+  return ProfileCacheRepository(storage.db, storage.initialProfileRow);
+}
 
 @Riverpod(keepAlive: true)
-ListingsRepository listingsRepository(Ref ref) =>
-    SupabaseListingsRepository(Supabase.instance.client);
+AuthRepository authRepository(Ref ref) => SupabaseAuthRepository(
+  Supabase.instance.client,
+  ref.watch(profileCacheRepositoryProvider),
+);
+
+@Riverpod(keepAlive: true)
+ListingsCacheRepository listingsCacheRepository(Ref ref) {
+  final storage = ref.watch(appStorageProvider);
+  return ListingsCacheRepository(
+    storage.db,
+    storage.initialListingRows,
+    storage.initialListingMediaRows,
+  );
+}
+
+@Riverpod(keepAlive: true)
+ListingsRepository listingsRepository(Ref ref) => SupabaseListingsRepository(
+  Supabase.instance.client,
+  ref.watch(listingsCacheRepositoryProvider),
+);
 
 @Riverpod(keepAlive: true)
 DraftRepository draftRepository(Ref ref) {

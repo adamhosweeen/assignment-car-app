@@ -8,6 +8,7 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
+import 'package:assignment/control/listings/listings_cache_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 
 /// Real [ListingsRepository] backed by Supabase Postgres + Storage + Realtime.
@@ -15,11 +16,13 @@ import 'package:assignment/control/listings/listings_repository.dart';
 /// Reads join `listing_media`; `storage_path` is kept as the bucket path and
 /// resolved to a signed URL at display time (see `signedImageUrlProvider`).
 class SupabaseListingsRepository implements ListingsRepository {
-  SupabaseListingsRepository(this._client);
+  SupabaseListingsRepository(this._client, this._cache);
 
   final SupabaseClient _client;
+  final ListingsCacheRepository _cache;
   static const String _bucket = 'listing-media';
   static const String _select = '*, listing_media(*)';
+  static const Duration _fetchTimeout = Duration(seconds: 8);
 
   // ── Reads ───────────────────────────────────────────────────────────────
   Future<List<Listing>> _fetchActive() async {
@@ -49,32 +52,42 @@ class SupabaseListingsRepository implements ListingsRepository {
   }
 
   @override
-  Stream<List<Listing>> watchActive() =>
-      _watch(_fetchActive, 'listings-active');
+  Stream<List<Listing>> watchActive() => _watch(
+    _fetchActive,
+    'listings-active',
+    initial: _cache.cachedActive,
+    onFetched: _cache.saveActive,
+  );
 
   @override
   Stream<List<Listing>> watchBySeller(String sellerId) =>
       _watch(() => _fetchBySeller(sellerId), 'listings-seller-$sellerId');
 
-  /// Emit an initial fetch, then re-fetch whenever `listings` changes (realtime).
+  /// Emit the cached feed (if any) and an initial fetch, then re-fetch
+  /// whenever `listings` changes (realtime). Successful fetches are mirrored
+  /// into the cache via [onFetched]; failed ones keep the last good value.
   Stream<List<Listing>> _watch(
     Future<List<Listing>> Function() fetch,
-    String channelName,
-  ) {
+    String channelName, {
+    List<Listing>? initial,
+    Future<void> Function(List<Listing>)? onFetched,
+  }) {
     final controller = StreamController<List<Listing>>();
     RealtimeChannel? channel;
 
     Future<void> push() async {
       try {
-        final data = await fetch();
+        final data = await fetch().timeout(_fetchTimeout);
         if (!controller.isClosed) controller.add(data);
+        await onFetched?.call(data);
       } catch (_) {
-        // Keep the last good value on a transient error.
+        // Keep the last good (or cached) value on a transient error.
       }
     }
 
     controller
       ..onListen = () {
+        if (initial != null && initial.isNotEmpty) controller.add(initial);
         push();
         channel = _client.channel('$channelName-${newId()}')
           ..onPostgresChanges(
@@ -101,12 +114,16 @@ class SupabaseListingsRepository implements ListingsRepository {
           .from('listings')
           .select(_select)
           .eq('id', id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(_fetchTimeout);
       if (row == null) {
         return const Err('This listing is no longer available.');
       }
       return Ok(_fromRow(row));
     } catch (e) {
+      // Offline or timed out — a cached feed item can still be shown.
+      final cached = _cache.getById(id);
+      if (cached != null) return Ok(cached);
       return Err(mapError(e));
     }
   }

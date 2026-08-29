@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:assignment/utils/result.dart';
+import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -10,14 +11,17 @@ import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 
 /// Real email+password auth via Supabase. Supabase persists its own session,
-/// so a returning user is not asked to log in again (V1_SPEC §5.2).
+/// so a returning user is not asked to log in again (V1_SPEC §5.2). The last
+/// fetched profile is mirrored into the sqflite [ProfileCacheRepository] so
+/// identity renders fully on cold start and offline.
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._client) {
+  SupabaseAuthRepository(this._client, this._cache) {
     _refreshEnriched();
     _client.auth.onAuthStateChange.listen((_) => _refreshEnriched());
   }
 
   final SupabaseClient _client;
+  final ProfileCacheRepository _cache;
 
   static const String _profileColumns =
       'id, email, first_name, last_name, dob, phone, state, interests, '
@@ -34,8 +38,12 @@ class SupabaseAuthRepository implements AuthRepository {
         ? _enriched
         : null;
     if (enriched != null) return enriched;
-    // Row not fetched yet (e.g. trigger hasn't run) — build a minimal profile
-    // from the auth user and the metadata sent at sign-up.
+    // No fresh row yet (cold start, offline) — the sqflite cache has the last
+    // successfully fetched profile.
+    final cached = _cache.cached;
+    if (cached != null && cached.id == user.id) return cached;
+    // Nothing cached either — build a minimal profile from the auth user and
+    // the metadata sent at sign-up.
     final meta = user.userMetadata ?? const <String, dynamic>{};
     return Profile(
       id: user.id,
@@ -90,8 +98,11 @@ class SupabaseAuthRepository implements AuthRepository {
           .eq('id', user.id)
           .single();
       _enriched = _rowToProfile(row);
+      // Mirror the fresh profile into sqflite for the next cold start.
+      await _cache.save(_enriched!);
     } catch (_) {
-      // Row not there yet (e.g. trigger hasn't run) — fall back to metadata.
+      // Fetch failed (offline, or row not there yet) — keep the cache as the
+      // fallback and fall through to it / metadata on the read side.
       _enriched = null;
     }
   }
@@ -208,5 +219,8 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signOut() => _client.auth.signOut();
+  Future<void> signOut() async {
+    await _cache.clear();
+    await _client.auth.signOut();
+  }
 }

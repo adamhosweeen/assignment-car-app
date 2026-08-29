@@ -8,13 +8,21 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 5,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
           // v3 removes cached_session entirely: the fake backend that used it
           // is gone, and Supabase persists its own session. Drafts survive.
           await db.execute('DROP TABLE IF EXISTS cached_session');
+        }
+        if (oldVersion < 4) {
+          // v4 adds the profile read-cache (offline/cold-start Profile tab).
+          await _createProfileCache(db);
+        }
+        if (oldVersion < 5) {
+          // v5 adds the feed read-cache (offline/cold-start Buy feed).
+          await _createListingCache(db);
         }
       },
       onCreate: (db, version) async {
@@ -52,7 +60,72 @@ class AppDatabase {
             PRIMARY KEY (draft_id, position)
           )
         ''');
+        await _createProfileCache(db);
+        await _createListingCache(db);
       },
     );
   }
+
+  /// Read-cache of the active-listings feed, so the Buy feed renders
+  /// instantly on cold start and offline. Written only after successful
+  /// Supabase fetches; never authoritative (CLAUDE.md §3).
+  static Future<void> _createListingCache(Database db) async {
+    await db.execute('''
+        CREATE TABLE listing_cache (
+          id TEXT PRIMARY KEY,
+          seller_id TEXT NOT NULL,
+          status TEXT NOT NULL,
+          make TEXT NOT NULL,
+          model TEXT NOT NULL,
+          variant TEXT,
+          year INTEGER NOT NULL,
+          mileage_km INTEGER NOT NULL,
+          transmission TEXT NOT NULL,
+          fuel_type TEXT NOT NULL,
+          body_type TEXT NOT NULL,
+          colour TEXT NOT NULL,
+          owners_count INTEGER NOT NULL,
+          accident_free INTEGER NOT NULL,
+          road_tax_expiry TEXT,
+          registration_region TEXT NOT NULL,
+          state TEXT NOT NULL,
+          city TEXT NOT NULL,
+          price_myr INTEGER NOT NULL,
+          negotiable INTEGER NOT NULL,
+          description TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          sort_order INTEGER NOT NULL
+        )
+      ''');
+    await db.execute('''
+        CREATE TABLE listing_cache_media (
+          id TEXT NOT NULL,
+          listing_id TEXT NOT NULL,
+          storage_path TEXT NOT NULL,
+          media_type TEXT NOT NULL,
+          position INTEGER NOT NULL,
+          created_at TEXT,
+          PRIMARY KEY (listing_id, position)
+        )
+      ''');
+  }
+
+  /// Read-cache of the signed-in user's `profiles` row, so identity renders
+  /// instantly on cold start and offline. Written only after successful
+  /// Supabase reads; never authoritative (CLAUDE.md §3).
+  static Future<void> _createProfileCache(Database db) => db.execute('''
+        CREATE TABLE profile_cache (
+          id TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          first_name TEXT,
+          last_name TEXT,
+          dob TEXT,
+          phone TEXT,
+          state TEXT,
+          interests_json TEXT,
+          avatar_url TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
 }

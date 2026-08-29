@@ -16,11 +16,17 @@ class AppStorage {
     this.db,
     this.initialDraftRow,
     this.initialDraftPhotoPaths,
+    this.initialProfileRow,
+    this.initialListingRows,
+    this.initialListingMediaRows,
   );
 
   final Database db;
   final Map<String, Object?>? initialDraftRow;
   final List<String> initialDraftPhotoPaths;
+  final Map<String, Object?>? initialProfileRow;
+  final List<Map<String, Object?>> initialListingRows;
+  final List<Map<String, Object?>> initialListingMediaRows;
 
   static Future<AppStorage> init() async {
     final db = await AppDatabase.open();
@@ -39,6 +45,22 @@ class AppStorage {
       photoPaths = [for (final p in photoRows) p['path'] as String];
     }
 
-    return AppStorage._(db, draftRow, photoPaths);
+    final profileRows = await db.query('profile_cache');
+    final profileRow = profileRows.isEmpty ? null : profileRows.first;
+
+    final listingRows = await db.query(
+      'listing_cache',
+      orderBy: 'sort_order ASC',
+    );
+    final listingMediaRows = await db.query('listing_cache_media');
+
+    return AppStorage._(
+      db,
+      draftRow,
+      photoPaths,
+      profileRow,
+      listingRows,
+      listingMediaRows,
+    );
   }
 }

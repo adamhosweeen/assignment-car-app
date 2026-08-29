@@ -213,6 +213,10 @@ the query filter and the absence of row actions and status badges.
 - Pull-to-refresh.
 - Realtime subscription to `listings` filtered on `status = 'active'`, so a listing
   published on another device appears without a manual refresh.
+- The last fetched feed is mirrored into a sqflite read-cache (`listing_cache`),
+  emitted immediately on the next launch — so the feed renders instantly on cold
+  start and stays browsable offline (photos may show placeholders offline; the
+  cache is written only after successful fetches, never authoritative).
 - The user's own active listings **do** appear in the feed — do not filter them out.
 - Empty state: "No cars listed yet. Be the first — sell your car." with a button to the
   Sell tab.
@@ -295,6 +299,11 @@ The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
   read-only** (it protects the 18+ gate).
 - **Log out**: destructive row with a confirmation dialog. Signs out via the auth
   repository; the router's redirect guard sends the user to Login automatically.
+
+The last fetched profile is mirrored into a sqflite read-cache (`profile_cache`),
+so identity, details, and interests render instantly on cold start and remain
+complete offline. The cache is written only after successful Supabase reads and
+cleared on log out — never authoritative.
 
 Loading/empty/error states follow the same explicit-three-states rule as every other
 screen (`CLAUDE.md` §6).

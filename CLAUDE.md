@@ -60,7 +60,7 @@ chat. Comparable products: Carsome, Carro, Carousell Motors, Mudah.my.
 | Routing | `go_router` | Declarative routes, auth redirect guard |
 | Backend | **Supabase** | Postgres + Auth + Storage + Realtime |
 | Supabase region | `ap-southeast-1` (Singapore) | Lowest latency to Malaysia |
-| Local cache / drafts | `sqflite` | Relational on-device store for listing drafts |
+| Local cache / drafts | `sqflite` | Relational on-device store for listing drafts, the cached profile, and the cached feed |
 | Models | `freezed` + `json_serializable` | Immutable models, no hand-written `fromJson` |
 | Images | `image_picker`, `flutter_image_compress`, `cached_network_image` | |
 | Location | `geolocator` | State-level detection at registration; manual picker fallback |
@@ -101,9 +101,11 @@ lib/
                               # grouped by feature
     app_router.dart           #   go_router config + auth redirect
     providers.dart            #   app-level Riverpod providers (composition root)
-    auth/                     #   Supabase auth repository,
-                              #     registration_controller, location_service
+    auth/                     #   Supabase auth repository, profile_cache_repository
+                              #     (sqflite read-cache), registration_controller,
+                              #     location_service
     listings/                 #   Supabase listings repository, draft repository,
+                              #     listings_cache_repository (sqflite read-cache),
                               #     listings_providers, sell_controller,
                               #     recommendations_provider
     services/                 #   cross-feature infra: supabase_config,
