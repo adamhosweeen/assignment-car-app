@@ -227,6 +227,37 @@ create policy "messages_participants" on public.messages
     )
   );
 
+-- ─── Account deletion ────────────────────────────────────────────────────────
+-- Clients cannot delete auth users (that needs the service role, which never
+-- ships in the app). This SECURITY DEFINER function deletes the calling
+-- user's rows in FK-safe order, then the auth user itself (which cascades the
+-- profile). Uploaded photos are removed by the app via the Storage API first.
+create or replace function public.delete_account()
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'not signed in';
+  end if;
+  delete from public.messages
+    where sender_id = uid
+       or conversation_id in (
+         select id from public.conversations
+         where buyer_id = uid or seller_id = uid
+       );
+  delete from public.conversations where buyer_id = uid or seller_id = uid;
+  delete from public.listings where seller_id = uid; -- cascades listing_media
+  delete from auth.users where id = uid;             -- cascades profiles
+end;
+$$;
+
+revoke all on function public.delete_account() from public;
+grant execute on function public.delete_account() to authenticated;
+
 -- ─── Realtime ────────────────────────────────────────────────────────────────
 -- Push listing changes to connected clients (Buy feed + My Listings).
 alter publication supabase_realtime add table public.listings;
