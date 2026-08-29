@@ -56,6 +56,14 @@ env.json
 *.g.dart
 *.freezed.dart
 
+# Non-Android platform targets (this app is Android-only, CLAUDE.md §1;
+# the Flutter tool keeps regenerating these folders, so ignore them)
+/ios/
+/web/
+/linux/
+/macos/
+/windows/
+
 CLAUDE.md
 
 # Mac OS metadata
