@@ -49,3 +49,11 @@ app.*.map.json
 
 # Supabase dev credentials (--dart-define-from-file)
 env.json
+.env
+*.env
+
+# Code-generated Dart (regenerate with: dart run build_runner build)
+*.g.dart
+*.freezed.dart
+
+CLAUDE.md
