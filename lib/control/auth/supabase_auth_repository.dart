@@ -179,40 +179,6 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Result<void>> sendPasswordReset(String email) async {
-    try {
-      await _client.auth.resetPasswordForEmail(email);
-      return const Ok(null);
-    } catch (e) {
-      return Err(mapError(e));
-    }
-  }
-
-  @override
-  Future<Result<Profile>> confirmPasswordReset({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    try {
-      await _client.auth.verifyOTP(
-        type: OtpType.recovery,
-        email: email,
-        token: code,
-      );
-      await _client.auth.updateUser(UserAttributes(password: newPassword));
-      await _refreshEnriched();
-      final profile = _toProfile(_client.auth.currentUser);
-      if (profile == null) {
-        return const Err('Password reset failed. Please try again.');
-      }
-      return Ok(profile);
-    } catch (e) {
-      return Err(mapError(e));
-    }
-  }
-
-  @override
   Future<Result<Profile>> updateProfile({
     String? firstName,
     String? lastName,

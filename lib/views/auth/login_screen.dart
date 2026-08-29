@@ -115,15 +115,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   style: text.footnote.copyWith(color: AppColors.destructive),
                 ),
               ],
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _loading
-                      ? null
-                      : () => context.push('/login/forgot'),
-                  child: const Text('Forgot password?'),
-                ),
-              ),
               const Spacer(),
               FilledButton(
                 onPressed: (_canSubmit && !_loading) ? _logIn : null,

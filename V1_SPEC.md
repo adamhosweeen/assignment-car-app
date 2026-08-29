@@ -174,15 +174,11 @@ bar, back preserves data):
 On submit, `signUp` sends the registration data as user metadata; the signup trigger
 creates the `profiles` row. The router's auth redirect lands the new user on Home.
 
-**Forgot password:** "Forgot password?" on the login screen → enter email →
-Supabase emails a 6-digit recovery code (the Reset Password template must
-include `{{ .Token }}`) → enter code + new password (same strength rule) →
-verified via `verifyOTP(recovery)` + `updateUser(password)`, which signs the
-user in and lands them on Home. No deep links required.
+**No in-app password reset** (out of scope). A forgotten password is resolved
+by an operator from the Supabase dashboard (Authentication → Users).
 
 Error cases to handle explicitly: invalid email, weak password, email already
-registered, wrong credentials on login, expired/wrong recovery code, rate
-limited, no network.
+registered, wrong credentials on login, rate limited, no network.
 
 > **Development note:** disable "Confirm email" in the Supabase dashboard
 > (Authentication → Sign In / Providers → Email) — the app expects a live session
