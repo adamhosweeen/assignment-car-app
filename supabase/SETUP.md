@@ -18,9 +18,24 @@ backend).
   the script. To clear them too: Storage → `listing-media` → select all → Delete.
   (Leftovers are harmless orphans — nothing references them after the reset.)
 - Creates: `profiles` (email auth fields, 18+ DOB check, interests jsonb),
-  `listings`, `listing_media`, `conversations`/`messages` (schema only), RLS on
-  every table, the signup + `updated_at` triggers, realtime on `listings`, and
-  the private `listing-media` storage bucket + policies.
+  `listings`, `listing_media`, `conversations`/`messages` (schema only),
+  `car_popularity` (market-insights snapshot, read-only), RLS on every table,
+  the signup + `updated_at` triggers, realtime on `listings`, and the private
+  `listing-media` storage bucket + policies.
+
+### 2b. Seed market insights
+- SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
+  Without it, Profile → Market insights shows "not published yet" (no error).
+- The seed is a snapshot of JPJ car registrations from
+  [data.gov.my](https://data.gov.my/data-catalogue/registration_transactions_car)
+  (CC BY 4.0). That dataset has no API — it is a bulk CSV — so the app never
+  calls data.gov.my; only this seed does.
+- **To refresh** (the source updates monthly): on your machine run
+  `dart run tool/build_car_popularity.dart` (downloads ~80 MB once, cached in
+  `build/data_gov_my/`), then paste the regenerated `seed/car_popularity.sql`.
+  It is an upsert, so re-running it just replaces the row — no app release.
+- If your schema is already applied and you don't want a full reset, paste just
+  the "Market insights" block from `0001_init.sql` first — it's additive.
 
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.

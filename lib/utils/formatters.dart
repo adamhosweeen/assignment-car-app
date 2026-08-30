@@ -25,6 +25,24 @@ String _thousands(int n) {
   return '${n < 0 ? '-' : ''}$buf';
 }
 
+/// Plain integer with thousands separators → "12,345".
+String formatCount(int n) => _thousands(n);
+
+/// Month key "2026-03" → "Mar 2026"; anything unparsable is returned as-is.
+String formatMonthKey(String yyyyMm) {
+  final parts = yyyyMm.split('-');
+  if (parts.length < 2) return yyyyMm;
+  final month = int.tryParse(parts[1]);
+  if (month == null || month < 1 || month > 12) return yyyyMm;
+  return '${_months[month - 1]} ${parts[0]}';
+}
+
+/// Month key "2026-03" → "M" (single-letter axis label).
+String monthInitial(String yyyyMm) {
+  final label = formatMonthKey(yyyyMm);
+  return label == yyyyMm ? '' : label[0];
+}
+
 /// Integer Ringgit → "RM 48,800".
 String formatPrice(int myr) => 'RM ${_thousands(myr)}';
 
@@ -35,6 +53,12 @@ String formatMileage(int km) => '${_thousands(km)} km';
 String formatDate(DateTime date) {
   final local = date.toLocal();
   return '${local.day} ${_months[local.month - 1]} ${local.year}';
+}
+
+/// Local date → "Mar 2026" (e.g. member since).
+String formatMonthYear(DateTime date) {
+  final local = date.toLocal();
+  return '${_months[local.month - 1]} ${local.year}';
 }
 
 /// "Posted 12 Mar 2026".

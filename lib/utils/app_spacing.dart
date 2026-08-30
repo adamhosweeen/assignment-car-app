@@ -92,4 +92,30 @@ abstract final class AppSpacing {
 
   /// Height of the horizontal recommendation list.
   static const double recommendRowHeight = 192;
+
+  // ── Market insights (ranked bars, monthly chart) ─────────────────────────
+  /// Width reserved for the rank number in a ranked row.
+  static const double rankWidth = 28;
+
+  /// Thickness of a horizontal proportion bar.
+  static const double rankBarHeight = 6;
+
+  /// Corner radius of proportion bars (half of [rankBarHeight]).
+  static const double radiusBar = 3;
+
+  /// Height of the bars area in the monthly registrations chart.
+  static const double monthlyChartHeight = 120;
+
+  /// Minimum visible height of a non-zero monthly bar.
+  static const double monthlyBarMinHeight = 2;
+
+  // ── Segmented control ────────────────────────────────────────────────────
+  /// Total height of the control.
+  static const double segmentHeight = 32;
+
+  /// Corner radius of the track.
+  static const double radiusSegment = 8;
+
+  /// Gap between the track edge and the selected pill.
+  static const double segmentInset = 2;
 }

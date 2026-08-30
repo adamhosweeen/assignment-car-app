@@ -3,18 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/providers.dart';
-import 'package:assignment/utils/result.dart';
-import 'package:assignment/model/listing/listing_enums.dart';
+import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
-import 'package:assignment/utils/formatters.dart';
+import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
 
-/// The Profile tab: view identity and log out (§4.8). Editing the display
-/// name is a standalone pushed route ([EditProfileScreen]) reached via the
-/// "Edit" app bar action.
+/// The Profile tab (§4.8): identity header, then a hub of three rows that each
+/// push their own screen — My Info, Car Interests, Market Insights — followed
+/// by the destructive Log out / Delete account rows.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -96,20 +93,7 @@ class ProfileScreen extends ConsumerWidget {
     final async = ref.watch(authStateProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          async.maybeWhen(
-            data: (profile) => profile == null
-                ? const SizedBox.shrink()
-                : TextButton(
-                    onPressed: () => context.push('/profile/edit'),
-                    child: const Text('Edit'),
-                  ),
-            orElse: () => const SizedBox.shrink(),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Profile')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(
@@ -145,98 +129,39 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.space32),
               GroupedSection(
-                header: 'DETAILS',
-                children: [
-                  GroupedRow(label: 'Phone', value: profile.phone ?? 'Not set'),
-                  GroupedRow(
-                    label: 'Location',
-                    value: profile.state ?? 'Not set',
-                  ),
-                  GroupedRow(
-                    label: 'Date of birth',
-                    value: profile.dob == null
-                        ? 'Not set'
-                        : formatDate(profile.dob!),
-                  ),
-                  GroupedRow(
-                    label: 'Member since',
-                    value: _formatDate(profile.createdAt),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space24),
-              GroupedSection(
-                header: 'CAR INTERESTS',
                 children: [
                   GroupedRow(
-                    label: 'Brands',
-                    value: profile.interests.makes.isEmpty
-                        ? 'Any'
-                        : profile.interests.makes.join(', '),
+                    label: 'My Info',
+                    showChevron: true,
+                    onTap: () => context.push('/profile/info'),
                   ),
                   GroupedRow(
-                    label: 'Body types',
-                    value: profile.interests.bodyTypes.isEmpty
-                        ? 'Any'
-                        : profile.interests.bodyTypes
-                              .map((b) => b.label)
-                              .join(', '),
+                    label: 'Car Interests',
+                    showChevron: true,
+                    onTap: () => context.push('/profile/interests'),
                   ),
                   GroupedRow(
-                    label: 'Transmission',
-                    value: profile.interests.transmission?.label ?? 'Any',
-                  ),
-                  GroupedRow(
-                    label: 'Fuel type',
-                    value: profile.interests.fuelType?.label ?? 'Any',
-                  ),
-                  GroupedRow(
-                    label: 'Budget',
-                    value: _formatBudget(profile.interests),
+                    label: 'Market Insights',
+                    showChevron: true,
+                    onTap: () => context.push('/profile/insights'),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.space24),
               GroupedSection(
                 children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
+                  _CentredActionRow(
+                    label: 'Log out',
                     onTap: () => _confirmLogOut(context, ref),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space12,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Log out',
-                          style: Theme.of(context).textTheme.headline.copyWith(
-                            color: AppColors.destructive,
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.space24),
               GroupedSection(
                 children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
+                  _CentredActionRow(
+                    label: 'Delete account',
                     onTap: () => _confirmDeleteAccount(context, ref),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space12,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Delete account',
-                          style: Theme.of(context).textTheme.headline.copyWith(
-                            color: AppColors.destructive,
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -246,35 +171,32 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  String _formatBudget(CarInterests interests) {
-    final min = interests.budgetMinMyr;
-    final max = interests.budgetMaxMyr;
-    if (min != null && max != null) {
-      return '${formatPrice(min)} – ${formatPrice(max)}';
-    }
-    if (min != null) return 'From ${formatPrice(min)}';
-    if (max != null) return 'Up to ${formatPrice(max)}';
-    return 'Any';
-  }
+/// A full-width, centred destructive action inside a grouped card.
+class _CentredActionRow extends StatelessWidget {
+  const _CentredActionRow({required this.label, required this.onTap});
 
-  String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[local.month - 1]} ${local.year}';
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space12),
+        child: Center(
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.headline.copyWith(color: AppColors.destructive),
+          ),
+        ),
+      ),
+    );
   }
 }
 

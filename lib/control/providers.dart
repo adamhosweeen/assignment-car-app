@@ -5,6 +5,8 @@ import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/insights/insights_repository.dart';
+import 'package:assignment/control/insights/supabase_insights_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/listings_cache_repository.dart';
 import 'package:assignment/control/listings/supabase_listings_repository.dart';
@@ -53,6 +55,11 @@ ListingsRepository listingsRepository(Ref ref) => SupabaseListingsRepository(
   Supabase.instance.client,
   ref.watch(listingsCacheRepositoryProvider),
 );
+
+/// Read-only market snapshot (Profile → Market insights).
+@Riverpod(keepAlive: true)
+InsightsRepository insightsRepository(Ref ref) =>
+    SupabaseInsightsRepository(Supabase.instance.client);
 
 @Riverpod(keepAlive: true)
 DraftRepository draftRepository(Ref ref) {

@@ -8,6 +8,7 @@
 -- ─── Reset: drop everything first ────────────────────────────────────────────
 
 -- App tables (policies and indexes go with them).
+drop table if exists public.car_popularity cascade;
 drop table if exists public.messages       cascade;
 drop table if exists public.conversations  cascade;
 drop table if exists public.listing_media  cascade;
@@ -257,6 +258,25 @@ $$;
 
 revoke all on function public.delete_account() from public;
 grant execute on function public.delete_account() to authenticated;
+
+-- ─── Market insights (car_popularity) ────────────────────────────────────────
+-- One row ('latest') holding a precomputed snapshot of JPJ car registrations
+-- (data.gov.my, CC BY 4.0). Built offline by tool/build_car_popularity.dart
+-- and published by pasting supabase/seed/car_popularity.sql. Read-only for the
+-- app: no insert/update/delete policies, so only the SQL editor / service
+-- role can write it. This block is additive and can be pasted on its own.
+create table if not exists public.car_popularity (
+  id                  text primary key,
+  period_label        text        not null,
+  generated_at        timestamptz not null,
+  source_url          text        not null,
+  total_registrations integer     not null,
+  data                jsonb       not null
+);
+alter table public.car_popularity enable row level security;
+drop policy if exists "car_popularity_select" on public.car_popularity;
+create policy "car_popularity_select" on public.car_popularity
+  for select to authenticated using (true);
 
 -- ─── Realtime ────────────────────────────────────────────────────────────────
 -- Push listing changes to connected clients (Buy feed + My Listings).

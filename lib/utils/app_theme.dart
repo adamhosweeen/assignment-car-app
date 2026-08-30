@@ -50,6 +50,9 @@ abstract final class AppColors {
   /// [primary] at 12% opacity — tinted fills behind primary-coloured content
   /// (e.g. the profile avatar), alpha baked in to avoid `withOpacity`.
   static const Color primaryMuted = Color(0x1F007AFF);
+
+  /// iOS tertiary system fill — the track behind a segmented control.
+  static const Color fill = Color(0x1F767680);
 }
 
 /// A single colour token, used to drive the design demo.

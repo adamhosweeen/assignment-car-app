@@ -12,7 +12,10 @@ import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
+import 'package:assignment/views/profile/car_interests_screen.dart';
 import 'package:assignment/views/profile/edit_profile_screen.dart';
+import 'package:assignment/views/profile/market_insights_screen.dart';
+import 'package:assignment/views/profile/my_info_screen.dart';
 import 'package:assignment/views/profile/profile_screen.dart';
 
 part 'app_router.g.dart';
@@ -57,6 +60,15 @@ GoRouter goRouter(Ref ref) {
       GoRoute(
         path: '/profile/edit',
         builder: (_, _) => const EditProfileScreen(),
+      ),
+      GoRoute(path: '/profile/info', builder: (_, _) => const MyInfoScreen()),
+      GoRoute(
+        path: '/profile/interests',
+        builder: (_, _) => const CarInterestsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/insights',
+        builder: (_, _) => const MarketInsightsScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),

@@ -294,9 +294,16 @@ The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
   unused until a storage bucket/upload flow is scoped).
 - Header: full name (derived from first + last name, falling back to the email
   prefix) with the email beneath.
-- **Details** (grouped): phone, location, date of birth, member since.
-- **Car interests** (grouped): brands, body types, transmission, fuel, budget.
-- **Edit Profile** (pushed route): first/last name, phone, and location are
+- **Hub** (one grouped card, three chevron rows, each pushes its own screen):
+  - **My Info** (`/profile/info`): name, email, phone, location, date of birth,
+    member since — read-only, with an Edit action in the app bar.
+  - **Car Interests** (`/profile/interests`): brands, body types, transmission,
+    fuel, budget — read-only, Edit action in the app bar, plus a footnote tying
+    them to the "Recommended for you" row.
+  - **Market Insights** (`/profile/insights`): see §4.9.
+  The tab itself shows no detail rows — it is header + hub + the two
+  destructive rows.
+- **Edit Profile** (pushed route from My Info or Car Interests): first/last name, phone, and location are
   editable; the car-interest fields reuse the registration questionnaire widget.
   **Email is read-only** (it's the login identity) and **date of birth is
   read-only** (it protects the 18+ gate).
@@ -316,6 +323,58 @@ cleared on log out — never authoritative.
 
 Loading/empty/error states follow the same explicit-three-states rule as every other
 screen (`CLAUDE.md` §6).
+
+### 4.9 Market insights
+
+A read-only "what Malaysia is buying" screen built from JPJ car-registration data.
+
+**Data source.** data.gov.my "Car Registration Transactions"
+(`registration_transactions_car`, JPJ, CC BY 4.0; columns
+`date_reg,type,maker,model,colour,fuel,state`). The dataset is **bulk CSV only —
+it has no API** (~30–50 MB per year), so nothing in the app calls data.gov.my.
+
+**Pipeline.** `dart run tool/build_car_popularity.dart` downloads the yearly CSVs
+(cached under `build/data_gov_my/`), streams them, keeps the rolling 12 months
+ending at the latest month present, and writes `supabase/seed/car_popularity.sql`
+— an upsert of one row (`id = 'latest'`) into:
+
+```
+car_popularity (
+  id text pk, period_label text, generated_at timestamptz, source_url text,
+  total_registrations integer, data jsonb
+)
+```
+
+RLS: `select` for `authenticated` only; no write policies (SQL editor / service
+role only). Refreshing = re-run the script, paste the new seed. No app release.
+
+**Snapshot contents (`data`).** `top_makers` (15), `top_models` (20, with maker),
+`by_state` (top 5 makers for each of the 16 states — dealer-portal "Rakan Niaga"
+rows have no state and are excluded here but count nationally), `fuel_split`
+(Petrol / Diesel / Hybrid / Electric / Other — all `hybrid_*` fold into Hybrid),
+`type_split` (Car / SUV & 4WD / Pickup / MPV / Van), `monthly` (12 points).
+JPJ's `W.P. …` spellings are normalised to the app's `WP …`.
+
+**Screen.** Built to fit one screen per view, not one long scroll: a compact
+summary card (12-month total + period) → an iOS-style `SegmentedControl`
+(`widgets/common/`) with four segments → the selected segment's content →
+attribution footer *"Source: JPJ car registrations via data.gov.my (CC BY 4.0).
+Generated {date}."* — the attribution is a licence requirement and must not be
+removed.
+
+| Segment | Content |
+|---|---|
+| **Brands** | TOP 5 BRANDS, with a "Show all 15" / "Show top 5" toggle row |
+| **Models** | TOP 5 MODELS (maker as sublabel), "Show all 20" toggle |
+| **Near you** | POPULAR IN {user's state} (top 5) + smaller-sample footnote. No state on the profile → notice with an "Open My Info" link; state with no JPJ rows → plain notice |
+| **Trends** | REGISTRATIONS BY MONTH (`MonthlyBars`) → FUEL TYPE → VEHICLE TYPE |
+
+Switching segments resets the toggle to top 5. Ranked rows use `RankBarRow`
+(proportional bar relative to the top entry); no chart package.
+
+**States.** Loading spinner; error → message + Retry; `null` row → "Market
+insights aren't published yet"; pull-to-refresh re-fetches. Online-only (no
+sqflite cache for this screen).
 
 ---
 
