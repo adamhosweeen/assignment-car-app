@@ -213,6 +213,17 @@ picker, saved searches, map view, infinite-scroll pagination UI. Fetch the most 
 Reuses the **same listing card widget** as My Listings (§4.6). The only differences are
 the query filter and the absence of row actions and status badges.
 
+**Layout (grouped).** Grey `groupedBackground` screen; every card is a white
+radius-12 surface with the cover photo flush on top and a 12px text block:
+**price** (title3, the hero) → **title** (year make model variant, one line) →
+**mileage · state** (footnote) with the posted date at the right in tertiary.
+Cards are 16px apart. Two labelled sections via `SectionHeader`:
+"RECOMMENDED FOR YOU" (when present) and "NEWEST" (always). The recommended
+strip scrolls edge-to-edge — the outer list pads vertically only and each row
+insets itself, while the strip carries its own 16px horizontal padding so its
+first card aligns with the feed cards. Compact cards are 168px wide (~2.3
+visible), price above a one-line title. Skeleton cards mirror the card shape.
+
 - Pull-to-refresh.
 - Realtime subscription to `listings` filtered on `status = 'active'`, so a listing
   published on another device appears without a manual refresh.
@@ -254,9 +265,10 @@ missing photos.
 
 ### 4.6 My Listings
 
-Sectioned list: **Active** then **Sold**. Uses the same card widget as the Buy feed,
-plus a status badge and row actions. Each row shows cover photo, title
-(`{year} {make} {model} {variant}`), price, mileage, and posted date.
+Sectioned list: **Active** then **Sold**. Uses the same card widget and grouped
+layout as the Buy feed (§4.4 — grey background, white cards, price → title →
+mileage · state, date at right), plus a status badge over the cover and row
+actions. The resume-draft banner is a white card too.
 
 Row actions via long-press or an overflow menu: Mark as sold · Edit · Delete
 (confirmation dialog required for delete).

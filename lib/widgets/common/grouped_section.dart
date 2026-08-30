@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/widgets/common/section_header.dart';
 
 /// An iOS-style grouped card: a rounded-12 white surface with inset hairline
 /// dividers between rows. Sits on the grouped background (§5).
@@ -28,19 +29,7 @@ class GroupedSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (header != null)
-          Padding(
-            padding: const EdgeInsets.only(
-              left: AppSpacing.space4,
-              bottom: AppSpacing.space8,
-            ),
-            child: Text(
-              header!,
-              style: Theme.of(
-                context,
-              ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
-            ),
-          ),
+        if (header != null) SectionHeader(header!),
         ClipRRect(
           borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
           child: ColoredBox(

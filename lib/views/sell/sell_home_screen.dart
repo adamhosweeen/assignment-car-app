@@ -11,6 +11,7 @@ import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
+import 'package:assignment/widgets/common/section_header.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
 import 'package:assignment/widgets/listing/status_badge.dart';
@@ -139,6 +140,7 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
     final hasDraft = ref.read(draftRepositoryProvider).hasDraft;
 
     return Scaffold(
+      backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('My Listings')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -182,11 +184,12 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
                 )
               else ...[
                 if (active.isNotEmpty) ...[
-                  const _SectionHeader('Active'),
+                  const SectionHeader('Active'),
                   for (final l in active) _tile(l),
                 ],
                 if (sold.isNotEmpty) ...[
-                  const _SectionHeader('Sold'),
+                  const SizedBox(height: AppSpacing.space8),
+                  const SectionHeader('Sold'),
                   for (final l in sold) _tile(l),
                 ],
               ],
@@ -199,7 +202,7 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
 
   Widget _tile(Listing l) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space24),
+      padding: const EdgeInsets.only(bottom: AppSpacing.space16),
       child: ListingCard(
         listing: l,
         cover: CoverImage(media: l.cover),
@@ -219,28 +222,6 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        left: AppSpacing.space4,
-        bottom: AppSpacing.space12,
-      ),
-      child: Text(
-        title,
-        style: Theme.of(
-          context,
-        ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
-      ),
-    );
-  }
-}
-
 class _ResumeBanner extends StatelessWidget {
   const _ResumeBanner({required this.onContinue, required this.onDiscard});
 
@@ -253,7 +234,7 @@ class _ResumeBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space16),
       decoration: BoxDecoration(
-        color: AppColors.groupedBackground,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
       ),
       child: Column(

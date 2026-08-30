@@ -84,14 +84,16 @@ abstract final class AppSpacing {
   static const double galleryHeight = 300;
 
   // ── Recommended row (Buy feed) ───────────────────────────────────────────
-  /// Compact recommendation card width.
-  static const double recommendCardWidth = 200;
+  /// Compact recommendation card width (~2.3 cards visible on a 390pt
+  /// screen, so the row visibly continues off the right edge).
+  static const double recommendCardWidth = 168;
 
   /// Compact recommendation card cover height.
-  static const double recommendCoverHeight = 120;
+  static const double recommendCoverHeight = 112;
 
-  /// Height of the horizontal recommendation list.
-  static const double recommendRowHeight = 192;
+  /// Height of the horizontal recommendation list: cover + text block with a
+  /// little slack (the card itself is content-sized and top-aligned).
+  static const double recommendRowHeight = 184;
 
   // ── Market insights (ranked bars, monthly chart) ─────────────────────────
   /// Width reserved for the rank number in a ranked row.

@@ -7,6 +7,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/recommendations_provider.dart';
 import 'package:assignment/model/listing/listing.dart';
+import 'package:assignment/widgets/common/section_header.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
 import 'package:assignment/widgets/listing/listing_card_compact.dart';
@@ -14,6 +15,10 @@ import 'package:assignment/widgets/listing/listing_card_compact.dart';
 /// The Buy feed: newest-first list of every active listing (V1_SPEC §4.4).
 /// No search / filters / sort in v1. Reuses the same [ListingCard] as
 /// My Listings, without the status badge or row actions.
+///
+/// Grouped layout: grey background, white cards. The outer list pads
+/// vertically only — each row insets itself — so the recommended strip can
+/// scroll edge-to-edge while its cards still align with the feed cards.
 class BuyFeedScreen extends ConsumerWidget {
   const BuyFeedScreen({super.key});
 
@@ -21,6 +26,7 @@ class BuyFeedScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(activeListingsProvider);
     return Scaffold(
+      backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('Buy')),
       body: async.when(
         loading: () => const _FeedSkeleton(),
@@ -40,20 +46,40 @@ class BuyFeedScreen extends ConsumerWidget {
               ref.invalidate(activeListingsProvider);
               await Future<void>.delayed(const Duration(milliseconds: 400));
             },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.screenPadding),
-              itemCount: listings.length + (hasRecommended ? 1 : 0),
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: AppSpacing.space24),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.screenPadding,
+              ),
+              // One header slot, plus one slot per listing.
+              itemCount: listings.length + 1,
               itemBuilder: (_, i) {
-                if (hasRecommended && i == 0) {
-                  return _RecommendedRow(listings: recommended);
+                if (i == 0) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (hasRecommended) ...[
+                        const _Inset(
+                          child: SectionHeader('Recommended for you'),
+                        ),
+                        _RecommendedRow(listings: recommended),
+                        const SizedBox(height: AppSpacing.space24),
+                      ],
+                      const _Inset(child: SectionHeader('Newest')),
+                    ],
+                  );
                 }
-                final l = listings[hasRecommended ? i - 1 : i];
-                return ListingCard(
-                  listing: l,
-                  cover: CoverImage(media: l.cover),
-                  onTap: () => context.push('/listing/${l.id}'),
+                final l = listings[i - 1];
+                return _Inset(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: i == listings.length ? 0 : AppSpacing.space16,
+                    ),
+                    child: ListingCard(
+                      listing: l,
+                      cover: CoverImage(media: l.cover),
+                      onTap: () => context.push('/listing/${l.id}'),
+                    ),
+                  ),
                 );
               },
             ),
@@ -64,7 +90,21 @@ class BuyFeedScreen extends ConsumerWidget {
   }
 }
 
+/// Standard horizontal screen inset for a vertical feed row.
+class _Inset extends StatelessWidget {
+  const _Inset({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+    child: child,
+  );
+}
+
 /// Horizontal strip of interest-matched listings above the newest-first feed.
+/// Scrolls edge-to-edge; its own padding aligns the first card with the feed.
 class _RecommendedRow extends StatelessWidget {
   const _RecommendedRow({required this.listings});
 
@@ -72,41 +112,27 @@ class _RecommendedRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(
-            left: AppSpacing.space4,
-            bottom: AppSpacing.space12,
-          ),
-          child: Text(
-            'RECOMMENDED FOR YOU',
-            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
-          ),
+    return SizedBox(
+      height: AppSpacing.recommendRowHeight,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.screenPadding,
         ),
-        SizedBox(
-          height: AppSpacing.recommendRowHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: listings.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: AppSpacing.space12),
-            itemBuilder: (context, i) {
-              final l = listings[i];
-              return ListingCardCompact(
-                listing: l,
-                cover: CoverImage(
-                  media: l.cover,
-                  height: AppSpacing.recommendCoverHeight,
-                ),
-                onTap: () => context.push('/listing/${l.id}'),
-              );
-            },
-          ),
-        ),
-      ],
+        itemCount: listings.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space12),
+        itemBuilder: (context, i) {
+          final l = listings[i];
+          return ListingCardCompact(
+            listing: l,
+            cover: CoverImage(
+              media: l.cover,
+              height: AppSpacing.recommendCoverHeight,
+            ),
+            onTap: () => context.push('/listing/${l.id}'),
+          );
+        },
+      ),
     );
   }
 }
@@ -187,7 +213,8 @@ class _FeedMessage extends StatelessWidget {
   }
 }
 
-/// Skeleton placeholders while the first fetch resolves (§4.4).
+/// Skeleton placeholders while the first fetch resolves (§4.4): the same
+/// white card shape as [ListingCard] with tinted blocks where content goes.
 class _FeedSkeleton extends StatelessWidget {
   const _FeedSkeleton();
 
@@ -196,33 +223,50 @@ class _FeedSkeleton extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
       itemCount: 4,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space24),
-      itemBuilder: (_, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _bar(height: AppSpacing.coverHeight, radius: AppSpacing.radiusCard),
-          const SizedBox(height: AppSpacing.space12),
-          _bar(height: AppSpacing.space20, widthFactor: 0.6),
-          const SizedBox(height: AppSpacing.space8),
-          _bar(height: AppSpacing.space16, widthFactor: 0.3),
-        ],
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space16),
+      itemBuilder: (_, _) => ClipRRect(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        child: ColoredBox(
+          color: AppColors.surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ColoredBox(
+                color: AppColors.fill,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: AppSpacing.coverHeight,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.space12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _bar(height: AppSpacing.space20, widthFactor: 0.35),
+                    const SizedBox(height: AppSpacing.space8),
+                    _bar(height: AppSpacing.space16, widthFactor: 0.7),
+                    const SizedBox(height: AppSpacing.space8),
+                    _bar(height: AppSpacing.space12, widthFactor: 0.45),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _bar({
-    required double height,
-    double widthFactor = 1,
-    double radius = AppSpacing.radiusInput,
-  }) {
+  Widget _bar({required double height, double widthFactor = 1}) {
     return FractionallySizedBox(
       alignment: Alignment.centerLeft,
       widthFactor: widthFactor,
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: AppColors.groupedBackground,
-          borderRadius: BorderRadius.circular(radius),
+          color: AppColors.fill,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusBar),
         ),
       ),
     );
