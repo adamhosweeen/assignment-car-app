@@ -1,19 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
+import 'package:assignment/widgets/common/select_sheet.dart';
+import 'package:assignment/widgets/profile/profile_avatar.dart';
 
-/// The Profile tab (§4.8): identity header, then a hub of three rows that each
-/// push their own screen — My Info, Car Interests, Market Insights — followed
-/// by the destructive Log out / Delete account rows.
+enum _PhotoAction { camera, gallery, remove }
+
+extension on _PhotoAction {
+  String get label => switch (this) {
+    _PhotoAction.camera => 'Take photo',
+    _PhotoAction.gallery => 'Choose from library',
+    _PhotoAction.remove => 'Remove photo',
+  };
+}
+
+/// The Profile tab (§4.8): identity header (tap the avatar to change the
+/// photo), then a hub of three rows that each push their own screen — My
+/// Info, Car Interests, Market Insights — followed by the destructive Log out
+/// / Delete account rows.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _changePhoto(
+    BuildContext context,
+    WidgetRef ref,
+    Profile profile,
+  ) async {
+    final action = await showSelectSheet<_PhotoAction>(
+      context: context,
+      title: 'Profile photo',
+      options: [
+        _PhotoAction.camera,
+        _PhotoAction.gallery,
+        if (profile.avatarUrl != null) _PhotoAction.remove,
+      ],
+      labelOf: (a) => a.label,
+    );
+    if (action == null || !context.mounted) return;
+
+    final auth = ref.read(authRepositoryProvider);
+    final Future<Result<Profile>> Function() run;
+    if (action == _PhotoAction.remove) {
+      run = auth.removeAvatar;
+    } else {
+      final picked = await ImagePicker().pickImage(
+        source: action == _PhotoAction.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
+      );
+      if (picked == null || !context.mounted) return;
+      run = () async {
+        final path = await compressImage(
+          picked.path,
+          maxDimension: avatarMaxDimension,
+          quality: avatarQuality,
+        );
+        return auth.updateAvatar(path);
+      };
+    }
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final res = await run();
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    if (res case Err(:final message)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+    // On success the auth stream re-emits the profile and the avatar rebuilds.
+  }
 
   Future<void> _confirmDeleteAccount(
     BuildContext context,
@@ -110,7 +179,10 @@ class ProfileScreen extends ConsumerWidget {
               Center(
                 child: Column(
                   children: [
-                    _Avatar(profile: profile),
+                    ProfileAvatar(
+                      profile: profile,
+                      onTap: () => _changePhoto(context, ref, profile),
+                    ),
                     const SizedBox(height: AppSpacing.space16),
                     Text(
                       profile.displayName,
@@ -195,38 +267,6 @@ class _CentredActionRow extends StatelessWidget {
             ).textTheme.headline.copyWith(color: AppColors.destructive),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.profile});
-
-  final Profile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final source = profile.displayName;
-    final initial = source.isNotEmpty ? source[0].toUpperCase() : '?';
-
-    return Container(
-      width: AppSpacing.avatarLg,
-      height: AppSpacing.avatarLg,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primaryMuted,
-        border: Border.all(
-          color: AppColors.primary,
-          width: AppSpacing.avatarRingWidth,
-        ),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: Theme.of(
-          context,
-        ).textTheme.largeTitle.copyWith(color: AppColors.primary),
       ),
     );
   }

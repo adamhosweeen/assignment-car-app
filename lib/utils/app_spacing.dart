@@ -73,6 +73,12 @@ abstract final class AppSpacing {
   /// Avatar ring stroke width.
   static const double avatarRingWidth = 2;
 
+  /// Diameter of the small "change photo" badge on an editable avatar.
+  static const double avatarBadge = 28;
+
+  /// Small icon (inside badges).
+  static const double iconSm = 16;
+
   // ── Media sizes ──────────────────────────────────────────────────────────
   /// Photo thumbnail (sell photo grid, review strip).
   static const double thumbMd = 96;

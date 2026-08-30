@@ -302,8 +302,16 @@ seller" button labelled "Coming soon" — the placement is reserved for v2.
 
 The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
 
-- Avatar: initials fallback (no avatar upload in v1 — `avatar_url` stays nullable and
-  unused until a storage bucket/upload flow is scoped).
+- Avatar (`ProfileAvatar`): the uploaded photo when `avatar_url` is set, otherwise
+  the first letter of the display name on a tinted disc. On the Profile tab the
+  avatar carries a camera badge; tapping it opens a sheet — **Take photo / Choose
+  from library / Remove photo** (the last only when a photo exists). The pick is
+  compressed on-device (longest edge 512, JPEG q85), uploaded to the **public
+  `avatars` bucket** at `{user_id}/{uuid}.jpg`, and its public URL saved to
+  `profiles.avatar_url`; the previous object is deleted best-effort. A unique
+  object per upload means image caches never show a stale photo. Progress is a
+  blocking spinner; errors surface as a snackbar; success re-renders via the auth
+  stream. Delete account also removes the avatar object.
 - Header: full name (derived from first + last name, falling back to the email
   prefix) with the email beneath.
 - **Hub** (one grouped card, three chevron rows, each pushes its own screen):

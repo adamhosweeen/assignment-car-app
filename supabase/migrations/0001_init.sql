@@ -33,6 +33,10 @@ drop policy if exists "listing_media_read"        on storage.objects;
 drop policy if exists "listing_media_insert_own"  on storage.objects;
 drop policy if exists "listing_media_update_own"  on storage.objects;
 drop policy if exists "listing_media_delete_own"  on storage.objects;
+drop policy if exists "avatars_read"              on storage.objects;
+drop policy if exists "avatars_insert_own"        on storage.objects;
+drop policy if exists "avatars_update_own"        on storage.objects;
+drop policy if exists "avatars_delete_own"        on storage.objects;
 
 -- ─── profiles ────────────────────────────────────────────────────────────────
 create table public.profiles (
@@ -303,4 +307,29 @@ create policy "listing_media_update_own" on storage.objects
 create policy "listing_media_delete_own" on storage.objects
   for delete to authenticated using (
     bucket_id = 'listing-media' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ─── Storage: public avatars bucket + policies ───────────────────────────────
+-- Profile photos. Public so `profiles.avatar_url` can hold a plain URL that
+-- any client renders without signing. Path convention: {user_id}/{uuid}.jpg —
+-- a user writes only under their own prefix; the app deletes the previous
+-- object when a photo is replaced or removed. This block is additive and can
+-- be pasted on its own.
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "avatars_read" on storage.objects
+  for select to authenticated using (bucket_id = 'avatars');
+create policy "avatars_insert_own" on storage.objects
+  for insert to authenticated with check (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+create policy "avatars_update_own" on storage.objects
+  for update to authenticated using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+create policy "avatars_delete_own" on storage.objects
+  for delete to authenticated using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
   );

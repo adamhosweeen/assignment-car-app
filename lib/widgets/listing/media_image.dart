@@ -20,12 +20,17 @@ class MediaImage extends ConsumerWidget {
     this.fit = BoxFit.cover,
     this.width,
     this.height,
+    this.placeholder,
   });
 
   final String? path;
   final BoxFit fit;
   final double? width;
   final double? height;
+
+  /// Shown while loading / on failure instead of the default car glyph
+  /// (e.g. initials behind a profile photo).
+  final Widget? placeholder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,15 +62,17 @@ class MediaImage extends ConsumerWidget {
     errorWidget: (_, _, _) => _placeholder(),
   );
 
-  Widget _placeholder() => Container(
-    width: width,
-    height: height,
-    color: AppColors.groupedBackground,
-    alignment: Alignment.center,
-    child: const Icon(
-      Icons.directions_car_outlined,
-      size: AppSpacing.iconXl,
-      color: AppColors.tertiaryLabel,
-    ),
-  );
+  Widget _placeholder() =>
+      placeholder ??
+      Container(
+        width: width,
+        height: height,
+        color: AppColors.groupedBackground,
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.directions_car_outlined,
+          size: AppSpacing.iconXl,
+          color: AppColors.tertiaryLabel,
+        ),
+      );
 }

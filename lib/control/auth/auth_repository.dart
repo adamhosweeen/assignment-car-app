@@ -37,6 +37,13 @@ abstract interface class AuthRepository {
     String? avatarUrl,
   });
 
+  /// Upload the (already compressed) image at [localPath] as the user's
+  /// profile photo, replacing any previous one, and return the updated profile.
+  Future<Result<Profile>> updateAvatar(String localPath);
+
+  /// Delete the user's profile photo (falls back to initials).
+  Future<Result<Profile>> removeAvatar();
+
   /// Permanently delete the signed-in user's account: their listings, photos,
   /// chats, profile, and login. Irreversible.
   Future<Result<void>> deleteAccount();

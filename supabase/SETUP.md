@@ -20,8 +20,11 @@ backend).
 - Creates: `profiles` (email auth fields, 18+ DOB check, interests jsonb),
   `listings`, `listing_media`, `conversations`/`messages` (schema only),
   `car_popularity` (market-insights snapshot, read-only), RLS on every table,
-  the signup + `updated_at` triggers, realtime on `listings`, and the private
-  `listing-media` storage bucket + policies.
+  the signup + `updated_at` triggers, realtime on `listings`, the private
+  `listing-media` storage bucket + policies, and the **public `avatars`**
+  bucket + policies (profile photos; the app stores the public URL in
+  `profiles.avatar_url`). Already applied? Paste just the "Storage: public
+  avatars bucket" block — it's additive.
 
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.

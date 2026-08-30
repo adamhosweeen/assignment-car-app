@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
@@ -26,6 +28,10 @@ class SupabaseAuthRepository implements AuthRepository {
   static const String _profileColumns =
       'id, email, first_name, last_name, dob, phone, state, interests, '
       'avatar_url, created_at';
+
+  /// Public bucket for profile photos; `avatar_url` stores the object's
+  /// public URL so it renders straight through `MediaImage` with no signing.
+  static const String _avatarBucket = 'avatars';
 
   /// The `profiles` row, layered over what `auth.users` alone provides.
   /// Registration extras (name, DOB, state, interests) live only there, so
@@ -219,6 +225,71 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<Profile>> updateAvatar(String localPath) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const Err('You need to be signed in to change your photo.');
+    }
+    final file = File(localPath);
+    if (!file.existsSync()) {
+      return const Err('That photo could not be read. Please pick it again.');
+    }
+    try {
+      final previousUrl = _toProfile(user)?.avatarUrl;
+      // Unique object per upload so image caches never show a stale photo.
+      final objectPath = '${user.id}/${newId()}.jpg';
+      await _client.storage
+          .from(_avatarBucket)
+          .upload(
+            objectPath,
+            file,
+            fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          );
+      final url = _client.storage.from(_avatarBucket).getPublicUrl(objectPath);
+      final res = await updateProfile(avatarUrl: url);
+      if (res.isOk) await _removeAvatarObject(previousUrl);
+      return res;
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<Profile>> removeAvatar() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const Err('You need to be signed in to change your photo.');
+    }
+    try {
+      final previousUrl = _toProfile(user)?.avatarUrl;
+      // updateProfile treats null as "unchanged", so clear the column here.
+      await _client
+          .from('profiles')
+          .update({'avatar_url': null})
+          .eq('id', user.id);
+      await _removeAvatarObject(previousUrl);
+      await _refreshEnriched();
+      final profile = _toProfile(user);
+      if (profile == null) {
+        return const Err('Could not update your photo. Please try again.');
+      }
+      return Ok(profile);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  /// Best-effort delete of a previous avatar object; an orphaned file is
+  /// harmless, so failures are swallowed.
+  Future<void> _removeAvatarObject(String? publicUrl) async {
+    final path = avatarObjectPath(publicUrl);
+    if (path == null) return;
+    try {
+      await _client.storage.from(_avatarBucket).remove([path]);
+    } catch (_) {}
+  }
+
+  @override
   Future<Result<void>> deleteAccount() async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -227,6 +298,7 @@ class SupabaseAuthRepository implements AuthRepository {
     try {
       // 1. Best-effort: delete uploaded photos via the Storage API (SQL
       //    cannot touch storage rows; orphans are harmless if this fails).
+      await _removeAvatarObject(_toProfile(user)?.avatarUrl);
       try {
         final listingRows = await _client
             .from('listings')
@@ -271,4 +343,19 @@ class SupabaseAuthRepository implements AuthRepository {
     await _cache.clear();
     await _client.auth.signOut();
   }
+}
+
+/// Extract the bucket object path from an `avatars` public URL, e.g.
+/// `https://x.supabase.co/storage/v1/object/public/avatars/<uid>/<id>.jpg`
+/// → `<uid>/<id>.jpg`. Null for anything else (including null input).
+/// Top-level so it can be unit-tested without a client.
+String? avatarObjectPath(String? publicUrl) {
+  if (publicUrl == null) return null;
+  const marker = '/object/public/avatars/';
+  final i = publicUrl.indexOf(marker);
+  if (i < 0) return null;
+  var rest = publicUrl.substring(i + marker.length);
+  final q = rest.indexOf('?');
+  if (q >= 0) rest = rest.substring(0, q);
+  return rest.isEmpty ? null : Uri.decodeComponent(rest);
 }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
@@ -22,22 +22,8 @@ class _StepPhotosState extends ConsumerState<StepPhotos> {
   final ImagePicker _picker = ImagePicker();
   bool _busy = false;
 
-  /// Compress on-device: longest edge 1920, JPEG q80 (V1_SPEC §3). Falls back
-  /// to the original file if compression fails.
-  Future<String> _compress(String src) async {
-    try {
-      final out = await FlutterImageCompress.compressAndGetFile(
-        src,
-        '$src.c.jpg',
-        minWidth: 1920,
-        minHeight: 1920,
-        quality: 80,
-      );
-      return out?.path ?? src;
-    } catch (_) {
-      return src;
-    }
-  }
+  /// Compress on-device: longest edge 1920, JPEG q80 (V1_SPEC §3).
+  Future<String> _compress(String src) => compressImage(src);
 
   Future<void> _add(ImageSource source) async {
     setState(() => _busy = true);
