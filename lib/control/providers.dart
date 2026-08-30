@@ -11,6 +11,8 @@ import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/listings_cache_repository.dart';
 import 'package:assignment/control/listings/supabase_listings_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
+import 'package:assignment/control/notifications/notifications_repository.dart';
+import 'package:assignment/control/notifications/supabase_notifications_repository.dart';
 import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/control/profiles/supabase_profiles_repository.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -57,6 +59,11 @@ ListingsRepository listingsRepository(Ref ref) => SupabaseListingsRepository(
   Supabase.instance.client,
   ref.watch(listingsCacheRepositoryProvider),
 );
+
+/// The signed-in user's in-app inbox (Profile → Inbox).
+@Riverpod(keepAlive: true)
+NotificationsRepository notificationsRepository(Ref ref) =>
+    SupabaseNotificationsRepository(Supabase.instance.client);
 
 /// Other users' public profiles (seller search, seller pages).
 @Riverpod(keepAlive: true)

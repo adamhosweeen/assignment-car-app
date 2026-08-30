@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:assignment/control/notifications/notifications_providers.dart';
 import 'package:assignment/control/providers.dart';
 import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -160,6 +161,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(authStateProvider);
+    final unread = ref.watch(unreadCountProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -202,6 +204,13 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space32),
               GroupedSection(
                 children: [
+                  GroupedRow(
+                    label: 'Inbox',
+                    value: unread == 0 ? null : '$unread new',
+                    valueColor: AppColors.primary,
+                    showChevron: true,
+                    onTap: () => context.push('/profile/inbox'),
+                  ),
                   GroupedRow(
                     label: 'My Info',
                     showChevron: true,

@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:assignment/control/notifications/notifications_providers.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// The signed-in shell: the four tabs (Buy / Sell / Chat / Profile) over a
+/// The signed-in shell: five tabs (Buy / Sell / Bid / Chat / Profile) over a
 /// flat, iOS-style bottom bar. Each tab keeps its own navigation stack via
-/// [StatefulNavigationShell].
-class AppShell extends StatelessWidget {
+/// [StatefulNavigationShell]. The Profile tab shows a dot while the inbox
+/// has unread notifications.
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadCountProvider);
     return Scaffold(
       body: shell,
-      bottomNavigationBar: _BottomNav(shell: shell),
+      bottomNavigationBar: _BottomNav(shell: shell, profileBadge: unread > 0),
     );
   }
 }
@@ -31,14 +35,19 @@ class _NavDef {
 const List<_NavDef> _tabs = [
   _NavDef(Icons.storefront_outlined, Icons.storefront, 'Buy'),
   _NavDef(Icons.sell_outlined, Icons.sell, 'Sell'),
+  _NavDef(Icons.gavel_outlined, Icons.gavel, 'Bid'),
   _NavDef(Icons.chat_bubble_outline, Icons.chat_bubble, 'Chat'),
   _NavDef(Icons.person_outline, Icons.person, 'Profile'),
 ];
 
+/// Index of the Profile tab (the one that carries the inbox badge).
+const int _profileIndex = 4;
+
 class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.shell});
+  const _BottomNav({required this.shell, required this.profileBadge});
 
   final StatefulNavigationShell shell;
+  final bool profileBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +72,7 @@ class _BottomNav extends StatelessWidget {
                   child: _NavItem(
                     def: _tabs[i],
                     selected: i == shell.currentIndex,
+                    badge: profileBadge && i == _profileIndex,
                     onTap: () => shell.goBranch(
                       i,
                       initialLocation: i == shell.currentIndex,
@@ -81,11 +91,13 @@ class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.def,
     required this.selected,
+    required this.badge,
     required this.onTap,
   });
 
   final _NavDef def;
   final bool selected;
+  final bool badge;
   final VoidCallback onTap;
 
   @override
@@ -97,10 +109,32 @@ class _NavItem extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            selected ? def.activeIcon : def.icon,
-            size: AppSpacing.iconNav,
-            color: color,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                selected ? def.activeIcon : def.icon,
+                size: AppSpacing.iconNav,
+                color: color,
+              ),
+              if (badge)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: AppSpacing.badgeDot,
+                    height: AppSpacing.badgeDot,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.destructive,
+                      border: Border.all(
+                        color: AppColors.surface,
+                        width: AppSpacing.hairline,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.space4),
           Text(
