@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:assignment/control/chat/chat_repository.dart';
@@ -70,8 +71,10 @@ class SupabaseChatRepository implements ChatRepository {
       try {
         final data = await _fetchConversations(uid).timeout(_fetchTimeout);
         loadedOnce = true;
+        debugPrint('[chat] threads push: ${data.length} thread(s)');
         if (!controller.isClosed) controller.add(data);
       } catch (e) {
+        debugPrint('[chat] threads push FAILED: $e');
         // A transient refresh failure keeps the last good list; a failed
         // first load is a real error state.
         if (!loadedOnce && !controller.isClosed) controller.addError(e);
@@ -89,15 +92,25 @@ class SupabaseChatRepository implements ChatRepository {
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'conversations',
-            callback: (_) => push(),
+            callback: (payload) {
+              debugPrint('[chat] threads: conversations ${payload.eventType}');
+              push();
+            },
           )
           ..onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'messages',
-            callback: (_) => push(),
+            callback: (payload) {
+              debugPrint('[chat] threads: messages ${payload.eventType}');
+              push();
+            },
           )
-          ..subscribe();
+          ..subscribe(
+            (status, error) => debugPrint(
+              '[chat] threads channel: $status${error == null ? '' : ' ($error)'}',
+            ),
+          );
       }
       ..onCancel = () async {
         final ch = channel;
@@ -131,8 +144,12 @@ class SupabaseChatRepository implements ChatRepository {
           conversationId,
         ).timeout(_fetchTimeout);
         loadedOnce = true;
+        debugPrint(
+          '[chat] messages push ($conversationId): ${data.length} message(s)',
+        );
         if (!controller.isClosed) controller.add(data);
       } catch (e) {
+        debugPrint('[chat] messages push FAILED ($conversationId): $e');
         if (!loadedOnce && !controller.isClosed) controller.addError(e);
       }
     }
@@ -150,9 +167,19 @@ class SupabaseChatRepository implements ChatRepository {
               column: 'conversation_id',
               value: conversationId,
             ),
-            callback: (_) => push(),
+            callback: (payload) {
+              debugPrint(
+                '[chat] messages ($conversationId): ${payload.eventType}',
+              );
+              push();
+            },
           )
-          ..subscribe();
+          ..subscribe(
+            (status, error) => debugPrint(
+              '[chat] messages channel ($conversationId): $status'
+              '${error == null ? '' : ' ($error)'}',
+            ),
+          );
       }
       ..onCancel = () async {
         final ch = channel;
