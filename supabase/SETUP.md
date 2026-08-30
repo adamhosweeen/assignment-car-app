@@ -49,6 +49,15 @@ backend).
 - Nothing in the app inserts notifications; only these triggers do. The
   welcome row appears for accounts created **after** the trigger exists.
 
+### 2f. Chat realtime + read receipts
+- SQL Editor → paste [`migrations/0002_chat_realtime.sql`](migrations/0002_chat_realtime.sql) → Run.
+- Paste-alone safe and re-runnable — adds `conversations`/`messages` to the
+  realtime publication, a couple of indexes, and the
+  `mark_conversation_read()` function (participants only; lets a user mark the
+  *other* person's messages read, which the frozen `messages_participants`
+  policy in `0001_init.sql` can't do via a plain client-side update). Without
+  it, Chat has no realtime updates and unread dots never clear.
+
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).

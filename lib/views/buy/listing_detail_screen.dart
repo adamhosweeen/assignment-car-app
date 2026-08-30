@@ -76,6 +76,21 @@ class _DetailScaffold extends ConsumerWidget {
     }
   }
 
+  Future<void> _openChat(BuildContext context, WidgetRef ref) async {
+    final res = await ref
+        .read(chatRepositoryProvider)
+        .openConversation(listing.id);
+    if (!context.mounted) return;
+    switch (res) {
+      case Ok(:final value):
+        context.push('/chat/${value.id}', extra: value);
+      case Err(:final message):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
@@ -184,6 +199,7 @@ class _DetailScaffold extends ConsumerWidget {
                 listing.sellerId,
             onEdit: () => _edit(context, ref),
             onMarkSold: () => _markSold(context, ref),
+            onChat: () => _openChat(context, ref),
           ),
         ),
       ),
@@ -236,22 +252,23 @@ class _Actions extends StatelessWidget {
     required this.isSeller,
     required this.onEdit,
     required this.onMarkSold,
+    required this.onChat,
   });
 
   final Listing listing;
   final bool isSeller;
   final VoidCallback onEdit;
   final VoidCallback onMarkSold;
+  final VoidCallback onChat;
 
   @override
   Widget build(BuildContext context) {
     if (!isSeller) {
-      // Chat is reserved for v2 (§4.7).
       return SizedBox(
         width: double.infinity,
         child: FilledButton(
-          onPressed: null,
-          child: const Text('Chat with seller · Coming soon'),
+          onPressed: onChat,
+          child: const Text('Chat with seller'),
         ),
       );
     }

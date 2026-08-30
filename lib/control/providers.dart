@@ -5,6 +5,8 @@ import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/chat/chat_repository.dart';
+import 'package:assignment/control/chat/supabase_chat_repository.dart';
 import 'package:assignment/control/insights/insights_repository.dart';
 import 'package:assignment/control/insights/supabase_insights_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
@@ -74,6 +76,11 @@ ProfilesRepository profilesRepository(Ref ref) =>
 @Riverpod(keepAlive: true)
 InsightsRepository insightsRepository(Ref ref) =>
     SupabaseInsightsRepository(Supabase.instance.client);
+
+/// Buyer ↔ seller chat threads (Chat tab, Listing Detail's "Chat with seller").
+@Riverpod(keepAlive: true)
+ChatRepository chatRepository(Ref ref) =>
+    SupabaseChatRepository(Supabase.instance.client);
 
 @Riverpod(keepAlive: true)
 DraftRepository draftRepository(Ref ref) {

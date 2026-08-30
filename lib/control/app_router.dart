@@ -7,8 +7,10 @@ import 'package:assignment/control/providers.dart';
 import 'package:assignment/views/auth/login_screen.dart';
 import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
+import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
+import 'package:assignment/views/chat/chat_thread_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
@@ -63,6 +65,11 @@ GoRouter goRouter(Ref ref) {
             ListingDetailScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
+      GoRoute(
+        path: '/chat/:id',
+        builder: (_, state) =>
+            ChatThreadScreen(conversation: state.extra as Conversation),
+      ),
       GoRoute(path: '/sellers', builder: (_, _) => const SellerSearchScreen()),
       GoRoute(
         path: '/seller/:id',
