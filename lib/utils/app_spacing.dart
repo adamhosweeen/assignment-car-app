@@ -120,6 +120,10 @@ abstract final class AppSpacing {
   /// Minimum visible height of a non-zero monthly bar.
   static const double monthlyBarMinHeight = 2;
 
+  // ── Badges ───────────────────────────────────────────────────────────────
+  /// Unread dot diameter (inbox rows, Profile tab icon).
+  static const double badgeDot = 8;
+
   // ── Search ───────────────────────────────────────────────────────────────
   /// Height reserved under the Buy app bar for the search bar (field + gap).
   static const double searchBarHeight = 56;

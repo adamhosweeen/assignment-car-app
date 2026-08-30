@@ -34,6 +34,16 @@ backend).
   that seller search and seller pages read. Without it, Find Sellers and the
   seller row on a listing show an error.
 
+### 2d. Notifications (Profile → Inbox)
+- Part of `0001_init.sql`. On an already-applied schema, paste just the
+  "Notifications" block (after the market-insights table exists) — it creates
+  the `notifications` table, its RLS, and the three trigger functions
+  (welcome on signup, listing matches your interests, market insights
+  refreshed), and adds the table to the realtime publication:
+  `alter publication supabase_realtime add table public.notifications;`
+- Nothing in the app inserts notifications; only these triggers do. The
+  welcome row appears for accounts created **after** the trigger exists.
+
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).
@@ -67,7 +77,20 @@ Give me the **Project URL** and **anon key**. They're injected at build time via
 `--dart-define` (never committed):
 
 ```
-flutter run --dart-define=SUPABASE_URL=<url> --dart-define=SUPABASE_ANON_KEY=<anon>
+flutter run --dart-define-from-file=env.json
+```
+
+You don't have to type that: the Android Studio run configuration
+(`.idea/runConfigurations/main_dart.xml`) and the VS Code launch config
+(`.vscode/launch.json`) already pass `--dart-define-from-file=env.json`, so the
+IDE **Run ▶** button is enough. `env.json` itself stays gitignored.
+
+Code generation (`*.g.dart`, `*.freezed.dart`) is only needed after a fresh clone
+or when a `@freezed` / `@riverpod` file changes. Instead of re-running the build
+by hand, keep a watcher open in a terminal while developing:
+
+```
+dart run build_runner watch --delete-conflicting-outputs
 ```
 
 ## 5. Then I do (Step 2 app side)

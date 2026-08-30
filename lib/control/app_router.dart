@@ -7,6 +7,7 @@ import 'package:assignment/control/providers.dart';
 import 'package:assignment/views/auth/login_screen.dart';
 import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
+import 'package:assignment/views/bid/bid_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/buy/car_search_screen.dart';
@@ -15,6 +16,7 @@ import 'package:assignment/views/sell/sell_flow_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
 import 'package:assignment/views/profile/car_interests_screen.dart';
 import 'package:assignment/views/profile/edit_profile_screen.dart';
+import 'package:assignment/views/profile/inbox_screen.dart';
 import 'package:assignment/views/profile/market_insights_screen.dart';
 import 'package:assignment/views/profile/my_info_screen.dart';
 import 'package:assignment/views/profile/profile_screen.dart';
@@ -72,6 +74,7 @@ GoRouter goRouter(Ref ref) {
         builder: (_, _) => const EditProfileScreen(),
       ),
       GoRoute(path: '/profile/info', builder: (_, _) => const MyInfoScreen()),
+      GoRoute(path: '/profile/inbox', builder: (_, _) => const InboxScreen()),
       GoRoute(
         path: '/profile/interests',
         builder: (_, _) => const CarInterestsScreen(),
@@ -97,6 +100,11 @@ GoRouter goRouter(Ref ref) {
                 path: '/home/sell',
                 builder: (_, _) => const SellHomeScreen(),
               ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/home/bid', builder: (_, _) => const BidScreen()),
             ],
           ),
           StatefulShellBranch(

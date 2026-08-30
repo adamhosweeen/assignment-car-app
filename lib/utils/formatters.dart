@@ -61,6 +61,17 @@ String formatMonthYear(DateTime date) {
   return '${_months[local.month - 1]} ${local.year}';
 }
 
+/// Compact "how long ago" for inbox rows: "Just now", "5m", "3h", "2d", then
+/// the date once it's a week or more old. [now] is injectable for tests.
+String formatRelative(DateTime date, {DateTime? now}) {
+  final diff = (now ?? DateTime.now()).toUtc().difference(date.toUtc());
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inHours < 1) return '${diff.inMinutes}m';
+  if (diff.inDays < 1) return '${diff.inHours}h';
+  if (diff.inDays < 7) return '${diff.inDays}d';
+  return formatDate(date);
+}
+
 /// "Posted 12 Mar 2026".
 String formatPosted(DateTime date) => 'Posted ${formatDate(date)}';
 
