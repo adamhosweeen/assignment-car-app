@@ -10,6 +10,11 @@ backend).
   The **service_role** key must never go into the app.
 
 ## 2. Apply the schema
+- **Rule (CONTRIBUTING.md §3.4):** `0001_init.sql` is the frozen v1 baseline.
+  Every later database change is a **new** file `migrations/000N_<module>_<desc>.sql`
+  — never an edit to 0001. Apply files in numeric order; each one is paste-alone
+  safe and re-runnable. Steps 2b–2d below describe blocks that shipped inside
+  0001 before this rule; anything new gets its own step here naming its file.
 - SQL Editor → paste all of [`migrations/0001_init.sql`](migrations/0001_init.sql) → Run.
 - ⚠️ The script **resets everything first** — it drops all app tables and deletes
   all auth accounts before rebuilding. Safe to re-run any time on this dev
