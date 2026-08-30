@@ -8,6 +8,7 @@
 -- ─── Reset: drop everything first ────────────────────────────────────────────
 
 -- App tables (policies and indexes go with them).
+drop view  if exists public.public_profiles;
 drop table if exists public.car_popularity cascade;
 drop table if exists public.messages       cascade;
 drop table if exists public.conversations  cascade;
@@ -173,10 +174,11 @@ alter table public.listing_media  enable row level security;
 alter table public.conversations  enable row level security;
 alter table public.messages       enable row level security;
 
--- profiles: any authenticated user may read; a user updates only their own.
+-- profiles: a user reads and updates only their own row (email, phone, DOB
+-- never leave the owner). Other users see the public_profiles view below.
 -- No INSERT policy — only the handle_new_user trigger inserts.
-create policy "profiles_select" on public.profiles
-  for select to authenticated using (true);
+create policy "profiles_select_own" on public.profiles
+  for select to authenticated using (id = auth.uid());
 create policy "profiles_update_own" on public.profiles
   for update to authenticated using (id = auth.uid());
 
@@ -231,6 +233,23 @@ create policy "messages_participants" on public.messages
         and (c.buyer_id = auth.uid() or c.seller_id = auth.uid())
     )
   );
+
+-- ─── Public profiles ─────────────────────────────────────────────────────────
+-- What any signed-in user may see about another user: name, photo, state,
+-- member-since. Owner-rights view (bypasses profiles RLS on purpose) that
+-- exposes ONLY these columns. Backs seller search and seller pages.
+-- This block is additive and can be pasted on its own; it also replaces the
+-- original open "profiles_select" policy on an existing project.
+drop policy if exists "profiles_select" on public.profiles;
+drop policy if exists "profiles_select_own" on public.profiles;
+create policy "profiles_select_own" on public.profiles
+  for select to authenticated using (id = auth.uid());
+
+create or replace view public.public_profiles as
+  select id, display_name, avatar_url, state, created_at
+  from public.profiles;
+revoke all on public.public_profiles from anon, public;
+grant select on public.public_profiles to authenticated;
 
 -- ─── Account deletion ────────────────────────────────────────────────────────
 -- Clients cannot delete auth users (that needs the service role, which never

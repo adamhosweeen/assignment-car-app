@@ -38,6 +38,12 @@ class SupabaseAuthRepository implements AuthRepository {
   /// without this an edited profile would never show up on the read side.
   Profile? _enriched;
 
+  /// Fires whenever [_enriched] is re-fetched — after sign-in/out *and* after
+  /// any profile write — so [authState] listeners (Profile tab, router)
+  /// re-render without waiting for the next Supabase auth event.
+  final StreamController<Profile?> _profileChanges =
+      StreamController<Profile?>.broadcast();
+
   Profile? _toProfile(User? user) {
     if (user == null) return null;
     final enriched = _enriched != null && _enriched!.id == user.id
@@ -95,34 +101,35 @@ class SupabaseAuthRepository implements AuthRepository {
     final user = _client.auth.currentUser;
     if (user == null) {
       _enriched = null;
-      return;
+    } else {
+      try {
+        final row = await _client
+            .from('profiles')
+            .select(_profileColumns)
+            .eq('id', user.id)
+            .single();
+        _enriched = _rowToProfile(row);
+        // Mirror the fresh profile into sqflite for the next cold start.
+        await _cache.save(_enriched!);
+      } catch (_) {
+        // Fetch failed (offline, or row not there yet) — keep the cache as the
+        // fallback and fall through to it / metadata on the read side.
+        _enriched = null;
+      }
     }
-    try {
-      final row = await _client
-          .from('profiles')
-          .select(_profileColumns)
-          .eq('id', user.id)
-          .single();
-      _enriched = _rowToProfile(row);
-      // Mirror the fresh profile into sqflite for the next cold start.
-      await _cache.save(_enriched!);
-    } catch (_) {
-      // Fetch failed (offline, or row not there yet) — keep the cache as the
-      // fallback and fall through to it / metadata on the read side.
-      _enriched = null;
-    }
+    if (!_profileChanges.isClosed) _profileChanges.add(currentUser);
   }
 
   @override
   Profile? get currentUser => _toProfile(_client.auth.currentUser);
 
+  /// Current profile now, then a new value on every auth event and every
+  /// profile write — both go through [_refreshEnriched] (the constructor
+  /// already subscribes to Supabase's auth events for that).
   @override
   Stream<Profile?> authState() async* {
     yield currentUser;
-    yield* _client.auth.onAuthStateChange.asyncMap((s) async {
-      await _refreshEnriched();
-      return _toProfile(s.session?.user);
-    });
+    yield* _profileChanges.stream;
   }
 
   @override

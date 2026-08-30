@@ -9,6 +9,7 @@ import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
+import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
@@ -17,6 +18,8 @@ import 'package:assignment/views/profile/edit_profile_screen.dart';
 import 'package:assignment/views/profile/market_insights_screen.dart';
 import 'package:assignment/views/profile/my_info_screen.dart';
 import 'package:assignment/views/profile/profile_screen.dart';
+import 'package:assignment/views/profile/seller_profile_screen.dart';
+import 'package:assignment/views/profile/seller_search_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -56,6 +59,13 @@ GoRouter goRouter(Ref ref) {
         path: '/listing/:id',
         builder: (_, state) =>
             ListingDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
+      GoRoute(path: '/sellers', builder: (_, _) => const SellerSearchScreen()),
+      GoRoute(
+        path: '/seller/:id',
+        builder: (_, state) =>
+            SellerProfileScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/profile/edit',

@@ -14,8 +14,10 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/listing/listing_media.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
+import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
+import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// Standalone listing detail, reachable from the Buy feed and My Listings
 /// (V1_SPEC §4.7). Takes only a listing id.
@@ -148,6 +150,8 @@ class _DetailScaffold extends ConsumerWidget {
                     GroupedRow(label: 'State', value: listing.state),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.space20),
+                _SellerSection(sellerId: listing.sellerId),
                 if (listing.description != null &&
                     listing.description!.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.space24),
@@ -183,6 +187,45 @@ class _DetailScaffold extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Who is selling: a tappable row to the seller's public page. Hidden when
+/// the profile can't be loaded — the listing itself is what matters here.
+class _SellerSection extends ConsumerWidget {
+  const _SellerSection({required this.sellerId});
+
+  final String sellerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(publicProfileProvider(sellerId));
+    return async.when(
+      loading: () => const GroupedSection(
+        header: 'Seller',
+        children: [
+          Padding(
+            padding: EdgeInsets.all(AppSpacing.space16),
+            child: SizedBox(
+              height: AppSpacing.space12,
+              child: ColoredBox(color: AppColors.fill),
+            ),
+          ),
+        ],
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (profile) => profile == null
+          ? const SizedBox.shrink()
+          : GroupedSection(
+              header: 'Seller',
+              children: [
+                SellerRow(
+                  profile: profile,
+                  onTap: () => context.push('/seller/${profile.id}'),
+                ),
+              ],
+            ),
     );
   }
 }
