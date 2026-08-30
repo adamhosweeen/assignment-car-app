@@ -11,6 +11,14 @@ abstract interface class ListingsRepository {
   /// A seller's own listings (any status except deleted), newest first.
   Stream<List<Listing>> watchBySeller(String sellerId);
 
+  /// Another seller's `active` listings, newest first (public seller page).
+  /// Re-emits on any change (realtime).
+  Stream<List<Listing>> watchActiveBySeller(String sellerId);
+
+  /// `active` listings whose make, model, or variant contains [query]
+  /// (case-insensitive), newest first, capped at 50. Empty query → empty.
+  Future<Result<List<Listing>>> searchActive(String query);
+
   /// A single listing by id, or an [Err] if it is gone.
   Future<Result<Listing>> getById(String id);
 

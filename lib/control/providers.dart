@@ -11,6 +11,8 @@ import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/listings_cache_repository.dart';
 import 'package:assignment/control/listings/supabase_listings_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/profiles/supabase_profiles_repository.dart';
 import 'package:assignment/model/profile/profile.dart';
 
 part 'providers.g.dart';
@@ -55,6 +57,11 @@ ListingsRepository listingsRepository(Ref ref) => SupabaseListingsRepository(
   Supabase.instance.client,
   ref.watch(listingsCacheRepositoryProvider),
 );
+
+/// Other users' public profiles (seller search, seller pages).
+@Riverpod(keepAlive: true)
+ProfilesRepository profilesRepository(Ref ref) =>
+    SupabaseProfilesRepository(Supabase.instance.client);
 
 /// Read-only market snapshot (Profile → Market insights).
 @Riverpod(keepAlive: true)

@@ -26,6 +26,14 @@ backend).
   `profiles.avatar_url`). Already applied? Paste just the "Storage: public
   avatars bucket" block — it's additive.
 
+### 2c. Public profiles (seller search / seller pages)
+- Part of `0001_init.sql`. On an already-applied schema, paste just the
+  "Public profiles" block: it tightens `profiles` so each user can read only
+  their **own** row (email, phone, DOB stay private) and creates the
+  `public_profiles` view (id, display_name, avatar_url, state, created_at)
+  that seller search and seller pages read. Without it, Find Sellers and the
+  seller row on a listing show an error.
+
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).

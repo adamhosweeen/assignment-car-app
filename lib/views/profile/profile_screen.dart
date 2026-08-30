@@ -179,8 +179,8 @@ class ProfileScreen extends ConsumerWidget {
               Center(
                 child: Column(
                   children: [
-                    ProfileAvatar(
-                      profile: profile,
+                    ProfileAvatar.fromProfile(
+                      profile,
                       onTap: () => _changePhoto(context, ref, profile),
                     ),
                     const SizedBox(height: AppSpacing.space16),
@@ -216,6 +216,11 @@ class ProfileScreen extends ConsumerWidget {
                     label: 'Market Insights',
                     showChevron: true,
                     onTap: () => context.push('/profile/insights'),
+                  ),
+                  GroupedRow(
+                    label: 'Find Sellers',
+                    showChevron: true,
+                    onTap: () => context.push('/sellers'),
                   ),
                 ],
               ),

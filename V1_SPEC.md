@@ -94,7 +94,10 @@ RLS **enabled on every table**. Policies:
 - `listings` INSERT: `seller_id = auth.uid()`
 - `listings` UPDATE / DELETE: `seller_id = auth.uid()`
 - `listing_media`: mirrors the parent listing's policy via an `EXISTS` subquery
-- `profiles` SELECT: any authenticated user. UPDATE: `id = auth.uid()`
+- `profiles` SELECT / UPDATE: `id = auth.uid()` only — email, phone, and DOB never
+  leave the owner. Cross-user reads go through the **`public_profiles` view**
+  (`id, display_name, avatar_url, state, created_at`; owner-rights view, `select`
+  granted to `authenticated` only), which backs seller search and seller pages.
 
 Deletes are **soft** — set `status = 'deleted'`. Never hard-delete a listing row.
 
@@ -198,15 +201,24 @@ Four tabs using a `StatefulShellRoute` so each tab keeps its own navigation stac
 ### 4.4 Buy — minimal feed
 
 Newest-first list of every listing where `status = 'active'`, from all sellers. Tapping a
-card opens Listing Detail.
+card opens Listing Detail. A fixed **search bar** sits under the app-bar title; tapping
+it opens Car Search (§4.10) — the bar itself never takes input.
 
 *(Amended)* A **"Recommended for you"** horizontal row sits above the newest-first
-list when the user has saved interests or a location: the already-fetched active
-listings are scored client-side (brand +3, body type +2, within budget +2, same
-state +2, fuel +1, transmission +1; score ≥ 1 qualifies, top 10 shown, own listings
-excluded). No extra backend query. The feed below is unchanged.
+list when the user has saved interests or a location, matched client-side against
+the already-fetched active listings (no extra backend query):
 
-**Explicitly not in v1:** search bar, filters, sort control, price range, location
+- A listing qualifies only if it satisfies **every** car preference the buyer set —
+  brand ∈ chosen brands, body type ∈ chosen body types, price within budget. A
+  brand or price the buyer ruled out never appears.
+- Buyers with none of those preferences fall back to **listings in their state**.
+- Order among matches: same state +2, fuel +1, transmission +1, then newest, then
+  id. Fuel and transmission never qualify a car on their own.
+- Top 10 shown; the buyer's own listings excluded; the row hides when empty.
+
+The feed below is unchanged.
+
+**Explicitly not in v1:** filters, sort control, price range, location
 picker, saved searches, map view, infinite-scroll pagination UI. Fetch the most recent
 50 listings and stop — do not build pagination controls.
 
@@ -395,6 +407,28 @@ Switching segments resets the toggle to top 5. Ranked rows use `RankBarRow`
 **States.** Loading spinner; error → message + Retry; `null` row → "Market
 insights aren't published yet"; pull-to-refresh re-fetches. Online-only (no
 sqflite cache for this screen).
+
+### 4.10 Search & seller profiles
+
+**Car Search** (`/search`, from the Buy tab bar). App bar holds the search box
+(autofocus). Typing is debounced 300 ms, then `ListingsRepository.searchActive(q)`
+runs server-side: `status = 'active'` and `make | model | variant ILIKE %q%`,
+newest first, max 50. Input is sanitised (`utils/search.dart`: trimmed, whitespace
+collapsed, PostgREST/LIKE-reserved characters stripped, 60 chars). States: idle
+prompt until something is typed; spinner; "No cars match “q”"; error + Retry.
+Results are `ListingCard`s → Listing Detail. **No filters, sort, or pagination.**
+
+**Find Sellers** (`/sellers`, from the Profile hub). Same shell; `ProfilesRepository
+.search(q)` = `public_profiles.display_name ILIKE %q%`, by name, max 30. Results are
+`SellerRow`s (small avatar, name, state) → seller page.
+
+**Seller page** (`/seller/:id`, from Find Sellers and from the **Seller** row on
+Listing Detail). Header: avatar, name, "{state} · Member since {Mon YYYY}"; then a
+**FOR SALE** section streaming `watchActiveBySeller(id)` (realtime) as
+`ListingCard`s. Empty → "No cars for sale right now."; account gone → "This
+account no longer exists."; loading/error explicit. Viewing your own page works the
+same. **Privacy rule:** only `public_profiles` columns are ever read or shown —
+never email, phone, DOB, or car interests; sold cars are not listed.
 
 ---
 

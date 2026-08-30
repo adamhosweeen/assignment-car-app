@@ -7,6 +7,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/recommendations_provider.dart';
 import 'package:assignment/model/listing/listing.dart';
+import 'package:assignment/widgets/common/search_field.dart';
 import 'package:assignment/widgets/common/section_header.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
@@ -27,7 +28,26 @@ class BuyFeedScreen extends ConsumerWidget {
     final async = ref.watch(activeListingsProvider);
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
-      appBar: AppBar(title: const Text('Buy')),
+      appBar: AppBar(
+        title: const Text('Buy'),
+        // A fixed search bar under the title; tapping it opens the search
+        // screen (the bar itself never takes input).
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(AppSpacing.searchBarHeight),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding,
+              0,
+              AppSpacing.screenPadding,
+              AppSpacing.space12,
+            ),
+            child: SearchField(
+              hint: 'Search cars',
+              onTap: () => context.push('/search'),
+            ),
+          ),
+        ),
+      ),
       body: async.when(
         loading: () => const _FeedSkeleton(),
         error: (_, _) => const _FeedMessage(

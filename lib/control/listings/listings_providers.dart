@@ -22,6 +22,22 @@ Stream<List<Listing>> myListings(Ref ref) {
   return ref.watch(listingsRepositoryProvider).watchBySeller(user.id);
 }
 
+/// Another seller's active listings (public seller page). Realtime-backed.
+@riverpod
+Stream<List<Listing>> sellerListings(Ref ref, String sellerId) =>
+    ref.watch(listingsRepositoryProvider).watchActiveBySeller(sellerId);
+
+/// Car search on the Buy tab. Empty query → empty list, no request.
+@riverpod
+Future<List<Listing>> carSearch(Ref ref, String query) async {
+  if (query.trim().isEmpty) return const [];
+  final res = await ref.watch(listingsRepositoryProvider).searchActive(query);
+  return switch (res) {
+    Ok(:final value) => value,
+    Err(:final message) => throw Exception(message),
+  };
+}
+
 /// A single listing by id (Listing detail).
 @riverpod
 Future<Listing> listingById(Ref ref, String id) async {

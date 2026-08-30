@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
+import 'package:assignment/utils/search.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
@@ -62,6 +63,41 @@ class SupabaseListingsRepository implements ListingsRepository {
   @override
   Stream<List<Listing>> watchBySeller(String sellerId) =>
       _watch(() => _fetchBySeller(sellerId), 'listings-seller-$sellerId');
+
+  Future<List<Listing>> _fetchActiveBySeller(String sellerId) async {
+    final rows = await _client
+        .from('listings')
+        .select(_select)
+        .eq('seller_id', sellerId)
+        .eq('status', 'active')
+        .order('created_at', ascending: false);
+    return rows.map(_fromRow).toList();
+  }
+
+  @override
+  Stream<List<Listing>> watchActiveBySeller(String sellerId) => _watch(
+    () => _fetchActiveBySeller(sellerId),
+    'listings-seller-active-$sellerId',
+  );
+
+  @override
+  Future<Result<List<Listing>>> searchActive(String query) async {
+    final q = sanitizeSearchQuery(query);
+    if (q.isEmpty) return const Ok([]);
+    try {
+      final rows = await _client
+          .from('listings')
+          .select(_select)
+          .eq('status', 'active')
+          .or('make.ilike.%$q%,model.ilike.%$q%,variant.ilike.%$q%')
+          .order('created_at', ascending: false)
+          .limit(50)
+          .timeout(_fetchTimeout);
+      return Ok(rows.map(_fromRow).toList());
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
 
   /// Emit the cached feed (if any) and an initial fetch, then re-fetch
   /// whenever `listings` changes (realtime). Successful fetches are mirrored

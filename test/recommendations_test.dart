@@ -60,7 +60,7 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('non-matching listings are excluded (score 0)', () {
+    test('a brand the buyer did not pick is excluded', () {
       final buyer = profile(interests: const CarInterests(makes: ['Honda']));
       final result = rankRecommended([
         listing(id: 'a', make: 'Perodua', state: 'Johor'),
@@ -68,18 +68,73 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('higher score ranks first: brand beats fuel-only match', () {
+    test('fuel or transmission alone never qualifies a car', () {
       final buyer = profile(
         interests: const CarInterests(
           makes: ['Honda'],
           fuelType: FuelType.petrol,
+          transmission: Transmission.automatic,
         ),
       );
       final result = rankRecommended([
         listing(id: 'fuel-only', make: 'Perodua'),
         listing(id: 'brand', make: 'Honda', fuelType: FuelType.diesel),
       ], buyer);
-      expect(result.map((l) => l.id), ['brand', 'fuel-only']);
+      expect(result.map((l) => l.id), ['brand']);
+    });
+
+    test('every set preference must match: brand AND body type', () {
+      final buyer = profile(
+        interests: const CarInterests(
+          makes: ['Honda'],
+          bodyTypes: [BodyType.suv],
+        ),
+      );
+      final result = rankRecommended([
+        listing(id: 'honda-sedan', make: 'Honda', bodyType: BodyType.sedan),
+        listing(id: 'honda-suv', make: 'Honda', bodyType: BodyType.suv),
+        listing(id: 'other-suv', make: 'Mazda', bodyType: BodyType.suv),
+      ], buyer);
+      expect(result.map((l) => l.id), ['honda-suv']);
+    });
+
+    test('budget is a hard limit even when the brand matches', () {
+      final buyer = profile(
+        interests: const CarInterests(makes: ['Honda'], budgetMaxMyr: 60000),
+      );
+      final result = rankRecommended([
+        listing(id: 'affordable', make: 'Honda', priceMyr: 55000),
+        listing(id: 'too-expensive', make: 'Honda', priceMyr: 90000),
+      ], buyer);
+      expect(result.map((l) => l.id), ['affordable']);
+    });
+
+    test('location orders the matches: nearby first, then newest', () {
+      final buyer = profile(
+        state: 'Selangor',
+        interests: const CarInterests(makes: ['Honda']),
+      );
+      final result = rankRecommended([
+        listing(
+          id: 'far-new',
+          make: 'Honda',
+          state: 'Sabah',
+          createdAt: DateTime.utc(2026, 6, 1),
+        ),
+        listing(
+          id: 'near-old',
+          make: 'Honda',
+          state: 'Selangor',
+          createdAt: DateTime.utc(2026, 1, 1),
+        ),
+        listing(
+          id: 'near-new',
+          make: 'Honda',
+          state: 'Selangor',
+          createdAt: DateTime.utc(2026, 6, 1),
+        ),
+      ], buyer);
+      expect(result.map((l) => l.id), ['near-new', 'near-old', 'far-new']);
     });
 
     test('equal score ties break newest-first', () {
@@ -112,13 +167,24 @@ void main() {
       expect(result.map((l) => l.id), ['cheap']);
     });
 
-    test('same state alone is enough to recommend', () {
+    test('with no car preferences, same state is the fallback', () {
       final buyer = profile(state: 'Selangor');
       final result = rankRecommended([
         listing(id: 'near', state: 'Selangor'),
         listing(id: 'far', state: 'Sabah'),
       ], buyer);
       expect(result.map((l) => l.id), ['near']);
+    });
+
+    test('state alone does not qualify once car preferences are set', () {
+      final buyer = profile(
+        state: 'Selangor',
+        interests: const CarInterests(makes: ['Honda']),
+      );
+      final result = rankRecommended([
+        listing(id: 'near-other-brand', make: 'Perodua', state: 'Selangor'),
+      ], buyer);
+      expect(result, isEmpty);
     });
 
     test("the buyer's own listings never appear", () {

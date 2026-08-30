@@ -70,6 +70,9 @@ abstract final class AppSpacing {
   /// Profile screen avatar diameter.
   static const double avatarLg = 96;
 
+  /// Small avatar in list rows (seller search results, seller row).
+  static const double avatarSm = 44;
+
   /// Avatar ring stroke width.
   static const double avatarRingWidth = 2;
 
@@ -116,6 +119,10 @@ abstract final class AppSpacing {
 
   /// Minimum visible height of a non-zero monthly bar.
   static const double monthlyBarMinHeight = 2;
+
+  // ── Search ───────────────────────────────────────────────────────────────
+  /// Height reserved under the Buy app bar for the search bar (field + gap).
+  static const double searchBarHeight = 56;
 
   // ── Segmented control ────────────────────────────────────────────────────
   /// Total height of the control.

@@ -5,26 +5,40 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
 
-/// A circular profile picture: the uploaded photo when `avatarUrl` is set
+/// A circular profile picture: the uploaded photo when [avatarUrl] is set
 /// (initials show underneath while it loads), otherwise the first letter of
-/// the display name on a tinted disc. With [onTap], a small camera badge
-/// signals that the photo can be changed.
+/// [name] on a tinted disc. With [onTap], a small camera badge signals that
+/// the photo can be changed. Works for the signed-in [Profile] and for other
+/// users' `PublicProfile`s alike.
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({
     super.key,
-    required this.profile,
+    required this.name,
+    this.avatarUrl,
     this.size = AppSpacing.avatarLg,
     this.onTap,
   });
 
-  final Profile profile;
+  ProfileAvatar.fromProfile(
+    Profile profile, {
+    super.key,
+    this.size = AppSpacing.avatarLg,
+    this.onTap,
+  }) : name = profile.displayName,
+       avatarUrl = profile.avatarUrl;
+
+  final String name;
+  final String? avatarUrl;
   final double size;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final source = profile.displayName;
-    final initial = source.isNotEmpty ? source[0].toUpperCase() : '?';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    // Scale the letter with the disc: the large-title size suits avatarLg.
+    final letterStyle = size >= AppSpacing.avatarLg
+        ? Theme.of(context).textTheme.largeTitle
+        : Theme.of(context).textTheme.headline;
 
     final initials = Container(
       width: size,
@@ -40,13 +54,11 @@ class ProfileAvatar extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         initial,
-        style: Theme.of(
-          context,
-        ).textTheme.largeTitle.copyWith(color: AppColors.primary),
+        style: letterStyle.copyWith(color: AppColors.primary),
       ),
     );
 
-    final url = profile.avatarUrl;
+    final url = avatarUrl;
     final disc = url == null
         ? initials
         : ClipOval(
