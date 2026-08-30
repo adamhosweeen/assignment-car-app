@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:assignment/control/providers.dart';
+import 'package:assignment/utils/app_spacing.dart';
+import 'package:assignment/utils/formatters.dart';
+import 'package:assignment/widgets/common/grouped_section.dart';
+
+/// Profile → My Info: the user's identity and contact details, read-only.
+/// Editing happens on the shared Edit Profile screen (app bar action).
+class MyInfoScreen extends ConsumerWidget {
+  const MyInfoScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(authStateProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Info'),
+        actions: [
+          if (async.value != null)
+            TextButton(
+              onPressed: () => context.push('/profile/edit'),
+              child: const Text('Edit'),
+            ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => const Center(
+          child: Text('Something went wrong. Go back and try again.'),
+        ),
+        data: (profile) {
+          if (profile == null) {
+            return const Center(child: Text('You’re signed out.'));
+          }
+          return ListView(
+            padding: const EdgeInsets.all(AppSpacing.screenPadding),
+            children: [
+              GroupedSection(
+                header: 'NAME',
+                children: [
+                  GroupedRow(
+                    label: 'First name',
+                    value: profile.firstName ?? 'Not set',
+                  ),
+                  GroupedRow(
+                    label: 'Last name',
+                    value: profile.lastName ?? 'Not set',
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space24),
+              GroupedSection(
+                header: 'CONTACT',
+                children: [
+                  GroupedRow(label: 'Email', value: profile.email),
+                  GroupedRow(label: 'Phone', value: profile.phone ?? 'Not set'),
+                  GroupedRow(
+                    label: 'Location',
+                    value: profile.state ?? 'Not set',
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space24),
+              GroupedSection(
+                header: 'ACCOUNT',
+                children: [
+                  GroupedRow(
+                    label: 'Date of birth',
+                    value: profile.dob == null
+                        ? 'Not set'
+                        : formatDate(profile.dob!),
+                  ),
+                  GroupedRow(
+                    label: 'Member since',
+                    value: formatMonthYear(profile.createdAt),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}

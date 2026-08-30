@@ -49,3 +49,22 @@ app.*.map.json
 
 # Supabase dev credentials (--dart-define-from-file)
 env.json
+.env
+*.env
+
+# Code-generated Dart (regenerate with: dart run build_runner build)
+*.g.dart
+*.freezed.dart
+
+# Non-Android platform targets (this app is Android-only, CLAUDE.md §1;
+# the Flutter tool keeps regenerating these folders, so ignore them)
+/ios/
+/web/
+/linux/
+/macos/
+/windows/
+
+CLAUDE.md
+
+# Mac OS metadata
+.DS_Store

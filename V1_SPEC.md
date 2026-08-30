@@ -17,10 +17,22 @@ Mirrors `auth.users`, created by trigger on signup.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | FK → `auth.users.id`, cascade delete |
-| `phone` | `text` | E.164, e.g. `+60123456789` |
-| `display_name` | `text` | Nullable; defaults to masked phone |
+| `email` | `text` | Login identity, from `auth.users.email` |
+| `first_name` | `text` | From registration |
+| `last_name` | `text` | From registration |
+| `dob` | `date` | 18+ enforced by CHECK constraint and the client |
+| `phone` | `text` | E.164, e.g. `+60123456789`; plain profile field (no OTP) |
+| `state` | `text` | One of the 16 Malaysian states/FTs (§2) |
+| `interests` | `jsonb` | Car-interest questionnaire answers, default `'{}'` |
+| `display_name` | `text` | Nullable; kept in sync with first + last name |
 | `avatar_url` | `text` | Nullable |
 | `created_at` | `timestamptz` | default `now()` |
+
+The full schema lives in the single `supabase/migrations/0001_init.sql`, which
+resets the project (drops tables, accounts, and uploaded images) before creating
+everything. The signup trigger copies `email` and the registration metadata
+(`raw_user_meta_data`) into this row. There is deliberately no INSERT policy —
+the trigger is the only inserter.
 
 ### `listings`
 
@@ -137,23 +149,40 @@ Logo centred on white. While shown, restore the Supabase session and check for a
 draft. Route to Home if a valid session exists, otherwise to Login. Hard cap the
 display at **2 seconds** — never block on a slow network.
 
-### 4.2 Login — phone OTP
+### 4.2 Login & registration — email + password
 
-**Step 1:** `+60` prefix fixed, phone number field, numeric keyboard. Validate Malaysian
-mobile format before enabling Continue.
+*(Amended: replaces the original phone-OTP flow.)*
 
-**Step 2:** 6-digit OTP entry, auto-advancing boxes. Resend countdown of 60 seconds.
-Editable "wrong number?" link back to step 1.
+**Login:** email + password fields, password visibility toggle, inline error text.
+"New here? Create an account" link to the registration flow.
 
-On success, upsert a `profiles` row and route to Home.
+**Registration** is a 4-step flow (mirrors the sell flow's step mechanics — progress
+bar, back preserves data):
 
-Error cases to handle explicitly: invalid number, wrong OTP, expired OTP, rate limited,
-no network.
+1. **Account** — email (format-validated), password (min 8 chars with at least one
+   letter and one digit), confirm password. Inline weak-password / mismatch hints.
+2. **About you** — first name, last name, date of birth (date picker capped at
+   18 years ago; **under-18 is blocked**), phone number (`+60` prefix, Malaysian
+   mobile format validated; no OTP — plain profile data).
+3. **Location** — "Use my location" (GPS, coarse; mapped to the nearest state
+   centroid) with the manual state picker as fallback when detection fails or is
+   denied.
+4. **Car interests** *(all optional)* — preferred brands (multi-select), body types
+   (multi-select), transmission and fuel preference, budget range in RM. Powers the
+   Buy feed's Recommended row (§4.4); editable later from Profile.
 
-> **Development note:** configure test phone numbers with fixed OTPs in the Supabase
-> dashboard (Authentication → Sign In / Providers → Phone) so development doesn't consume
-> real SMS credits. A live SMS provider (Twilio or similar) is required before release
-> and is a paid dependency — budget for it.
+On submit, `signUp` sends the registration data as user metadata; the signup trigger
+creates the `profiles` row. The router's auth redirect lands the new user on Home.
+
+**No in-app password reset** (out of scope). A forgotten password is resolved
+by an operator from the Supabase dashboard (Authentication → Users).
+
+Error cases to handle explicitly: invalid email, weak password, email already
+registered, wrong credentials on login, rate limited, no network.
+
+> **Development note:** disable "Confirm email" in the Supabase dashboard
+> (Authentication → Sign In / Providers → Email) — the app expects a live session
+> straight back from `signUp`.
 
 ### 4.3 App shell — bottom navigation
 
@@ -164,12 +193,18 @@ Four tabs using a `StatefulShellRoute` so each tab keeps its own navigation stac
 | **Buy** | Minimal feed of all active listings (§4.4). Landing tab. |
 | **Sell** | Entry point → My Listings, with a prominent "Sell your car" button |
 | **Chat** | Placeholder: centred icon + "Chat is coming soon." |
-| **Profile** | Edit display name, view phone/member-since, log out (§4.8) |
+| **Profile** | View/edit name, phone, location, car interests; log out (§4.8) |
 
 ### 4.4 Buy — minimal feed
 
 Newest-first list of every listing where `status = 'active'`, from all sellers. Tapping a
 card opens Listing Detail.
+
+*(Amended)* A **"Recommended for you"** horizontal row sits above the newest-first
+list when the user has saved interests or a location: the already-fetched active
+listings are scored client-side (brand +3, body type +2, within budget +2, same
+state +2, fuel +1, transmission +1; score ≥ 1 qualifies, top 10 shown, own listings
+excluded). No extra backend query. The feed below is unchanged.
 
 **Explicitly not in v1:** search bar, filters, sort control, price range, location
 picker, saved searches, map view, infinite-scroll pagination UI. Fetch the most recent
@@ -178,9 +213,24 @@ picker, saved searches, map view, infinite-scroll pagination UI. Fetch the most 
 Reuses the **same listing card widget** as My Listings (§4.6). The only differences are
 the query filter and the absence of row actions and status badges.
 
+**Layout (grouped).** Grey `groupedBackground` screen; every card is a white
+radius-12 surface with the cover photo flush on top and a 12px text block:
+**price** (title3, the hero) → **title** (year make model variant, one line) →
+**mileage · state** (footnote) with the posted date at the right in tertiary.
+Cards are 16px apart. Two labelled sections via `SectionHeader`:
+"RECOMMENDED FOR YOU" (when present) and "NEWEST" (always). The recommended
+strip scrolls edge-to-edge — the outer list pads vertically only and each row
+insets itself, while the strip carries its own 16px horizontal padding so its
+first card aligns with the feed cards. Compact cards are 168px wide (~2.3
+visible), price above a one-line title. Skeleton cards mirror the card shape.
+
 - Pull-to-refresh.
 - Realtime subscription to `listings` filtered on `status = 'active'`, so a listing
   published on another device appears without a manual refresh.
+- The last fetched feed is mirrored into a sqflite read-cache (`listing_cache`),
+  emitted immediately on the next launch — so the feed renders instantly on cold
+  start and stays browsable offline (photos may show placeholders offline; the
+  cache is written only after successful fetches, never authoritative).
 - The user's own active listings **do** appear in the feed — do not filter them out.
 - Empty state: "No cars listed yet. Be the first — sell your car." with a button to the
   Sell tab.
@@ -215,9 +265,10 @@ missing photos.
 
 ### 4.6 My Listings
 
-Sectioned list: **Active** then **Sold**. Uses the same card widget as the Buy feed,
-plus a status badge and row actions. Each row shows cover photo, title
-(`{year} {make} {model} {variant}`), price, mileage, and posted date.
+Sectioned list: **Active** then **Sold**. Uses the same card widget and grouped
+layout as the Buy feed (§4.4 — grey background, white cards, price → title →
+mileage · state, date at right), plus a status badge over the cover and row
+actions. The resume-draft banner is a white card too.
 
 Row actions via long-press or an overflow menu: Mark as sold · Edit · Delete
 (confirmation dialog required for delete).
@@ -251,17 +302,99 @@ seller" button labelled "Coming soon" — the placement is reserved for v2.
 
 The signed-in user's own profile. Grouped-section layout (§5 of `CLAUDE.md`).
 
-- Avatar: initials fallback (no avatar upload in v1 — `avatar_url` stays nullable and
-  unused until a storage bucket/upload flow is scoped).
-- **Display name**: editable text field with a Save button, disabled until changed.
-  Persists to `profiles.display_name`.
-- **Phone**: read-only — identity is OTP-verified and not user-editable.
-- **Member since**: `profiles.created_at`, formatted month/year.
+- Avatar (`ProfileAvatar`): the uploaded photo when `avatar_url` is set, otherwise
+  the first letter of the display name on a tinted disc. On the Profile tab the
+  avatar carries a camera badge; tapping it opens a sheet — **Take photo / Choose
+  from library / Remove photo** (the last only when a photo exists). The pick is
+  compressed on-device (longest edge 512, JPEG q85), uploaded to the **public
+  `avatars` bucket** at `{user_id}/{uuid}.jpg`, and its public URL saved to
+  `profiles.avatar_url`; the previous object is deleted best-effort. A unique
+  object per upload means image caches never show a stale photo. Progress is a
+  blocking spinner; errors surface as a snackbar; success re-renders via the auth
+  stream. Delete account also removes the avatar object.
+- Header: full name (derived from first + last name, falling back to the email
+  prefix) with the email beneath.
+- **Hub** (one grouped card, three chevron rows, each pushes its own screen):
+  - **My Info** (`/profile/info`): name, email, phone, location, date of birth,
+    member since — read-only, with an Edit action in the app bar.
+  - **Car Interests** (`/profile/interests`): brands, body types, transmission,
+    fuel, budget — read-only, Edit action in the app bar, plus a footnote tying
+    them to the "Recommended for you" row.
+  - **Market Insights** (`/profile/insights`): see §4.9.
+  The tab itself shows no detail rows — it is header + hub + the two
+  destructive rows.
+- **Edit Profile** (pushed route from My Info or Car Interests): first/last name, phone, and location are
+  editable; the car-interest fields reuse the registration questionnaire widget.
+  **Email is read-only** (it's the login identity) and **date of birth is
+  read-only** (it protects the 18+ gate).
 - **Log out**: destructive row with a confirmation dialog. Signs out via the auth
   repository; the router's redirect guard sends the user to Login automatically.
+- **Delete account**: destructive row with a strong confirmation dialog. The app
+  removes the user's uploaded photos via the Storage API, then calls the
+  `delete_account()` SECURITY DEFINER function, which deletes their messages,
+  conversations, listings (+media rows), and finally the auth user (cascading
+  the profile). Local caches and any sell draft are cleared; the redirect guard
+  returns to Login. Irreversible.
+
+The last fetched profile is mirrored into a sqflite read-cache (`profile_cache`),
+so identity, details, and interests render instantly on cold start and remain
+complete offline. The cache is written only after successful Supabase reads and
+cleared on log out — never authoritative.
 
 Loading/empty/error states follow the same explicit-three-states rule as every other
 screen (`CLAUDE.md` §6).
+
+### 4.9 Market insights
+
+A read-only "what Malaysia is buying" screen built from JPJ car-registration data.
+
+**Data source.** data.gov.my "Car Registration Transactions"
+(`registration_transactions_car`, JPJ, CC BY 4.0; columns
+`date_reg,type,maker,model,colour,fuel,state`). The dataset is **bulk CSV only —
+it has no API** (~30–50 MB per year), so nothing in the app calls data.gov.my.
+
+**Pipeline.** `dart run tool/build_car_popularity.dart` downloads the yearly CSVs
+(cached under `build/data_gov_my/`), streams them, keeps the rolling 12 months
+ending at the latest month present, and writes `supabase/seed/car_popularity.sql`
+— an upsert of one row (`id = 'latest'`) into:
+
+```
+car_popularity (
+  id text pk, period_label text, generated_at timestamptz, source_url text,
+  total_registrations integer, data jsonb
+)
+```
+
+RLS: `select` for `authenticated` only; no write policies (SQL editor / service
+role only). Refreshing = re-run the script, paste the new seed. No app release.
+
+**Snapshot contents (`data`).** `top_makers` (15), `top_models` (20, with maker),
+`by_state` (top 5 makers for each of the 16 states — dealer-portal "Rakan Niaga"
+rows have no state and are excluded here but count nationally), `fuel_split`
+(Petrol / Diesel / Hybrid / Electric / Other — all `hybrid_*` fold into Hybrid),
+`type_split` (Car / SUV & 4WD / Pickup / MPV / Van), `monthly` (12 points).
+JPJ's `W.P. …` spellings are normalised to the app's `WP …`.
+
+**Screen.** Built to fit one screen per view, not one long scroll: a compact
+summary card (12-month total + period) → an iOS-style `SegmentedControl`
+(`widgets/common/`) with four segments → the selected segment's content →
+attribution footer *"Source: JPJ car registrations via data.gov.my (CC BY 4.0).
+Generated {date}."* — the attribution is a licence requirement and must not be
+removed.
+
+| Segment | Content |
+|---|---|
+| **Brands** | TOP 5 BRANDS, with a "Show all 15" / "Show top 5" toggle row |
+| **Models** | TOP 5 MODELS (maker as sublabel), "Show all 20" toggle |
+| **Near you** | POPULAR IN {user's state} (top 5) + smaller-sample footnote. No state on the profile → notice with an "Open My Info" link; state with no JPJ rows → plain notice |
+| **Trends** | REGISTRATIONS BY MONTH (`MonthlyBars`) → FUEL TYPE → VEHICLE TYPE |
+
+Switching segments resets the toggle to top 5. Ranked rows use `RankBarRow`
+(proportional bar relative to the top entry); no chart package.
+
+**States.** Loading spinner; error → message + Retry; `null` row → "Market
+insights aren't published yet"; pull-to-refresh re-fetches. Online-only (no
+sqflite cache for this screen).
 
 ---
 
@@ -269,7 +402,9 @@ screen (`CLAUDE.md` §6).
 
 The version is done when all of the following are true:
 
-1. A new user signs in with phone OTP and lands on Home.
+1. A new user completes the 4-step email registration (an under-18 date of birth is
+   blocked with a clear message) and lands on Home; a returning user logs in with
+   email + password.
 2. A returning user reopens the app and is not asked to log in again.
 3. A user completes all 7 sell steps and publishes a listing with 3+ photos.
 4. Force-quitting the app mid-form and reopening it offers to resume the draft with all
@@ -288,7 +423,8 @@ The version is done when all of the following are true:
 11. A signed-in user cannot edit or delete another user's listing (verify by calling the
     API directly, not just by the UI hiding the button).
 12. `flutter analyze` reports zero issues.
-13. Editing the display name in Profile persists across a force-quit and relaunch.
+13. Editing the name, phone, location, or car interests in Profile persists across a
+    force-quit and relaunch, and the Recommended row reflects the updated interests.
 14. Logging out from Profile returns to the login screen, and the redirect guard blocks
     navigating back to Home until the user signs in again.
 
