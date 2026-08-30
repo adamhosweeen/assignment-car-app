@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
+import 'package:assignment/widgets/listing/media_image.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
@@ -34,11 +33,13 @@ class StepReview extends ConsumerWidget {
                   const SizedBox(width: AppSpacing.space8),
               itemBuilder: (_, i) => ClipRRect(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
-                child: Image.file(
-                  File(d.photoPaths[i]),
+                // Freshly picked photos are local files; when editing an
+                // existing listing they are bucket paths — MediaImage
+                // handles both.
+                child: MediaImage(
+                  path: d.photoPaths[i],
                   width: AppSpacing.thumbMd,
                   height: AppSpacing.thumbMd,
-                  fit: BoxFit.cover,
                 ),
               ),
             ),

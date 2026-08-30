@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +7,7 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
+import 'package:assignment/widgets/listing/media_image.dart';
 
 /// Step 1 — pick, compress, reorder, and delete photos. Min 3, max 12; the
 /// first photo is the cover (V1_SPEC §3, §4.5).
@@ -157,11 +156,12 @@ class _Thumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
-            child: Image.file(
-              File(path),
+            // A local file for new picks, a bucket path when editing an
+            // existing listing — MediaImage resolves either.
+            child: MediaImage(
+              path: path,
               width: AppSpacing.thumbMd,
               height: AppSpacing.thumbMd,
-              fit: BoxFit.cover,
             ),
           ),
           if (isCover)
