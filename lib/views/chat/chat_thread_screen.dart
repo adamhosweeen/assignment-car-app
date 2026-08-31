@@ -41,6 +41,13 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   bool _sending = false;
   String? _actingOnMessageId;
 
+  /// Offers the seller has countered with a "New price" — disables that
+  /// original offer's Confirm/New price row so it can't also be accepted or
+  /// countered again. Session-local only: it resets if the thread is
+  /// reopened, which just means the seller can change their mind later and
+  /// confirm the original after all.
+  final Set<String> _counteredOfferIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -66,29 +73,43 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   /// is given (the "Negotiate" flow, including a seller's counter-offer) — as
   /// an offer, using the typed text as the offer's note (falling back to a
   /// plain "Offer: RM X" body when the composer was left empty).
-  Future<void> _send({int? offerAmountMyr}) async {
-    if (_sending) return;
+  Future<bool> _send({int? offerAmountMyr}) async {
+    if (_sending) return false;
     final text = _controller.text.trim();
-    if (text.isEmpty && offerAmountMyr == null) return;
+    if (text.isEmpty && offerAmountMyr == null) return false;
     final body = text.isEmpty ? 'Offer: ${formatPrice(offerAmountMyr!)}' : text;
     setState(() => _sending = true);
     _controller.clear();
     final res = await ref
         .read(chatRepositoryProvider)
         .send(widget.conversationId, body, offerAmountMyr: offerAmountMyr);
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() => _sending = false);
     if (res case Err(:final message)) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
+      return false;
     }
+    return true;
   }
 
   Future<void> _makeOffer() async {
     final amount = await _promptForOfferAmount(context);
     if (amount == null) return;
     await _send(offerAmountMyr: amount);
+  }
+
+  /// The seller counters a buyer's offer with a new price of their own —
+  /// same send flow as the composer's "Negotiate" button, just triggered
+  /// from that offer's bubble. Marks the original as countered so its
+  /// Confirm/New price row won't stay active once this succeeds.
+  Future<void> _counterOffer(Message original) async {
+    final amount = await _promptForOfferAmount(context);
+    if (amount == null) return;
+    final sent = await _send(offerAmountMyr: amount);
+    if (!mounted || !sent) return;
+    setState(() => _counteredOfferIds.add(original.id));
   }
 
   /// The recipient of a buyer's offer (the seller) accepts its price.
@@ -236,10 +257,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                       iAmBuyer: uid != null && uid == conversation.buyerId,
                       listingActive: listing?.status == ListingStatus.active,
                       acting: _actingOnMessageId == m.id,
+                      countered: _counteredOfferIds.contains(m.id),
                       onConfirm: () => _confirmOffer(m),
                       onBuy: () =>
                           _goToOfferCheckout(m, conversation.listingId),
-                      onCounter: _makeOffer,
+                      onCounter: () => _counterOffer(m),
                     );
                   },
                 );
@@ -290,6 +312,7 @@ class _MessageBubble extends StatelessWidget {
     required this.iAmBuyer,
     required this.listingActive,
     required this.acting,
+    required this.countered,
     required this.onConfirm,
     required this.onBuy,
     required this.onCounter,
@@ -300,6 +323,7 @@ class _MessageBubble extends StatelessWidget {
   final bool iAmBuyer;
   final bool listingActive;
   final bool acting;
+  final bool countered;
   final VoidCallback onConfirm;
   final VoidCallback onBuy;
   final VoidCallback onCounter;
@@ -358,6 +382,7 @@ class _MessageBubble extends StatelessWidget {
                       isMine: isMine,
                       iAmBuyer: iAmBuyer,
                       confirmed: confirmed,
+                      countered: countered,
                       acting: acting,
                       fg: fg,
                       onConfirm: onConfirm,
@@ -390,6 +415,7 @@ class _OfferActionRow extends StatelessWidget {
     required this.isMine,
     required this.iAmBuyer,
     required this.confirmed,
+    required this.countered,
     required this.acting,
     required this.fg,
     required this.onConfirm,
@@ -400,6 +426,7 @@ class _OfferActionRow extends StatelessWidget {
   final bool isMine;
   final bool iAmBuyer;
   final bool confirmed;
+  final bool countered;
   final bool acting;
   final Color fg;
   final VoidCallback onConfirm;
@@ -414,6 +441,12 @@ class _OfferActionRow extends StatelessWidget {
       return _button(text, 'Confirm and buy', onBuy);
     }
     if (!isMine && !iAmBuyer && !confirmed) {
+      if (countered) {
+        return Text(
+          'You proposed a new price',
+          style: text.caption.copyWith(color: fg),
+        );
+      }
       return Row(
         children: [
           Expanded(child: _button(text, 'Confirm', onConfirm)),
