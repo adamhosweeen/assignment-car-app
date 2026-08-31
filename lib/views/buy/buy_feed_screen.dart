@@ -8,32 +8,48 @@ import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/recommendations_provider.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/widgets/common/search_field.dart';
-import 'package:assignment/widgets/common/section_header.dart';
+import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
-import 'package:assignment/widgets/listing/listing_card_compact.dart';
 
-/// The Buy feed: newest-first list of every active listing (V1_SPEC §4.4).
-/// No search / filters / sort in v1. Reuses the same [ListingCard] as
+/// The Buy feed. Two tabs at the top of the screen toggle between the
+/// interest-matched **Recommended for you** list and the newest-first
+/// **Newest listings** feed (V1_SPEC §4.4). Reuses the same [ListingCard] as
 /// My Listings, without the status badge or row actions.
 ///
 /// Grouped layout: grey background, white cards. The outer list pads
-/// vertically only — each row insets itself — so the recommended strip can
-/// scroll edge-to-edge while its cards still align with the feed cards.
-class BuyFeedScreen extends ConsumerWidget {
+/// vertically only — each row insets itself.
+class BuyFeedScreen extends ConsumerStatefulWidget {
   const BuyFeedScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BuyFeedScreen> createState() => _BuyFeedScreenState();
+}
+
+class _BuyFeedScreenState extends ConsumerState<BuyFeedScreen> {
+  /// 0 = Recommended for you, 1 = Newest listings.
+  int _tab = 0;
+
+  Future<void> _refresh() async {
+    ref.invalidate(activeListingsProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(activeListingsProvider);
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
         title: const Text('Buy'),
-        // A fixed search bar under the title; tapping it opens the search
-        // screen (the bar itself never takes input).
+        // The tab switch sits above a fixed search bar; tapping the bar opens
+        // the search screen (the bar itself never takes input).
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(AppSpacing.searchBarHeight),
+          preferredSize: const Size.fromHeight(
+            AppSpacing.segmentHeight +
+                AppSpacing.space12 +
+                AppSpacing.searchBarHeight,
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.screenPadding,
@@ -41,9 +57,19 @@ class BuyFeedScreen extends ConsumerWidget {
               AppSpacing.screenPadding,
               AppSpacing.space12,
             ),
-            child: SearchField(
-              hint: 'Search cars',
-              onTap: () => context.push('/search'),
+            child: Column(
+              children: [
+                SegmentedControl(
+                  labels: const ['Recommended for you', 'Newest listings'],
+                  selected: _tab,
+                  onChanged: (i) => setState(() => _tab = i),
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                SearchField(
+                  hint: 'Search cars',
+                  onTap: () => context.push('/search'),
+                ),
+              ],
             ),
           ),
         ),
@@ -59,49 +85,67 @@ class BuyFeedScreen extends ConsumerWidget {
           if (listings.isEmpty) {
             return _EmptyFeed(onSell: () => context.go('/home/sell'));
           }
-          final recommended = ref.watch(recommendedListingsProvider);
-          final hasRecommended = recommended.isNotEmpty;
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(activeListingsProvider);
-              await Future<void>.delayed(const Duration(milliseconds: 400));
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.screenPadding,
+          if (_tab == 0) {
+            final recommended = ref.watch(recommendedListingsProvider);
+            if (recommended.isEmpty) {
+              return const _FeedMessage(
+                icon: Icons.recommend_outlined,
+                title: 'No recommendations yet',
+                message:
+                    'Set your car interests in your profile to see cars '
+                    'picked for you.',
+              );
+            }
+            return _RefreshableFeed(
+              listings: recommended,
+              onRefresh: _refresh,
+              onTap: (id) => context.push('/listing/$id'),
+            );
+          }
+          return _RefreshableFeed(
+            listings: listings,
+            onRefresh: _refresh,
+            onTap: (id) => context.push('/listing/$id'),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// A newest-first vertical feed of [ListingCard]s with pull-to-refresh.
+class _RefreshableFeed extends StatelessWidget {
+  const _RefreshableFeed({
+    required this.listings,
+    required this.onRefresh,
+    required this.onTap,
+  });
+
+  final List<Listing> listings;
+  final Future<void> Function() onRefresh;
+  final void Function(String id) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.screenPadding,
+        ),
+        itemCount: listings.length,
+        itemBuilder: (_, i) {
+          final l = listings[i];
+          return _Inset(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: i == listings.length - 1 ? 0 : AppSpacing.space16,
               ),
-              // One header slot, plus one slot per listing.
-              itemCount: listings.length + 1,
-              itemBuilder: (_, i) {
-                if (i == 0) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (hasRecommended) ...[
-                        const _Inset(
-                          child: SectionHeader('Recommended for you'),
-                        ),
-                        _RecommendedRow(listings: recommended),
-                        const SizedBox(height: AppSpacing.space24),
-                      ],
-                      const _Inset(child: SectionHeader('Newest')),
-                    ],
-                  );
-                }
-                final l = listings[i - 1];
-                return _Inset(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: i == listings.length ? 0 : AppSpacing.space16,
-                    ),
-                    child: ListingCard(
-                      listing: l,
-                      cover: CoverImage(media: l.cover),
-                      onTap: () => context.push('/listing/${l.id}'),
-                    ),
-                  ),
-                );
-              },
+              child: ListingCard(
+                listing: l,
+                cover: CoverImage(media: l.cover),
+                onTap: () => onTap(l.id),
+              ),
             ),
           );
         },
@@ -121,40 +165,6 @@ class _Inset extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
     child: child,
   );
-}
-
-/// Horizontal strip of interest-matched listings above the newest-first feed.
-/// Scrolls edge-to-edge; its own padding aligns the first card with the feed.
-class _RecommendedRow extends StatelessWidget {
-  const _RecommendedRow({required this.listings});
-
-  final List<Listing> listings;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: AppSpacing.recommendRowHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenPadding,
-        ),
-        itemCount: listings.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space12),
-        itemBuilder: (context, i) {
-          final l = listings[i];
-          return ListingCardCompact(
-            listing: l,
-            cover: CoverImage(
-              media: l.cover,
-              height: AppSpacing.recommendCoverHeight,
-            ),
-            onTap: () => context.push('/listing/${l.id}'),
-          );
-        },
-      ),
-    );
-  }
 }
 
 class _EmptyFeed extends StatelessWidget {
