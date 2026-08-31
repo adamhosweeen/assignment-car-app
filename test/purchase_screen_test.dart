@@ -45,13 +45,13 @@ final _buyer = Profile(
 );
 
 class _FakeListingsRepo implements ListingsRepository {
-  int markSoldCalls = 0;
-  String? lastSoldId;
+  int buyCalls = 0;
+  String? lastBoughtId;
 
   @override
-  Future<Result<void>> markSold(String id) async {
-    markSoldCalls++;
-    lastSoldId = id;
+  Future<Result<void>> buy(String id) async {
+    buyCalls++;
+    lastBoughtId = id;
     return const Ok(null);
   }
 
@@ -104,7 +104,7 @@ void main() {
     expect(find.text('Confirm purchase · RM 45,000'), findsOneWidget);
   });
 
-  testWidgets('confirming marks the listing sold and shows success', (
+  testWidgets('confirming buys the listing and shows success', (
     tester,
   ) async {
     final repo = _FakeListingsRepo();
@@ -114,8 +114,8 @@ void main() {
     await tester.tap(find.text('Confirm purchase · RM 45,000'));
     await tester.pumpAndSettle();
 
-    expect(repo.markSoldCalls, 1);
-    expect(repo.lastSoldId, 'l1');
+    expect(repo.buyCalls, 1);
+    expect(repo.lastBoughtId, 'l1');
     // Title in the app bar + heading in the body.
     expect(find.text('Purchase confirmed'), findsNWidgets(2));
     expect(find.text('Done'), findsOneWidget);

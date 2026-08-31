@@ -35,7 +35,7 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
 
   Future<void> _confirm(Listing listing) async {
     setState(() => _submitting = true);
-    final res = await ref.read(listingsRepositoryProvider).markSold(listing.id);
+    final res = await ref.read(listingsRepositoryProvider).buy(listing.id);
     if (!mounted) return;
     if (res case Err(:final message)) {
       setState(() => _submitting = false);

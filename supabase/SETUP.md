@@ -49,6 +49,14 @@ backend).
 - Nothing in the app inserts notifications; only these triggers do. The
   welcome row appears for accounts created **after** the trigger exists.
 
+### 2e. Buy checkout (dummy)
+- SQL Editor → paste [`migrations/0002_buy_listing.sql`](migrations/0002_buy_listing.sql) → Run.
+  Additive and re-runnable (`create or replace`); no reset.
+- Creates the `buy_listing(uuid)` SECURITY DEFINER function. The Buy button on a
+  listing calls it to flip an `active` listing to `sold`. Without it the
+  purchase appears to succeed but the RLS `listings_update_own` policy blocks a
+  non-seller's update, so the car stays in the Buy feed.
+
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).
