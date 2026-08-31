@@ -4,7 +4,8 @@ part 'app_notification.freezed.dart';
 part 'app_notification.g.dart';
 
 /// What produced a notification. Names map 1:1 to the `notifications.kind`
-/// text values (`welcome`, `listing_match`, `insights_updated`).
+/// text values (`welcome`, `listing_match`, `insights_updated`, and the three
+/// `bid_*` kinds added by migration 0009).
 enum NotificationKind {
   @JsonValue('welcome')
   welcome,
@@ -12,6 +13,18 @@ enum NotificationKind {
   listingMatch,
   @JsonValue('insights_updated')
   insightsUpdated,
+
+  /// A new bid landed on one of your cars (seller).
+  @JsonValue('bid_placed')
+  bidPlaced,
+
+  /// The seller accepted your bid (bidder).
+  @JsonValue('bid_accepted')
+  bidAccepted,
+
+  /// Your bid was rejected, or lost to another bid (bidder).
+  @JsonValue('bid_rejected')
+  bidRejected,
 }
 
 /// One row of the user's in-app inbox (`notifications` table). Rows are

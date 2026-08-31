@@ -20,6 +20,9 @@ class AppStorage {
     this.initialListingRows,
     this.initialListingMediaRows,
     this.initialConversationRows,
+    this.initialBidRows,
+    this.initialBidListingRows,
+    this.initialBidListingMediaRows,
   );
 
   final Database db;
@@ -29,6 +32,9 @@ class AppStorage {
   final List<Map<String, Object?>> initialListingRows;
   final List<Map<String, Object?>> initialListingMediaRows;
   final List<Map<String, Object?>> initialConversationRows;
+  final List<Map<String, Object?>> initialBidRows;
+  final List<Map<String, Object?>> initialBidListingRows;
+  final List<Map<String, Object?>> initialBidListingMediaRows;
 
   static Future<AppStorage> init() async {
     final db = await AppDatabase.open();
@@ -61,6 +67,15 @@ class AppStorage {
       orderBy: 'sort_order ASC',
     );
 
+    // Both Bid-tab lists in one read; `BidsCacheRepository` splits them on the
+    // `side` column, so the order-by must keep each side's own ordering.
+    final bidRows = await db.query(
+      'bid_cache',
+      orderBy: 'side ASC, sort_order ASC',
+    );
+    final bidListingRows = await db.query('bid_cache_listing');
+    final bidListingMediaRows = await db.query('bid_cache_listing_media');
+
     return AppStorage._(
       db,
       draftRow,
@@ -69,6 +84,9 @@ class AppStorage {
       listingRows,
       listingMediaRows,
       conversationRows,
+      bidRows,
+      bidListingRows,
+      bidListingMediaRows,
     );
   }
 }

@@ -140,6 +140,34 @@ backend).
   it, otherwise it must already be confirmed). Without this, the "Make an
   offer" buttons in chat have nothing to call.
 
+### 2l. Bids (`migrations/0009_bids.sql`)
+- SQL Editor → paste [`migrations/0009_bids.sql`](migrations/0009_bids.sql) → Run.
+- Additive and re-runnable; apply **after** 0001 (needs `listings`, `profiles`,
+  `notifications`) and conceptually after 0004, whose "flip an active listing to
+  sold" pattern `respond_to_bid()` mirrors — at the accepted bid's amount rather
+  than the list price.
+- Creates the `bids` table (amount in integer MYR, status
+  pending/accepted/rejected/withdrawn, the bidder's contact number and WhatsApp
+  opt-in) with **SELECT and INSERT policies only**: a bidder sees their own
+  bids, a seller sees every bid on their own cars, and nobody sees anybody
+  else's amounts. A partial unique index allows one *pending* bid per person
+  per car.
+- Every status change goes through a SECURITY DEFINER function, because RLS
+  can't express "the seller may set accepted/rejected and nothing else":
+  `withdraw_bid()` (bidder pulls back a pending bid) and `respond_to_bid()`
+  (seller accepts — which also rejects the other pending bids and sells the car
+  at that amount — or rejects). A trigger on `listings` rejects pending bids
+  whenever a car leaves the market some other way, so no bid is stranded as
+  "pending" forever.
+- **Changes an existing object:** it drops and re-adds
+  `notifications_kind_check` to allow three new kinds (`bid_placed`,
+  `bid_accepted`, `bid_rejected`) and adds two triggers that write them. Per
+  CONTRIBUTING §3.4 rule 4 that belongs in this new file, not an edit to 0001.
+  The `NotificationKind` enum in the app is extended to match.
+- Adds `bids` to the realtime publication (guarded, so re-running won't error).
+- Without this, the Bid tab and the "Place a bid" button on Listing Detail have
+  no table to read or write.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live

@@ -10,6 +10,7 @@ import 'package:assignment/views/auth/splash_screen.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/views/auth/welcome_screen.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
+import 'package:assignment/views/bid/place_bid_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
 import 'package:assignment/views/chat/chat_thread_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
@@ -89,6 +90,11 @@ GoRouter goRouter(Ref ref) {
             offerAmountMyr: offer?.amountMyr,
           );
         },
+      ),
+      GoRoute(
+        path: '/listing/:id/bid',
+        builder: (_, state) =>
+            PlaceBidScreen(listingId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
       GoRoute(

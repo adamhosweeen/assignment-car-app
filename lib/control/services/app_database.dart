@@ -8,7 +8,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 9,
+      version: 10,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -57,6 +57,11 @@ class AppDatabase {
             'ALTER TABLE conversation_cache ADD COLUMN last_msg_offer_confirmed_at TEXT',
           );
         }
+        if (oldVersion < 10) {
+          // v10 adds the bid read-cache (offline/cold-start Bid tab,
+          // migration 0009).
+          await _createBidCache(db);
+        }
       },
       onCreate: (db, version) async {
         await db.execute('''
@@ -97,8 +102,81 @@ class AppDatabase {
         await _createListingCache(db);
         await _createChatCache(db);
         await _createPublicProfileCache(db);
+        await _createBidCache(db);
       },
     );
+  }
+
+  /// Read-cache of the signed-in user's bids — both the ones they placed
+  /// (`side = 'mine'`) and the ones received on their own listings
+  /// (`side = 'received'`) — plus a snapshot of each bid's car, so the Bid tab
+  /// renders instantly on cold start and stays readable offline. Written only
+  /// after successful Supabase fetches; never authoritative (CLAUDE.md §3).
+  ///
+  /// The car is kept in its own table rather than denormalised onto the bid
+  /// row because several bids can share one listing (a seller's car with three
+  /// bids on it), and because it lets the listing columns stay identical to
+  /// `listing_cache` and reuse the same encode/decode helpers.
+  static Future<void> _createBidCache(Database db) async {
+    await db.execute('''
+        CREATE TABLE bid_cache (
+          id TEXT PRIMARY KEY,
+          listing_id TEXT NOT NULL,
+          bidder_id TEXT NOT NULL,
+          amount_myr INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          contact_phone TEXT,
+          notify_whatsapp INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          side TEXT NOT NULL,
+          sort_order INTEGER NOT NULL
+        )
+      ''');
+    await db.execute('''
+        CREATE INDEX bid_cache_side_idx ON bid_cache (side, sort_order)
+      ''');
+    // Same columns as `listing_cache` so `listingToRow` / `listingFromRow`
+    // encode and decode both.
+    await db.execute('''
+        CREATE TABLE bid_cache_listing (
+          id TEXT PRIMARY KEY,
+          seller_id TEXT NOT NULL,
+          status TEXT NOT NULL,
+          make TEXT NOT NULL,
+          model TEXT NOT NULL,
+          variant TEXT,
+          year INTEGER NOT NULL,
+          mileage_km INTEGER NOT NULL,
+          transmission TEXT NOT NULL,
+          fuel_type TEXT NOT NULL,
+          body_type TEXT NOT NULL,
+          colour TEXT NOT NULL,
+          owners_count INTEGER NOT NULL,
+          accident_free INTEGER NOT NULL,
+          road_tax_expiry TEXT,
+          registration_region TEXT NOT NULL,
+          state TEXT NOT NULL,
+          city TEXT NOT NULL,
+          price_myr INTEGER NOT NULL,
+          negotiable INTEGER NOT NULL,
+          description TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          sort_order INTEGER NOT NULL
+        )
+      ''');
+    await db.execute('''
+        CREATE TABLE bid_cache_listing_media (
+          id TEXT NOT NULL,
+          listing_id TEXT NOT NULL,
+          storage_path TEXT NOT NULL,
+          media_type TEXT NOT NULL,
+          position INTEGER NOT NULL,
+          created_at TEXT,
+          PRIMARY KEY (listing_id, position)
+        )
+      ''');
   }
 
   /// Read-cache of the active-listings feed, so the Buy feed renders
