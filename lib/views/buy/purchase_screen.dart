@@ -6,10 +6,12 @@ import 'package:assignment/control/providers.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/model/listing/listing.dart';
+import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
+import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
@@ -17,8 +19,9 @@ import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// A dummy checkout for a car. Shows a fake order summary; confirming flips the
-/// listing to `sold` via [ListingsRepository.markSold] so it leaves the Buy
-/// feed. No payment and no real fulfilment — enough to demo the buy path.
+/// listing to `sold` via [ListingsRepository.buy] so it leaves the Buy feed,
+/// then shows a receipt with an order reference. No payment and no real
+/// fulfilment — enough to demo the buy path.
 class PurchaseScreen extends ConsumerStatefulWidget {
   const PurchaseScreen({super.key, required this.id});
 
@@ -34,6 +37,14 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
   /// Set once the sale goes through; the success screen reads the car from
   /// here so it no longer depends on re-fetching the (now sold) listing.
   Listing? _purchased;
+  String? _orderRef;
+  DateTime? _placedAt;
+
+  /// A short, human-quotable reference, e.g. "GRJ-A1B2-C3D4".
+  static String _newOrderRef() {
+    final raw = newId().replaceAll('-', '').toUpperCase();
+    return 'GRJ-${raw.substring(0, 4)}-${raw.substring(4, 8)}';
+  }
 
   Future<void> _confirm(Listing listing) async {
     setState(() => _submitting = true);
@@ -50,6 +61,8 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
     setState(() {
       _submitting = false;
       _purchased = listing;
+      _orderRef = _newOrderRef();
+      _placedAt = DateTime.now();
     });
   }
 
@@ -65,6 +78,8 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
         ),
         body: _PurchaseSuccess(
           listing: purchased,
+          orderRef: _orderRef!,
+          placedAt: _placedAt!,
           onDone: () => context.go('/home/buy'),
         ),
       );
@@ -113,6 +128,22 @@ class _Checkout extends StatelessWidget {
             children: [
               _CarHeader(listing: listing),
               const SizedBox(height: AppSpacing.space24),
+              GroupedSection(
+                header: 'Car details',
+                children: [
+                  GroupedRow(label: 'Year', value: listing.year.toString()),
+                  GroupedRow(
+                    label: 'Mileage',
+                    value: formatMileage(listing.mileageKm),
+                  ),
+                  GroupedRow(
+                    label: 'Transmission',
+                    value: listing.transmission.label,
+                  ),
+                  GroupedRow(label: 'Fuel', value: listing.fuelType.label),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space20),
               GroupedSection(
                 header: 'Order summary',
                 children: [
@@ -250,9 +281,16 @@ class _CarHeader extends StatelessWidget {
 }
 
 class _PurchaseSuccess extends StatelessWidget {
-  const _PurchaseSuccess({required this.listing, required this.onDone});
+  const _PurchaseSuccess({
+    required this.listing,
+    required this.orderRef,
+    required this.placedAt,
+    required this.onDone,
+  });
 
   final Listing listing;
+  final String orderRef;
+  final DateTime placedAt;
   final VoidCallback onDone;
 
   @override
@@ -286,6 +324,22 @@ class _PurchaseSuccess extends StatelessWidget {
                       color: AppColors.secondaryLabel,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.space24),
+                  Text(
+                    'Order reference',
+                    style: text.footnote.copyWith(
+                      color: AppColors.tertiaryLabel,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Text(orderRef, style: text.headline),
+                  const SizedBox(height: AppSpacing.space4),
+                  Text(
+                    formatDate(placedAt),
+                    style: text.footnote.copyWith(
+                      color: AppColors.secondaryLabel,
+                    ),
                   ),
                 ],
               ),
