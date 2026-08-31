@@ -29,7 +29,7 @@ final _listing = Listing(
   colour: 'White',
   ownersCount: 1,
   accidentFree: true,
-  registrationRegion: RegistrationRegion.peninsular,
+  registrationRegion: RegistrationRegion.west,
   state: 'Selangor',
   city: 'Petaling Jaya',
   priceMyr: 45000,

@@ -1,6 +1,8 @@
+import 'package:assignment/model/listing/listing_enums.dart';
+
 /// The 16 Malaysian states and federal territories (V1_SPEC §2), for the state
-/// dropdown. `registration_region` is a separate field — a Sabah-registered car
-/// can be sold in Selangor.
+/// dropdown. In the sell flow the picker is filtered by the chosen
+/// [RegistrationRegion] (West / East Malaysia) via [inRegion].
 abstract final class MalaysianStates {
   static const List<String> all = [
     'Johor',
@@ -20,6 +22,23 @@ abstract final class MalaysianStates {
     'WP Labuan',
     'WP Putrajaya',
   ];
+
+  /// The Borneo states and territory. Everything else is West (Peninsular).
+  static const Set<String> _east = {'Sabah', 'Sarawak', 'WP Labuan'};
+
+  /// The states in [region], in [all] order — used to filter the state picker
+  /// once a region is chosen in the sell flow.
+  static List<String> inRegion(RegistrationRegion region) {
+    final wantEast = region == RegistrationRegion.east;
+    return [
+      for (final s in all)
+        if (_east.contains(s) == wantEast) s,
+    ];
+  }
+
+  /// The region a state belongs to.
+  static RegistrationRegion regionOf(String state) =>
+      _east.contains(state) ? RegistrationRegion.east : RegistrationRegion.west;
 
   /// Approximate centre of population for each state (state capital), used to
   /// map a GPS fix to a state without a geocoding service. Precision beyond

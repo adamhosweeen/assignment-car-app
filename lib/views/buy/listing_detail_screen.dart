@@ -136,18 +136,18 @@ class _DetailScaffold extends ConsumerWidget {
                           ? formatDate(listing.roadTaxExpiry!)
                           : '—',
                     ),
-                    GroupedRow(
-                      label: 'Registration',
-                      value: listing.registrationRegion.label,
-                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space20),
                 GroupedSection(
                   header: 'Location',
                   children: [
-                    GroupedRow(label: 'City', value: listing.city),
+                    GroupedRow(
+                      label: 'Region',
+                      value: listing.registrationRegion.label,
+                    ),
                     GroupedRow(label: 'State', value: listing.state),
+                    GroupedRow(label: 'City', value: listing.city),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space20),

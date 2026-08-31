@@ -86,7 +86,7 @@ class StepReview extends ConsumerWidget {
           title: 'Registration & location',
           onEdit: () => onEditStep(4),
           rows: [
-            ('Registration', d.registrationRegion?.label ?? '—'),
+            ('Region', d.registrationRegion?.label ?? '—'),
             ('State', d.state ?? '—'),
             ('City', d.city ?? '—'),
           ],

@@ -57,6 +57,15 @@ backend).
   purchase appears to succeed but the RLS `listings_update_own` policy blocks a
   non-seller's update, so the car stays in the Buy feed.
 
+### 2f. Region West / East
+- SQL Editor → paste [`migrations/0003_region_west_east.sql`](migrations/0003_region_west_east.sql) → Run.
+  Additive and re-runnable; no reset.
+- Collapses `listings.registration_region` from `{peninsular, sabah, sarawak}`
+  to `{west, east}` (maps existing rows) and swaps the CHECK constraint. The
+  sell form now picks a region first and filters the state list by it. Run
+  this before selling with an app build that includes the change, or publish
+  fails the constraint.
+
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).

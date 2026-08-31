@@ -8,7 +8,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -23,6 +23,19 @@ class AppDatabase {
         if (oldVersion < 5) {
           // v5 adds the feed read-cache (offline/cold-start Buy feed).
           await _createListingCache(db);
+        }
+        if (oldVersion < 6) {
+          // v6 collapses registration_region to west/east (migration 0003).
+          // Map any in-progress draft; the feed cache just re-fetches.
+          await db.execute('''
+            UPDATE listing_draft SET registration_region = CASE registration_region
+              WHEN 'peninsular' THEN 'west'
+              WHEN 'sabah' THEN 'east'
+              WHEN 'sarawak' THEN 'east'
+              ELSE registration_region END
+          ''');
+          await db.execute('DELETE FROM listing_cache_media');
+          await db.execute('DELETE FROM listing_cache');
         }
       },
       onCreate: (db, version) async {
