@@ -13,6 +13,7 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
+import 'package:assignment/widgets/profile/profile_avatar.dart';
 
 /// One conversation thread, reached from the Chat tab or "Chat with seller"
 /// on Listing Detail. Takes the full [Conversation] via route `extra` — both
@@ -96,20 +97,38 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             ref.invalidate(listingByIdProvider(conversation.listingId));
             context.push('/listing/${conversation.listingId}');
           },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(profile?.name ?? 'Chat', style: text.headline),
-              if (listing != null)
-                Text(
-                  listing.status == ListingStatus.sold
-                      ? '${listing.title} · Sold'
-                      : listing.title,
-                  style: text.footnote.copyWith(
-                    color: AppColors.secondaryLabel,
-                  ),
+              ProfileAvatar(
+                name: profile?.name ?? 'Chat',
+                avatarUrl: profile?.avatarUrl,
+                size: AppSpacing.avatarSm,
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      profile?.name ?? 'Chat',
+                      style: text.headline,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (listing != null)
+                      Text(
+                        listing.status == ListingStatus.sold
+                            ? '${listing.title} · Sold'
+                            : listing.title,
+                        style: text.footnote.copyWith(
+                          color: AppColors.secondaryLabel,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),
