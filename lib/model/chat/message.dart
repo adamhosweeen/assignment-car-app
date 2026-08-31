@@ -18,6 +18,7 @@ abstract class Message with _$Message {
     int? offerAmountMyr,
     required DateTime createdAt,
     DateTime? readAt,
+    DateTime? offerConfirmedAt,
   }) = _Message;
 
   const Message._();

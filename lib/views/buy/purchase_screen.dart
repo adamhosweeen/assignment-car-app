@@ -19,13 +19,25 @@ import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// A dummy checkout for a car. Shows a fake order summary; confirming flips the
-/// listing to `sold` via [ListingsRepository.buy] so it leaves the Buy feed,
-/// then shows a receipt with an order reference. No payment and no real
-/// fulfilment — enough to demo the buy path.
+/// listing to `sold` via [ListingsRepository.buy] (list price) or, when
+/// reached from a chat offer's "Confirm and buy" / "Buy now" ([offerMessageId]
+/// set), [ChatRepository.buyAtOffer] (the negotiated price) — so it leaves the
+/// Buy feed, then shows a receipt with an order reference. No payment and no
+/// real fulfilment — enough to demo the buy path.
 class PurchaseScreen extends ConsumerStatefulWidget {
-  const PurchaseScreen({super.key, required this.id});
+  const PurchaseScreen({
+    super.key,
+    required this.id,
+    this.offerMessageId,
+    this.offerAmountMyr,
+  });
 
   final String id;
+
+  /// Set together: the chat offer message to buy at, and its amount — the
+  /// checkout shows and confirms at this price instead of the listing's own.
+  final String? offerMessageId;
+  final int? offerAmountMyr;
 
   @override
   ConsumerState<PurchaseScreen> createState() => _PurchaseScreenState();
@@ -37,8 +49,12 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
   /// Set once the sale goes through; the success screen reads the car from
   /// here so it no longer depends on re-fetching the (now sold) listing.
   Listing? _purchased;
-  String? _orderRef;
-  DateTime? _placedAt;
+
+  /// Generated once per screen visit — used whether the sale completes here
+  /// (a fresh "Confirm purchase" tap) or the listing was already sold on
+  /// arrival (e.g. a chat offer just bought via `buy_at_offer`).
+  late final String _orderRef = _newOrderRef();
+  late final DateTime _placedAt = DateTime.now();
 
   /// A short, human-quotable reference, e.g. "GRJ-A1B2-C3D4".
   static String _newOrderRef() {
@@ -48,7 +64,10 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
 
   Future<void> _confirm(Listing listing) async {
     setState(() => _submitting = true);
-    final res = await ref.read(listingsRepositoryProvider).buy(listing.id);
+    final offerMessageId = widget.offerMessageId;
+    final res = offerMessageId == null
+        ? await ref.read(listingsRepositoryProvider).buy(listing.id)
+        : await ref.read(chatRepositoryProvider).buyAtOffer(offerMessageId);
     if (!mounted) return;
     if (res case Err(:final message)) {
       setState(() => _submitting = false);
@@ -60,9 +79,15 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
     ref.invalidate(activeListingsProvider);
     setState(() {
       _submitting = false;
-      _purchased = listing;
-      _orderRef = _newOrderRef();
-      _placedAt = DateTime.now();
+      // buy_at_offer records the offer's amount as the listing's final
+      // price server-side; reflect that on the receipt without waiting on a
+      // re-fetch.
+      _purchased = widget.offerAmountMyr == null
+          ? listing
+          : listing.copyWith(
+              status: ListingStatus.sold,
+              priceMyr: widget.offerAmountMyr!,
+            );
     });
   }
 
@@ -70,19 +95,7 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
   Widget build(BuildContext context) {
     final purchased = _purchased;
     if (purchased != null) {
-      return Scaffold(
-        backgroundColor: AppColors.groupedBackground,
-        appBar: AppBar(
-          title: const Text('Purchase confirmed'),
-          automaticallyImplyLeading: false,
-        ),
-        body: _PurchaseSuccess(
-          listing: purchased,
-          orderRef: _orderRef!,
-          placedAt: _placedAt!,
-          onDone: () => context.go('/home/buy'),
-        ),
-      );
+      return _successScaffold(purchased);
     }
 
     final async = ref.watch(listingByIdProvider(widget.id));
@@ -92,26 +105,59 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const _Message('This listing is no longer available.'),
-        data: (listing) => _Checkout(
-          listing: listing,
-          buyer: ref.read(authRepositoryProvider).currentUser,
-          submitting: _submitting,
-          onConfirm: () => _confirm(listing),
-        ),
+        data: (listing) {
+          // Already sold on arrival — e.g. a chat offer just completed the
+          // purchase via `buy_at_offer` before this screen was even reached.
+          // Show the same receipt instead of a stale "confirm purchase" form
+          // that would only fail if tapped.
+          if (listing.status != ListingStatus.active) {
+            return _successScaffold(listing);
+          }
+          return _Checkout(
+            listing: listing,
+            priceMyr: widget.offerAmountMyr ?? listing.priceMyr,
+            negotiated: widget.offerAmountMyr != null,
+            buyer: ref.read(authRepositoryProvider).currentUser,
+            submitting: _submitting,
+            onConfirm: () => _confirm(listing),
+          );
+        },
       ),
     );
   }
+
+  Widget _successScaffold(Listing listing) => Scaffold(
+    backgroundColor: AppColors.groupedBackground,
+    appBar: AppBar(
+      title: const Text('Purchase confirmed'),
+      automaticallyImplyLeading: false,
+    ),
+    body: _PurchaseSuccess(
+      listing: listing,
+      orderRef: _orderRef,
+      placedAt: _placedAt,
+      onDone: () => context.go('/home/buy'),
+    ),
+  );
 }
 
 class _Checkout extends StatelessWidget {
   const _Checkout({
     required this.listing,
+    required this.priceMyr,
+    required this.negotiated,
     required this.buyer,
     required this.submitting,
     required this.onConfirm,
   });
 
   final Listing listing;
+
+  /// What this checkout actually charges — the listing's own price, unless
+  /// [negotiated] (reached from a confirmed chat offer), in which case it's
+  /// that offer's amount instead.
+  final int priceMyr;
+  final bool negotiated;
   final Profile? buyer;
   final bool submitting;
   final VoidCallback onConfirm;
@@ -125,7 +171,7 @@ class _Checkout extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
             children: [
-              _CarHeader(listing: listing),
+              _CarHeader(listing: listing, priceMyr: priceMyr),
               const SizedBox(height: AppSpacing.space24),
               GroupedSection(
                 header: 'Car details',
@@ -148,8 +194,8 @@ class _Checkout extends StatelessWidget {
                 children: [
                   GroupedRow(label: 'Car', value: listing.title),
                   GroupedRow(
-                    label: 'Price',
-                    value: formatPrice(listing.priceMyr),
+                    label: negotiated ? 'Agreed price' : 'Price',
+                    value: formatPrice(priceMyr),
                   ),
                   GroupedRow(
                     label: 'Collection',
@@ -187,7 +233,7 @@ class _Checkout extends StatelessWidget {
               onPressed: submitting ? null : onConfirm,
               child: submitting
                   ? const ButtonSpinner()
-                  : Text('Confirm purchase · ${formatPrice(listing.priceMyr)}'),
+                  : Text('Confirm purchase · ${formatPrice(priceMyr)}'),
             ),
           ),
         ),
@@ -237,9 +283,10 @@ class _SellerCard extends ConsumerWidget {
 }
 
 class _CarHeader extends StatelessWidget {
-  const _CarHeader({required this.listing});
+  const _CarHeader({required this.listing, required this.priceMyr});
 
   final Listing listing;
+  final int priceMyr;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +310,7 @@ class _CarHeader extends StatelessWidget {
               Text(listing.title, style: text.headline),
               const SizedBox(height: AppSpacing.space4),
               Text(
-                formatPrice(listing.priceMyr),
+                formatPrice(priceMyr),
                 style: text.body.copyWith(color: AppColors.secondaryLabel),
               ),
             ],
@@ -317,6 +364,12 @@ class _PurchaseSuccess extends StatelessWidget {
                     style: text.subhead.copyWith(
                       color: AppColors.secondaryLabel,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  Text(
+                    'Sold for ${formatPrice(listing.priceMyr)}',
+                    style: text.title3,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.space24),

@@ -127,6 +127,19 @@ backend).
   in a chat thread for a car that's since been marked sold shows "This listing
   is no longer available." instead of the real "Sold" state.
 
+### 2k. Chat offer confirm + buy (`migrations/0008_chat_offer_confirm.sql`)
+- SQL Editor → paste [`migrations/0008_chat_offer_confirm.sql`](migrations/0008_chat_offer_confirm.sql) → Run.
+- Additive and re-runnable; apply **after** 0001 and 0004 (mirrors `buy_listing`'s
+  "flip an active listing to sold" pattern, but at the offer's price).
+- Adds `messages.offer_confirmed_at` plus two SECURITY DEFINER functions:
+  `confirm_offer()` (the recipient of a buyer's offer — the seller — accepts
+  its price; the frozen `messages_participants` policy in `0001_init.sql`
+  only lets the *sender* update a message via a plain client-side update, the
+  wrong direction here) and `buy_at_offer()` (the buyer completes the sale at
+  the offer's price — confirming it first in the same call if the seller sent
+  it, otherwise it must already be confirmed). Without this, the "Make an
+  offer" buttons in chat have nothing to call.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live

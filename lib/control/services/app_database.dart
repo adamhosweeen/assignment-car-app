@@ -8,7 +8,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -47,6 +47,15 @@ class AppDatabase {
           // v8 adds the public-profile read-cache (offline names/avatars for
           // the other person in a chat thread, seller rows, seller pages).
           await _createPublicProfileCache(db);
+        }
+        if (oldVersion < 9) {
+          // v9 caches an offer message's confirm state (migration 0008).
+          await db.execute(
+            'ALTER TABLE message_cache ADD COLUMN offer_confirmed_at TEXT',
+          );
+          await db.execute(
+            'ALTER TABLE conversation_cache ADD COLUMN last_msg_offer_confirmed_at TEXT',
+          );
         }
       },
       onCreate: (db, version) async {
@@ -160,7 +169,8 @@ class AppDatabase {
           last_msg_type TEXT,
           last_msg_offer_amount_myr INTEGER,
           last_msg_created_at TEXT,
-          last_msg_read_at TEXT
+          last_msg_read_at TEXT,
+          last_msg_offer_confirmed_at TEXT
         )
       ''');
     await db.execute('''
@@ -172,7 +182,8 @@ class AppDatabase {
           message_type TEXT NOT NULL,
           offer_amount_myr INTEGER,
           created_at TEXT NOT NULL,
-          read_at TEXT
+          read_at TEXT,
+          offer_confirmed_at TEXT
         )
       ''');
     await db.execute('''

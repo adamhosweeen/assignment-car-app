@@ -99,7 +99,8 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (l.status == ListingStatus.active)
+            // A sold listing is frozen — no re-marking sold, no editing.
+            if (l.status == ListingStatus.active) ...[
               ListTile(
                 leading: const Icon(Icons.check_circle_outline),
                 title: const Text('Mark as sold'),
@@ -108,14 +109,15 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
                   _markSold(l);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _edit(l);
-              },
-            ),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _edit(l);
+                },
+              ),
+            ],
             ListTile(
               leading: const Icon(
                 Icons.delete_outline,

@@ -32,4 +32,15 @@ abstract interface class ChatRepository {
 
   /// Mark every message the other participant sent as read.
   Future<Result<void>> markRead(String conversationId);
+
+  /// Accept an offer's price — only the message's recipient may call this,
+  /// and never the buyer (they confirm-and-buy in one step via [buyAtOffer]).
+  /// Used when the buyer sent the offer and the seller is accepting it.
+  Future<Result<void>> confirmOffer(String messageId);
+
+  /// Complete the sale at an offer's price — only the conversation's buyer
+  /// may call this. Confirms the offer first if nobody has (the seller sent
+  /// it); if the buyer sent it themselves, it must already be confirmed by
+  /// the seller.
+  Future<Result<void>> buyAtOffer(String messageId);
 }

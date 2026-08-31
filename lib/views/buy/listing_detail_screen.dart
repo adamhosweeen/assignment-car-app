@@ -298,7 +298,10 @@ class _Actions extends StatelessWidget {
         ],
       );
     }
-    final canMarkSold = listing.status == ListingStatus.active;
+    // A sold (or deleted) listing is frozen — no edit, no re-marking sold.
+    if (listing.status != ListingStatus.active) {
+      return const SizedBox.shrink();
+    }
     final editButton = FilledButton(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.groupedBackground,
@@ -307,9 +310,6 @@ class _Actions extends StatelessWidget {
       onPressed: onEdit,
       child: const Text('Edit'),
     );
-    if (!canMarkSold) {
-      return SizedBox(width: double.infinity, child: editButton);
-    }
     return Row(
       children: [
         Expanded(child: editButton),

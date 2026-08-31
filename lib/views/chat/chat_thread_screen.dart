@@ -15,6 +15,7 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
+import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
 /// One conversation thread, reached from the Chat tab or "Chat with seller"
@@ -38,6 +39,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
   bool _sending = false;
+  String? _actingOnMessageId;
 
   @override
   void initState() {
@@ -61,9 +63,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   }
 
   /// Sends whatever's typed as a plain text message, or — when [offerAmountMyr]
-  /// is given (the "Make an offer" flow) — as an offer, using the typed text
-  /// as the offer's note (falling back to a plain "Offer: RM X" body when the
-  /// composer was left empty).
+  /// is given (the "Negotiate" flow, including a seller's counter-offer) — as
+  /// an offer, using the typed text as the offer's note (falling back to a
+  /// plain "Offer: RM X" body when the composer was left empty).
   Future<void> _send({int? offerAmountMyr}) async {
     if (_sending) return;
     final text = _controller.text.trim();
@@ -87,6 +89,30 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final amount = await _promptForOfferAmount(context);
     if (amount == null) return;
     await _send(offerAmountMyr: amount);
+  }
+
+  /// The recipient of a buyer's offer (the seller) accepts its price.
+  Future<void> _confirmOffer(Message offer) async {
+    setState(() => _actingOnMessageId = offer.id);
+    final res = await ref.read(chatRepositoryProvider).confirmOffer(offer.id);
+    if (!mounted) return;
+    setState(() => _actingOnMessageId = null);
+    if (res case Err(:final message)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  /// The buyer heads to checkout to complete the sale at an offer's price —
+  /// either accepting the seller's offer, or completing their own, already
+  /// seller-confirmed, offer. The actual `buy_at_offer` call happens on the
+  /// checkout screen's "Confirm purchase" tap, not here — this only opens it.
+  void _goToOfferCheckout(Message offer, String listingId) {
+    context.push(
+      '/listing/$listingId/buy',
+      extra: (messageId: offer.id, amountMyr: offer.offerAmountMyr!),
+    );
   }
 
   @override
@@ -124,6 +150,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         .watch(listingByIdProvider(conversation.listingId))
         .value;
     final messagesAsync = ref.watch(messagesProvider(conversation.id));
+    // listingByIdProvider is a one-shot fetch, not realtime, so a status/price
+    // change made by the other participant (e.g. they just completed a
+    // purchase via buy_at_offer) never reaches this screen on its own.
+    // messages, however, already are realtime — an offer's confirm/buy always
+    // touches a message row, so piggyback on that to re-check the listing.
+    ref.listen(messagesProvider(conversation.id), (_, _) {
+      ref.invalidate(listingByIdProvider(conversation.listingId));
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -194,10 +228,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                   controller: _scroll,
                   padding: const EdgeInsets.all(AppSpacing.screenPadding),
                   itemCount: msgs.length,
-                  itemBuilder: (context, i) => _MessageBubble(
-                    message: msgs[i],
-                    isMine: uid != null && msgs[i].isMine(uid),
-                  ),
+                  itemBuilder: (context, i) {
+                    final m = msgs[i];
+                    return _MessageBubble(
+                      message: m,
+                      isMine: uid != null && m.isMine(uid),
+                      iAmBuyer: uid != null && uid == conversation.buyerId,
+                      listingActive: listing?.status == ListingStatus.active,
+                      acting: _actingOnMessageId == m.id,
+                      onConfirm: () => _confirmOffer(m),
+                      onBuy: () =>
+                          _goToOfferCheckout(m, conversation.listingId),
+                      onCounter: _makeOffer,
+                    );
+                  },
                 );
               },
             ),
@@ -206,7 +250,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             controller: _controller,
             sending: _sending,
             onSend: _send,
-            negotiable: listing?.negotiable ?? false,
+            negotiable:
+                (listing?.negotiable ?? false) &&
+                listing?.status == ListingStatus.active,
             onOffer: _makeOffer,
           ),
         ],
@@ -238,10 +284,25 @@ class _CenteredNote extends StatelessWidget {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.isMine});
+  const _MessageBubble({
+    required this.message,
+    required this.isMine,
+    required this.iAmBuyer,
+    required this.listingActive,
+    required this.acting,
+    required this.onConfirm,
+    required this.onBuy,
+    required this.onCounter,
+  });
 
   final Message message;
   final bool isMine;
+  final bool iAmBuyer;
+  final bool listingActive;
+  final bool acting;
+  final VoidCallback onConfirm;
+  final VoidCallback onBuy;
+  final VoidCallback onCounter;
 
   @override
   Widget build(BuildContext context) {
@@ -255,6 +316,7 @@ class _MessageBubble extends StatelessWidget {
     final showBody =
         !isOffer ||
         message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}';
+    final confirmed = message.offerConfirmedAt != null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space12),
@@ -290,6 +352,19 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   if (showBody)
                     Text(message.body, style: text.body.copyWith(color: fg)),
+                  if (isOffer && listingActive) ...[
+                    const SizedBox(height: AppSpacing.space8),
+                    _OfferActionRow(
+                      isMine: isMine,
+                      iAmBuyer: iAmBuyer,
+                      confirmed: confirmed,
+                      acting: acting,
+                      fg: fg,
+                      onConfirm: onConfirm,
+                      onBuy: onBuy,
+                      onCounter: onCounter,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -298,6 +373,94 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The action (if any) available on an offer bubble, from the viewer's own
+/// side of the conversation:
+/// - Someone else's offer, and I'm the buyer (so a seller sent it) → I can
+///   confirm and buy in one tap (heads to checkout first).
+/// - Someone else's offer, and I'm the seller (so a buyer sent it) → I can
+///   confirm it (I can't buy my own listing; the buyer completes the sale
+///   once I have), or counter with a new price of my own instead.
+/// - My own offer, and I'm the buyer → once the seller has confirmed it, I
+///   can complete the purchase (heads to checkout).
+/// - My own offer, and I'm the seller → nothing left for me to do.
+class _OfferActionRow extends StatelessWidget {
+  const _OfferActionRow({
+    required this.isMine,
+    required this.iAmBuyer,
+    required this.confirmed,
+    required this.acting,
+    required this.fg,
+    required this.onConfirm,
+    required this.onBuy,
+    required this.onCounter,
+  });
+
+  final bool isMine;
+  final bool iAmBuyer;
+  final bool confirmed;
+  final bool acting;
+  final Color fg;
+  final VoidCallback onConfirm;
+  final VoidCallback onBuy;
+  final VoidCallback onCounter;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+
+    if (!isMine && iAmBuyer && !confirmed) {
+      return _button(text, 'Confirm and buy', onBuy);
+    }
+    if (!isMine && !iAmBuyer && !confirmed) {
+      return Row(
+        children: [
+          Expanded(child: _button(text, 'Confirm', onConfirm)),
+          const SizedBox(width: AppSpacing.space8),
+          Expanded(
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: AppColors.primary,
+              ),
+              onPressed: acting ? null : onCounter,
+              child: Text('New price', style: text.footnote),
+            ),
+          ),
+        ],
+      );
+    }
+    if (isMine && iAmBuyer && confirmed) {
+      return _button(text, 'Buy now', onBuy);
+    }
+    if (confirmed) {
+      return Text(
+        isMine && !iAmBuyer
+            ? 'Confirmed — waiting for buyer to complete purchase'
+            : 'Confirmed',
+        style: text.caption.copyWith(color: fg),
+      );
+    }
+    if (isMine && iAmBuyer) {
+      return Text(
+        'Waiting for seller to confirm',
+        style: text.caption.copyWith(color: fg),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _button(TextTheme text, String label, VoidCallback onPressed) =>
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: acting ? null : onPressed,
+          child: acting
+              ? const ButtonSpinner()
+              : Text(label, style: text.footnote),
+        ),
+      );
 }
 
 class _Composer extends StatelessWidget {
@@ -340,7 +503,7 @@ class _Composer extends StatelessWidget {
               if (negotiable)
                 IconButton(
                   onPressed: sending ? null : onOffer,
-                  tooltip: 'Make an offer',
+                  tooltip: 'Negotiate',
                   icon: const Icon(
                     Icons.local_offer_outlined,
                     color: AppColors.primary,
@@ -386,61 +549,72 @@ class _Composer extends StatelessWidget {
   }
 }
 
-/// Prompts for an integer MYR amount ("Make an offer"). Returns null if
-/// cancelled.
+/// Prompts for an integer MYR amount ("Negotiate" / counter with a new
+/// price). Returns null if cancelled.
 Future<int?> _promptForOfferAmount(BuildContext context) {
-  final controller = TextEditingController();
   return showDialog<int>(
     context: context,
-    builder: (dialogContext) {
-      String? errorText;
-      return StatefulBuilder(
-        builder: (dialogContext, setState) {
-          return AlertDialog(
-            backgroundColor: AppColors.surface,
-            title: Text(
-              'Make an offer',
-              style: Theme.of(dialogContext).textTheme.headline,
-            ),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                prefixText: 'RM ',
-                hintText: 'Amount',
-                errorText: errorText,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  final value = int.tryParse(controller.text);
-                  if (value == null || value <= 0) {
-                    setState(() => errorText = 'Enter a valid amount.');
-                    return;
-                  }
-                  if (value > kMaxPriceMyr) {
-                    setState(
-                      () => errorText =
-                          'That’s too high. Enter an amount under '
-                          '${formatPrice(kMaxPriceMyr)}.',
-                    );
-                    return;
-                  }
-                  Navigator.pop(dialogContext, value);
-                },
-                child: const Text('Send'),
-              ),
-            ],
-          );
-        },
+    builder: (_) => const _OfferAmountDialog(),
+  );
+}
+
+class _OfferAmountDialog extends StatefulWidget {
+  const _OfferAmountDialog();
+
+  @override
+  State<_OfferAmountDialog> createState() => _OfferAmountDialogState();
+}
+
+class _OfferAmountDialogState extends State<_OfferAmountDialog> {
+  final _controller = TextEditingController();
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = int.tryParse(_controller.text);
+    if (value == null || value <= 0) {
+      setState(() => _errorText = 'Enter a valid amount.');
+      return;
+    }
+    if (value > kMaxPriceMyr) {
+      setState(
+        () => _errorText =
+            'That’s too high. Enter an amount under '
+            '${formatPrice(kMaxPriceMyr)}.',
       );
-    },
-  ).whenComplete(controller.dispose);
+      return;
+    }
+    Navigator.pop(context, value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Text('Negotiate', style: Theme.of(context).textTheme.headline),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          prefixText: 'RM ',
+          hintText: 'Amount',
+          errorText: _errorText,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(onPressed: _submit, child: const Text('Send')),
+      ],
+    );
+  }
 }

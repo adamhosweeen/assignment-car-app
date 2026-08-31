@@ -88,6 +88,7 @@ Map<String, Object?> conversationThreadToRow(
     'last_msg_offer_amount_myr': last?.offerAmountMyr,
     'last_msg_created_at': last?.createdAt.toIso8601String(),
     'last_msg_read_at': last?.readAt?.toIso8601String(),
+    'last_msg_offer_confirmed_at': last?.offerConfirmedAt?.toIso8601String(),
   };
 }
 
@@ -113,6 +114,9 @@ ConversationThread conversationThreadFromRow(Map<String, Object?> row) {
           offerAmountMyr: row['last_msg_offer_amount_myr'] as int?,
           createdAt: DateTime.parse(row['last_msg_created_at']! as String),
           readAt: DateTime.tryParse(row['last_msg_read_at'] as String? ?? ''),
+          offerConfirmedAt: DateTime.tryParse(
+            row['last_msg_offer_confirmed_at'] as String? ?? '',
+          ),
         );
   return ConversationThread(
     conversation: conversation,

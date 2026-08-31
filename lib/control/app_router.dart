@@ -75,7 +75,20 @@ GoRouter goRouter(Ref ref) {
       ),
       GoRoute(
         path: '/listing/:id/buy',
-        builder: (_, state) => PurchaseScreen(id: state.pathParameters['id']!),
+        builder: (_, state) {
+          // Reached from a chat offer's "Confirm and buy" / "Buy now" with
+          // the offer to buy at — never trust its type, `extra` doesn't
+          // survive Android killing and restoring the app process.
+          final extra = state.extra;
+          final offer = extra is ({String messageId, int amountMyr})
+              ? extra
+              : null;
+          return PurchaseScreen(
+            id: state.pathParameters['id']!,
+            offerMessageId: offer?.messageId,
+            offerAmountMyr: offer?.amountMyr,
+          );
+        },
       ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
       GoRoute(

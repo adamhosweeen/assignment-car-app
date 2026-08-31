@@ -317,4 +317,47 @@ class SupabaseChatRepository implements ChatRepository {
       return Err(mapError(e));
     }
   }
+
+  @override
+  Future<Result<void>> confirmOffer(String messageId) async {
+    try {
+      await _client
+          .rpc('confirm_offer', params: {'p_message_id': messageId})
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } on PostgrestException catch (e) {
+      // confirm_offer() raises these for the specific cases below; anything
+      // else falls through to the generic mapper.
+      if (e.message.contains('cannot confirm your own offer') ||
+          e.message.contains('not a participant') ||
+          e.message.contains('not an offer')) {
+        return Err(e.message);
+      }
+      return Err(mapError(e));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> buyAtOffer(String messageId) async {
+    try {
+      await _client
+          .rpc('buy_at_offer', params: {'p_message_id': messageId})
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } on PostgrestException catch (e) {
+      // buy_at_offer() raises these for the specific cases below; anything
+      // else falls through to the generic mapper.
+      if (e.message.contains('no longer available') ||
+          e.message.contains('Only the buyer') ||
+          e.message.contains('Waiting for the seller') ||
+          e.message.contains('not an offer')) {
+        return Err(e.message);
+      }
+      return Err(mapError(e));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
 }
