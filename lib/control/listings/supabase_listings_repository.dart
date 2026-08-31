@@ -101,7 +101,10 @@ class SupabaseListingsRepository implements ListingsRepository {
 
   /// Emit the cached feed (if any) and an initial fetch, then re-fetch
   /// whenever `listings` changes (realtime). Successful fetches are mirrored
-  /// into the cache via [onFetched]; failed ones keep the last good value.
+  /// into the cache via [onFetched]; a transient refresh failure keeps the
+  /// last good (or cached) value, but a failed first load with nothing to
+  /// show yet is surfaced as a real error — otherwise the stream never emits
+  /// anything at all and the screen spins forever.
   Stream<List<Listing>> _watch(
     Future<List<Listing>> Function() fetch,
     String channelName, {
@@ -110,20 +113,25 @@ class SupabaseListingsRepository implements ListingsRepository {
   }) {
     final controller = StreamController<List<Listing>>();
     RealtimeChannel? channel;
+    var hasData = false;
 
     Future<void> push() async {
       try {
         final data = await fetch().timeout(_fetchTimeout);
+        hasData = true;
         if (!controller.isClosed) controller.add(data);
         await onFetched?.call(data);
-      } catch (_) {
-        // Keep the last good (or cached) value on a transient error.
+      } catch (e) {
+        if (!hasData && !controller.isClosed) controller.addError(e);
       }
     }
 
     controller
       ..onListen = () {
-        if (initial != null && initial.isNotEmpty) controller.add(initial);
+        if (initial != null && initial.isNotEmpty) {
+          hasData = true;
+          controller.add(initial);
+        }
         push();
         channel = _client.channel('$channelName-${newId()}')
           ..onPostgresChanges(

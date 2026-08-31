@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +9,7 @@ import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/control/providers.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/message.dart';
+import 'package:assignment/model/listing/listing_draft.dart' show kMaxPriceMyr;
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -58,14 +60,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     });
   }
 
-  Future<void> _send() async {
+  /// Sends whatever's typed as a plain text message, or — when [offerAmountMyr]
+  /// is given (the "Make an offer" flow) — as an offer, using the typed text
+  /// as the offer's note (falling back to a plain "Offer: RM X" body when the
+  /// composer was left empty).
+  Future<void> _send({int? offerAmountMyr}) async {
+    if (_sending) return;
     final text = _controller.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (text.isEmpty && offerAmountMyr == null) return;
+    final body = text.isEmpty ? 'Offer: ${formatPrice(offerAmountMyr!)}' : text;
     setState(() => _sending = true);
     _controller.clear();
     final res = await ref
         .read(chatRepositoryProvider)
-        .send(widget.conversationId, text);
+        .send(widget.conversationId, body, offerAmountMyr: offerAmountMyr);
     if (!mounted) return;
     setState(() => _sending = false);
     if (res case Err(:final message)) {
@@ -73,6 +81,12 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
     }
+  }
+
+  Future<void> _makeOffer() async {
+    final amount = await _promptForOfferAmount(context);
+    if (amount == null) return;
+    await _send(offerAmountMyr: amount);
   }
 
   @override
@@ -188,7 +202,13 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               },
             ),
           ),
-          _Composer(controller: _controller, sending: _sending, onSend: _send),
+          _Composer(
+            controller: _controller,
+            sending: _sending,
+            onSend: _send,
+            negotiable: listing?.negotiable ?? false,
+            onOffer: _makeOffer,
+          ),
         ],
       ),
     );
@@ -230,6 +250,11 @@ class _MessageBubble extends StatelessWidget {
     final isOffer =
         message.messageType == MessageType.offer &&
         message.offerAmountMyr != null;
+    // Suppress the auto-generated "Offer: RM X" body (composer left empty
+    // when the offer was sent) — the header line above already says it.
+    final showBody =
+        !isOffer ||
+        message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space12),
@@ -263,7 +288,8 @@ class _MessageBubble extends StatelessWidget {
                         style: text.headline.copyWith(color: fg),
                       ),
                     ),
-                  Text(message.body, style: text.body.copyWith(color: fg)),
+                  if (showBody)
+                    Text(message.body, style: text.body.copyWith(color: fg)),
                 ],
               ),
             ),
@@ -279,11 +305,15 @@ class _Composer extends StatelessWidget {
     required this.controller,
     required this.sending,
     required this.onSend,
+    required this.negotiable,
+    required this.onOffer,
   });
 
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
+  final bool negotiable;
+  final VoidCallback onOffer;
 
   @override
   Widget build(BuildContext context) {
@@ -307,6 +337,15 @@ class _Composer extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              if (negotiable)
+                IconButton(
+                  onPressed: sending ? null : onOffer,
+                  tooltip: 'Make an offer',
+                  icon: const Icon(
+                    Icons.local_offer_outlined,
+                    color: AppColors.primary,
+                  ),
+                ),
               Expanded(
                 child: TextField(
                   controller: controller,
@@ -345,4 +384,63 @@ class _Composer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Prompts for an integer MYR amount ("Make an offer"). Returns null if
+/// cancelled.
+Future<int?> _promptForOfferAmount(BuildContext context) {
+  final controller = TextEditingController();
+  return showDialog<int>(
+    context: context,
+    builder: (dialogContext) {
+      String? errorText;
+      return StatefulBuilder(
+        builder: (dialogContext, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: Text(
+              'Make an offer',
+              style: Theme.of(dialogContext).textTheme.headline,
+            ),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                prefixText: 'RM ',
+                hintText: 'Amount',
+                errorText: errorText,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  final value = int.tryParse(controller.text);
+                  if (value == null || value <= 0) {
+                    setState(() => errorText = 'Enter a valid amount.');
+                    return;
+                  }
+                  if (value > kMaxPriceMyr) {
+                    setState(
+                      () => errorText =
+                          'That’s too high. Enter an amount under '
+                          '${formatPrice(kMaxPriceMyr)}.',
+                    );
+                    return;
+                  }
+                  Navigator.pop(dialogContext, value);
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  ).whenComplete(controller.dispose);
 }
