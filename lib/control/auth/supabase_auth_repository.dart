@@ -25,9 +25,9 @@ class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
   final ProfileCacheRepository _cache;
 
-  static const String _profileColumns =
-      'id, email, first_name, last_name, dob, phone, state, interests, '
-      'avatar_url, created_at';
+  // The whole own row (RLS limits it to the caller's anyway) — resilient to
+  // columns added by later migrations, e.g. `role` from 0002.
+  static const String _profileColumns = '*';
 
   /// Public bucket for profile photos; `avatar_url` stores the object's
   /// public URL so it renders straight through `MediaImage` with no signing.
@@ -92,6 +92,7 @@ class SupabaseAuthRepository implements AuthRepository {
     state: row['state'] as String?,
     interests: _decodeInterests(row['interests']),
     avatarUrl: row['avatar_url'] as String?,
+    role: row['role'] as String? ?? 'user',
     createdAt:
         DateTime.tryParse(row['created_at'] as String? ?? '')?.toUtc() ??
         DateTime.now().toUtc(),

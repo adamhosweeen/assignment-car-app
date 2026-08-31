@@ -8,7 +8,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -23,6 +23,10 @@ class AppDatabase {
         if (oldVersion < 5) {
           // v5 adds the feed read-cache (offline/cold-start Buy feed).
           await _createListingCache(db);
+        }
+        if (oldVersion < 6) {
+          // v6 caches the profile's role (admin gate on the Profile hub).
+          await db.execute('ALTER TABLE profile_cache ADD COLUMN role TEXT');
         }
       },
       onCreate: (db, version) async {
@@ -125,6 +129,7 @@ class AppDatabase {
           state TEXT,
           interests_json TEXT,
           avatar_url TEXT,
+          role TEXT,
           created_at TEXT NOT NULL
         )
       ''');

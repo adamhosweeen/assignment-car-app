@@ -8,6 +8,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/validators.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
+import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Registration step 2 — name, date of birth (18+), phone number.
@@ -22,6 +23,8 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
   late final TextEditingController _firstName;
   late final TextEditingController _lastName;
   late final TextEditingController _phone;
+  final _lastNameFocus = FocusNode();
+  final _phoneFocus = FocusNode();
 
   @override
   void initState() {
@@ -37,6 +40,8 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
     _firstName.dispose();
     _lastName.dispose();
     _phone.dispose();
+    _lastNameFocus.dispose();
+    _phoneFocus.dispose();
     super.dispose();
   }
 
@@ -44,6 +49,7 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
       ref.read(registrationControllerProvider.notifier);
 
   Future<void> _pickDob() async {
+    FocusScope.of(context).unfocus();
     final now = DateTime.now();
     final latest = DateTime(now.year - 18, now.month, now.day);
     final current = ref.read(registrationControllerProvider).dob;
@@ -52,6 +58,7 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
       initialDate: current ?? DateTime(latest.year - 7),
       firstDate: DateTime(now.year - 100),
       lastDate: latest,
+      helpText: 'Date of birth',
     );
     if (picked != null) _notifier.setDob(picked);
   }
@@ -66,31 +73,84 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
 
     return SellStepScaffold(
       title: 'About you',
-      subtitle: 'Buyers and sellers see your name on listings and chats.',
+      subtitle: 'Sellers and buyers see your name on listings and chats.',
       children: [
-        const FieldLabel('First name'),
-        TextField(
-          controller: _firstName,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(hintText: 'e.g. Aiman'),
-          onChanged: _notifier.setFirstName,
+        AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const FieldLabel('First name'),
+                        TextField(
+                          controller: _firstName,
+                          autofocus: true,
+                          textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.givenName],
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(hintText: 'Aiman'),
+                          onChanged: _notifier.setFirstName,
+                          onSubmitted: (_) => _lastNameFocus.requestFocus(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const FieldLabel('Last name'),
+                        TextField(
+                          controller: _lastName,
+                          focusNode: _lastNameFocus,
+                          textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.familyName],
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(hintText: 'Rahman'),
+                          onChanged: _notifier.setLastName,
+                          onSubmitted: (_) => _phoneFocus.requestFocus(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space20),
+              const FieldLabel('Phone number'),
+              TextField(
+                controller: _phone,
+                focusNode: _phoneFocus,
+                keyboardType: TextInputType.phone,
+                autofillHints: const [AutofillHints.telephoneNumberNational],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  prefixText: '+60   ',
+                  hintText: '12 345 6789',
+                ),
+                onChanged: _notifier.setPhoneInput,
+              ),
+              if (phoneInvalid) ...[
+                const SizedBox(height: AppSpacing.space8),
+                Text(
+                  "That doesn't look like a Malaysian mobile number.",
+                  style: text.footnote.copyWith(color: AppColors.destructive),
+                ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.space20),
-        const FieldLabel('Last name'),
-        TextField(
-          controller: _lastName,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(hintText: 'e.g. Rahman'),
-          onChanged: _notifier.setLastName,
-        ),
-        const SizedBox(height: AppSpacing.space20),
+        const SizedBox(height: AppSpacing.space24),
+        const FieldLabel('Date of birth'),
         GroupedSection(
           children: [
             GroupedRow(
-              label: 'Date of birth',
+              label: 'Born on',
               value: s.dob == null ? 'Select' : formatDate(s.dob!),
               valueColor: s.dob == null ? AppColors.tertiaryLabel : null,
               showChevron: true,
@@ -98,32 +158,17 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
             ),
           ],
         ),
-        if (underage) ...[
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            'You must be 18 or older to use Garaj.',
-            style: text.footnote.copyWith(color: AppColors.destructive),
-          ),
-        ],
-        const SizedBox(height: AppSpacing.space20),
-        const FieldLabel('Phone number'),
-        TextField(
-          controller: _phone,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            prefixText: '+60   ',
-            hintText: '12-345 6789',
-          ),
-          onChanged: _notifier.setPhoneInput,
-        ),
-        if (phoneInvalid) ...[
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            "That doesn't look like a Malaysian mobile number.",
-            style: text.footnote.copyWith(color: AppColors.destructive),
-          ),
-        ],
+        const SizedBox(height: AppSpacing.space12),
+        underage
+            ? const InlineNotice(
+                kind: NoticeKind.error,
+                text: 'You must be 18 or older to use Garaj.',
+              )
+            : const InlineNotice(
+                text:
+                    'You need to be 18 or older. Your date of birth is never '
+                    'shown to other users.',
+              ),
       ],
     );
   }

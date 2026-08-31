@@ -231,6 +231,14 @@ class ProfileScreen extends ConsumerWidget {
                     showChevron: true,
                     onTap: () => context.push('/sellers'),
                   ),
+                  // Server-gated: the RPC refuses non-admins; this row is
+                  // only a shortcut for accounts the database says are admin.
+                  if (profile.isAdmin)
+                    GroupedRow(
+                      label: 'Admin',
+                      showChevron: true,
+                      onTap: () => context.push('/admin'),
+                    ),
                 ],
               ),
               const SizedBox(height: AppSpacing.space24),

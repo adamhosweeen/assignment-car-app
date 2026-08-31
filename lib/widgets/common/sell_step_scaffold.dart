@@ -10,11 +10,15 @@ class SellStepScaffold extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.eyebrow,
     required this.children,
   });
 
   final String title;
   final String? subtitle;
+
+  /// Small uppercase caption above the title, e.g. "Step 2 of 4".
+  final String? eyebrow;
   final List<Widget> children;
 
   @override
@@ -28,6 +32,13 @@ class SellStepScaffold extends StatelessWidget {
         AppSpacing.space32,
       ),
       children: [
+        if (eyebrow != null) ...[
+          Text(
+            eyebrow!.toUpperCase(),
+            style: text.caption.copyWith(color: AppColors.primary),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+        ],
         Text(title, style: text.title1),
         if (subtitle != null) ...[
           const SizedBox(height: AppSpacing.space8),

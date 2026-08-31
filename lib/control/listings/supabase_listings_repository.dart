@@ -110,20 +110,30 @@ class SupabaseListingsRepository implements ListingsRepository {
   }) {
     final controller = StreamController<List<Listing>>();
     RealtimeChannel? channel;
+    var emitted = false;
 
     Future<void> push() async {
       try {
         final data = await fetch().timeout(_fetchTimeout);
-        if (!controller.isClosed) controller.add(data);
+        if (!controller.isClosed) {
+          controller.add(data);
+          emitted = true;
+        }
         await onFetched?.call(data);
-      } catch (_) {
-        // Keep the last good (or cached) value on a transient error.
+      } catch (e) {
+        // If nothing was ever emitted, surface the failure so the screen
+        // shows its error state instead of loading forever. Once we have a
+        // good (or cached) value, keep it through transient errors.
+        if (!emitted && !controller.isClosed) controller.addError(e);
       }
     }
 
     controller
       ..onListen = () {
-        if (initial != null && initial.isNotEmpty) controller.add(initial);
+        if (initial != null && initial.isNotEmpty) {
+          controller.add(initial);
+          emitted = true;
+        }
         push();
         channel = _client.channel('$channelName-${newId()}')
           ..onPostgresChanges(

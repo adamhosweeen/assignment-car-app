@@ -7,6 +7,7 @@ import 'package:assignment/control/providers.dart';
 import 'package:assignment/views/auth/login_screen.dart';
 import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
+import 'package:assignment/views/auth/welcome_screen.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
@@ -14,6 +15,7 @@ import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
+import 'package:assignment/views/profile/admin_screen.dart';
 import 'package:assignment/views/profile/car_interests_screen.dart';
 import 'package:assignment/views/profile/edit_profile_screen.dart';
 import 'package:assignment/views/profile/inbox_screen.dart';
@@ -47,13 +49,16 @@ GoRouter goRouter(Ref ref) {
       final loc = state.matchedLocation;
       if (loc == '/splash') return null; // splash routes itself
       final inAuthFlow =
-          loc.startsWith('/login') || loc.startsWith('/register');
-      if (!signedIn) return inAuthFlow ? null : '/login';
+          loc.startsWith('/welcome') ||
+          loc.startsWith('/login') ||
+          loc.startsWith('/register');
+      if (!signedIn) return inAuthFlow ? null : '/welcome';
       if (inAuthFlow) return '/home/buy';
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterFlowScreen()),
       GoRoute(path: '/sell/new', builder: (_, _) => const SellFlowScreen()),
@@ -64,6 +69,7 @@ GoRouter goRouter(Ref ref) {
       ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
       GoRoute(path: '/sellers', builder: (_, _) => const SellerSearchScreen()),
+      GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
       GoRoute(
         path: '/seller/:id',
         builder: (_, state) =>

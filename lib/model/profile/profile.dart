@@ -20,11 +20,16 @@ abstract class Profile with _$Profile {
     String? state,
     @Default(CarInterests()) CarInterests interests,
     String? avatarUrl,
+    @Default('user') String role,
     required DateTime createdAt,
   }) = _Profile;
 
   factory Profile.fromJson(Map<String, dynamic> json) =>
       _$ProfileFromJson(json);
+
+  /// Role changes are blocked server-side (trigger); this only reflects what
+  /// the database says.
+  bool get isAdmin => role == 'admin';
 
   /// Full name, falling back to the email prefix so there is always something
   /// to show.

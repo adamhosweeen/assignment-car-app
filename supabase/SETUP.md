@@ -63,6 +63,34 @@ backend).
 - If your schema is already applied and you don't want a full reset, paste just
   the "Market insights" block from `0001_init.sql` first — it's additive.
 
+### 2e. Admin roles (`migrations/0002_admin_roles.sql`)
+- SQL Editor → paste all of
+  [`migrations/0002_admin_roles.sql`](migrations/0002_admin_roles.sql) → Run.
+  Additive and safe to re-run; apply **after** 0001.
+- Adds `profiles.role` (`'user'` default / `'admin'`), a trigger that blocks
+  role changes through the API (only an existing admin — or SQL run here in
+  the dashboard — can change one), and the `admin_user_stats()` function the
+  in-app admin screen calls. The function refuses non-admin callers.
+- Seed your first admin (dashboard SQL, one line — replace the email):
+  ```sql
+  update public.profiles set role = 'admin' where email = 'you@example.com';
+  ```
+- In the app, that account then shows an **Admin** row on the Profile tab
+  (log out/in, or pull-to-refresh Profile, to pick up the new role).
+
+### 2f. Reports & bans (`migrations/0003_reports_bans.sql`)
+- SQL Editor → paste all of
+  [`migrations/0003_reports_bans.sql`](migrations/0003_reports_bans.sql) → Run.
+  Additive and safe to re-run; apply **after** 0002 (it uses `is_admin()`).
+- Adds the `reports` table (users report a seller with a title + description;
+  insert-own RLS, admins read via `admin_reports()`), `admin_resolve_report()`,
+  and `admin_set_banned()` — banning sets `auth.users.banned_until` so the
+  user cannot log in or refresh their session, and flips `profiles.banned`,
+  which hides their active listings from buyers and removes them from seller
+  search. Unbanning reverses all of it.
+- Also recreates `admin_user_stats()` to include the `banned` column, so run
+  this after 0002 even on a fresh project.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live
