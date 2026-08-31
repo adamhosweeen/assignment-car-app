@@ -17,6 +17,7 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
+import 'package:assignment/widgets/listing/status_badge.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// Standalone listing detail, reachable from the Buy feed and My Listings
@@ -121,6 +122,10 @@ class _DetailScaffold extends ConsumerWidget {
                     if (listing.negotiable) ...[
                       const SizedBox(width: AppSpacing.space12),
                       const _NegotiableChip(),
+                    ],
+                    if (listing.status == ListingStatus.sold) ...[
+                      const SizedBox(width: AppSpacing.space12),
+                      StatusBadge(status: listing.status),
                     ],
                   ],
                 ),

@@ -8,6 +8,7 @@ import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/control/providers.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/message.dart';
+import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -87,7 +88,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       appBar: AppBar(
         title: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => context.push('/listing/${conversation.listingId}'),
+          onTap: () {
+            // listingByIdProvider is a one-shot fetch, not realtime — this
+            // screen keeps watching it underneath the pushed route, so
+            // without invalidating first the detail screen would just reuse
+            // whatever was cached from before the listing was marked sold.
+            ref.invalidate(listingByIdProvider(conversation.listingId));
+            context.push('/listing/${conversation.listingId}');
+          },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -95,7 +103,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               Text(profile?.name ?? 'Chat', style: text.headline),
               if (listing != null)
                 Text(
-                  listing.title,
+                  listing.status == ListingStatus.sold
+                      ? '${listing.title} · Sold'
+                      : listing.title,
                   style: text.footnote.copyWith(
                     color: AppColors.secondaryLabel,
                   ),

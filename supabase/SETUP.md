@@ -58,6 +58,16 @@ backend).
   policy in `0001_init.sql` can't do via a plain client-side update). Without
   it, Chat has no realtime updates and unread dots never clear.
 
+### 2g. Chat listing visibility
+- SQL Editor → paste [`migrations/0003_chat_listing_visibility.sql`](migrations/0003_chat_listing_visibility.sql) → Run.
+- Paste-alone safe and re-runnable — adds a second `listings`/`listing_media`
+  SELECT policy so a conversation's buyer and seller can still see the listing
+  (status, photos, everything) after it's marked sold or deleted, instead of
+  the row vanishing behind the frozen `status = 'active' or seller_id =
+  auth.uid()` policy in `0001_init.sql`. Without it, tapping the listing name
+  in a chat thread for a car that's since been marked sold shows "This listing
+  is no longer available." instead of the real "Sold" state.
+
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).
