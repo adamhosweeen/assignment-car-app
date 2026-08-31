@@ -53,6 +53,28 @@ abstract final class AppColors {
 
   /// iOS tertiary system fill — the track behind a segmented control.
   static const Color fill = Color(0x1F767680);
+
+  /// [destructive] at 12% — tinted background for inline error notices.
+  static const Color destructiveMuted = Color(0x1FFF3B30);
+
+  /// [success] at 12% — tinted background for inline success notices.
+  static const Color successMuted = Color(0x1F34C759);
+
+  /// Password-strength "okay" tier (between destructive and success).
+  static const Color warning = Color(0xFFFF9500);
+
+  // ── Auth hero (welcome / login / register headers) ────────────────────────
+  /// Black hero background on the auth screens.
+  static const Color hero = Color(0xFF000000);
+
+  /// Text and icons drawn on [hero].
+  static const Color onHero = Color(0xFFFFFFFF);
+
+  /// Supporting text on [hero] — white at 60%.
+  static const Color onHeroSecondary = Color(0x99FFFFFF);
+
+  /// Decorative blob shapes on [hero] — white at ~8%.
+  static const Color heroBlob = Color(0x14FFFFFF);
 }
 
 /// A single colour token, used to drive the design demo.
@@ -84,6 +106,27 @@ const List<AppColorToken> kColorTokens = [
   ),
   AppColorToken('destructive', AppColors.destructive, 'Delete, errors'),
   AppColorToken('success', AppColors.success, 'Sold badge, confirmations'),
+  AppColorToken('warning', AppColors.warning, 'Password strength "okay"'),
+  AppColorToken('primaryMuted', AppColors.primaryMuted, 'Tinted fills, info'),
+  AppColorToken(
+    'destructiveMuted',
+    AppColors.destructiveMuted,
+    'Inline error notice fill',
+  ),
+  AppColorToken(
+    'successMuted',
+    AppColors.successMuted,
+    'Inline success notice fill',
+  ),
+  AppColorToken('fill', AppColors.fill, 'Segmented-control track'),
+  AppColorToken('hero', AppColors.hero, 'Auth hero background'),
+  AppColorToken('onHero', AppColors.onHero, 'Text on the auth hero'),
+  AppColorToken(
+    'onHeroSecondary',
+    AppColors.onHeroSecondary,
+    'Supporting text on the auth hero',
+  ),
+  AppColorToken('heroBlob', AppColors.heroBlob, 'Auth hero blob shapes'),
 ];
 
 /// Semantic iOS type styles mapped onto the Material [TextTheme] slots.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,7 +14,9 @@ import 'package:assignment/views/auth/register_steps/step_about_you.dart';
 import 'package:assignment/views/auth/register_steps/step_account.dart';
 import 'package:assignment/views/auth/register_steps/step_interests.dart';
 import 'package:assignment/views/auth/register_steps/step_location.dart';
+import 'package:assignment/widgets/auth/auth_hero.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
+import 'package:assignment/widgets/common/inline_notice.dart';
 
 const int _lastStep = 3;
 
@@ -30,8 +33,12 @@ class RegisterFlowScreen extends ConsumerStatefulWidget {
 class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
   int _step = 0;
   bool _submitting = false;
+  String? _error;
 
-  void _goTo(int step) => setState(() => _step = step.clamp(0, _lastStep));
+  void _goTo(int step) => setState(() {
+    _step = step.clamp(0, _lastStep);
+    _error = null;
+  });
 
   void _back() {
     if (_step == 0) {
@@ -50,7 +57,11 @@ class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _submitting = true);
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
     final s = ref.read(registrationControllerProvider);
     final data = ref.read(registrationControllerProvider.notifier).buildData();
     final res = await ref
@@ -63,10 +74,10 @@ class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
         ref.invalidate(registrationControllerProvider);
         setState(() => _submitting = false);
       case Err(:final message):
-        setState(() => _submitting = false);
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(message)));
+        setState(() {
+          _submitting = false;
+          _error = message;
+        });
     }
   }
 
@@ -100,41 +111,110 @@ class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
       _ => const StepInterests(),
     };
 
+    final text = Theme.of(context).textTheme;
+
     return PopScope(
       canPop: _step == 0,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: Icon(_step == 0 ? Icons.close : Icons.arrow_back_ios_new),
-            onPressed: _back,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: AppColors.surface,
+          body: Column(
+            children: [
+              AuthHero(
+                height: AppSpacing.heroCompactHeight,
+                onBack: _back,
+                backIcon: _step == 0 ? Icons.close : Icons.arrow_back_ios_new,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create account',
+                      style: text.title3.copyWith(color: AppColors.onHero),
+                    ),
+                    const SizedBox(height: AppSpacing.space4),
+                    Text(
+                      'Step ${_step + 1} of ${_lastStep + 1}',
+                      style: text.footnote.copyWith(
+                        color: AppColors.onHeroSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space12),
+                    _StepProgress(step: _step, total: _lastStep + 1),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: AuthSheet(padding: EdgeInsets.zero, child: content),
+              ),
+            ],
           ),
-          title: const Text('Create account'),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(AppSpacing.space4),
-            child: LinearProgressIndicator(
-              value: (_step + 1) / (_lastStep + 1),
-              minHeight: AppSpacing.space4,
-              backgroundColor: AppColors.separator,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        body: SafeArea(child: content),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            child: FilledButton(
-              onPressed: (!_submitting && _canAdvance(s)) ? _next : null,
-              child: _submitting
-                  ? const ButtonSpinner()
-                  : Text(isLast ? 'Create account' : 'Next'),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.screenPadding),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_error != null) ...[
+                    InlineNotice(text: _error!, kind: NoticeKind.error),
+                    const SizedBox(height: AppSpacing.space12),
+                  ],
+                  FilledButton(
+                    style: AuthButtons.dark(context),
+                    onPressed: (!_submitting && _canAdvance(s)) ? _next : null,
+                    child: _submitting
+                        ? const ButtonSpinner()
+                        : Text(isLast ? 'Create account' : 'Continue'),
+                  ),
+                  if (isLast) ...[
+                    const SizedBox(height: AppSpacing.space8),
+                    Text(
+                      'By creating an account you agree to list honestly and '
+                      'keep your contact details up to date.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.caption.copyWith(
+                        color: AppColors.tertiaryLabel,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Four thin segments showing how far through the flow the user is.
+class _StepProgress extends StatelessWidget {
+  const _StepProgress({required this.step, required this.total});
+
+  final int step;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < total; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpacing.space4),
+          Expanded(
+            child: Container(
+              height: AppSpacing.strengthBarHeight,
+              decoration: BoxDecoration(
+                color: i <= step ? AppColors.onHero : AppColors.heroBlob,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusBar),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

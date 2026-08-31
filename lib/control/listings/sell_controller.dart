@@ -4,6 +4,7 @@ import 'package:assignment/control/providers.dart';
 import 'package:assignment/utils/ids.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
+import 'package:assignment/model/malaysian_states.dart';
 
 part 'sell_controller.g.dart';
 
@@ -78,8 +79,22 @@ class SellController extends _$SellController {
       _commit(state.copyWith(roadTaxExpiry: d));
 
   // ── Registration & location ─────────────────────────────────────────────
-  Future<void> setRegion(RegistrationRegion? r) =>
-      _commit(state.copyWith(registrationRegion: r));
+  // The state picker is filtered by region, so a region change that no longer
+  // fits the chosen state clears it.
+  Future<void> setRegion(RegistrationRegion? r) {
+    final draft = state;
+    final keepState =
+        r != null &&
+        draft.state != null &&
+        MalaysianStates.inRegion(r).contains(draft.state);
+    return _commit(
+      draft.copyWith(
+        registrationRegion: r,
+        state: keepState ? draft.state : null,
+      ),
+    );
+  }
+
   Future<void> setStateName(String? s) => _commit(state.copyWith(state: s));
   Future<void> setCity(String? c) => _commit(state.copyWith(city: c));
 

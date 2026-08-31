@@ -1,6 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
+import 'package:assignment/control/admin/admin_repository.dart';
+import 'package:assignment/control/admin/supabase_admin_repository.dart';
 import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
@@ -19,6 +21,8 @@ import 'package:assignment/control/notifications/supabase_notifications_reposito
 import 'package:assignment/control/profiles/profiles_cache_repository.dart';
 import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/control/profiles/supabase_profiles_repository.dart';
+import 'package:assignment/control/reports/reports_repository.dart';
+import 'package:assignment/control/reports/supabase_reports_repository.dart';
 import 'package:assignment/model/profile/profile.dart';
 
 part 'providers.g.dart';
@@ -99,6 +103,16 @@ ChatRepository chatRepository(Ref ref) => SupabaseChatRepository(
   Supabase.instance.client,
   ref.watch(chatCacheRepositoryProvider),
 );
+
+/// Admin-only reads (Profile → Admin); the server rejects non-admin callers.
+@Riverpod(keepAlive: true)
+AdminRepository adminRepository(Ref ref) =>
+    SupabaseAdminRepository(Supabase.instance.client);
+
+/// Filing a report against another user (seller page).
+@Riverpod(keepAlive: true)
+ReportsRepository reportsRepository(Ref ref) =>
+    SupabaseReportsRepository(Supabase.instance.client);
 
 @Riverpod(keepAlive: true)
 DraftRepository draftRepository(Ref ref) {

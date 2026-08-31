@@ -113,24 +113,29 @@ class SupabaseListingsRepository implements ListingsRepository {
   }) {
     final controller = StreamController<List<Listing>>();
     RealtimeChannel? channel;
-    var hasData = false;
+    var emitted = false;
 
     Future<void> push() async {
       try {
         final data = await fetch().timeout(_fetchTimeout);
-        hasData = true;
-        if (!controller.isClosed) controller.add(data);
+        if (!controller.isClosed) {
+          controller.add(data);
+          emitted = true;
+        }
         await onFetched?.call(data);
       } catch (e) {
-        if (!hasData && !controller.isClosed) controller.addError(e);
+        // If nothing was ever emitted, surface the failure so the screen
+        // shows its error state instead of loading forever. Once we have a
+        // good (or cached) value, keep it through transient errors.
+        if (!emitted && !controller.isClosed) controller.addError(e);
       }
     }
 
     controller
       ..onListen = () {
         if (initial != null && initial.isNotEmpty) {
-          hasData = true;
           controller.add(initial);
+          emitted = true;
         }
         push();
         channel = _client.channel('$channelName-${newId()}')
@@ -226,6 +231,20 @@ class SupabaseListingsRepository implements ListingsRepository {
 
   @override
   Future<Result<void>> markSold(String id) => _setStatus(id, 'sold');
+
+  @override
+  Future<Result<void>> buy(String id) async {
+    try {
+      await _client.rpc('buy_listing', params: {'p_listing_id': id});
+      return const Ok(null);
+    } on PostgrestException catch (e) {
+      // buy_listing() raises this when the car is no longer active.
+      if (e.message.contains('no longer available')) return Err(e.message);
+      return Err(mapError(e));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
 
   @override
   Future<Result<void>> softDelete(String id) => _setStatus(id, 'deleted');

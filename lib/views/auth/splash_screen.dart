@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -26,24 +27,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
     final signedIn = ref.read(authRepositoryProvider).currentUser != null;
-    context.go(signedIn ? '/home/buy' : '/login');
+    context.go(signedIn ? '/home/buy' : '/welcome');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.directions_car_filled,
-              size: AppSpacing.iconXl,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            Text('Garaj', style: Theme.of(context).textTheme.largeTitle),
-          ],
+    // Black like the Welcome screen it hands over to, so the signed-out
+    // cold start reads as one continuous surface.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: AppColors.hero,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.directions_car_filled,
+                size: AppSpacing.iconXl,
+                color: AppColors.onHero,
+              ),
+              const SizedBox(height: AppSpacing.space16),
+              Text(
+                'Garaj',
+                style: Theme.of(
+                  context,
+                ).textTheme.largeTitle.copyWith(color: AppColors.onHero),
+              ),
+            ],
+          ),
         ),
       ),
     );

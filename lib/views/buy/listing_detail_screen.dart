@@ -62,7 +62,7 @@ class _DetailScaffold extends ConsumerWidget {
     await ref.read(draftRepositoryProvider).save(draftFromListing(listing));
     ref.invalidate(sellControllerProvider);
     if (!context.mounted) return;
-    context.push('/sell/new');
+    context.push('/sell/new', extra: true);
   }
 
   Future<void> _markSold(BuildContext context, WidgetRef ref) async {
@@ -156,18 +156,18 @@ class _DetailScaffold extends ConsumerWidget {
                           ? formatDate(listing.roadTaxExpiry!)
                           : '—',
                     ),
-                    GroupedRow(
-                      label: 'Registration',
-                      value: listing.registrationRegion.label,
-                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space20),
                 GroupedSection(
                   header: 'Location',
                   children: [
-                    GroupedRow(label: 'City', value: listing.city),
+                    GroupedRow(
+                      label: 'Region',
+                      value: listing.registrationRegion.label,
+                    ),
                     GroupedRow(label: 'State', value: listing.state),
+                    GroupedRow(label: 'City', value: listing.city),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space20),
@@ -205,6 +205,7 @@ class _DetailScaffold extends ConsumerWidget {
             onEdit: () => _edit(context, ref),
             onMarkSold: () => _markSold(context, ref),
             onChat: () => _openChat(context, ref),
+            onBuy: () => context.push('/listing/${listing.id}/buy'),
           ),
         ),
       ),
@@ -258,6 +259,7 @@ class _Actions extends StatelessWidget {
     required this.onEdit,
     required this.onMarkSold,
     required this.onChat,
+    required this.onBuy,
   });
 
   final Listing listing;
@@ -265,16 +267,35 @@ class _Actions extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onMarkSold;
   final VoidCallback onChat;
+  final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
     if (!isSeller) {
-      return SizedBox(
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: onChat,
-          child: const Text('Chat with seller'),
-        ),
+      final available = listing.status == ListingStatus.active;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: available ? onBuy : null,
+              child: Text(available ? 'Buy this car' : 'Sold'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: AppColors.primary,
+              ),
+              onPressed: onChat,
+              child: const Text('Chat with seller'),
+            ),
+          ),
+        ],
       );
     }
     final canMarkSold = listing.status == ListingStatus.active;

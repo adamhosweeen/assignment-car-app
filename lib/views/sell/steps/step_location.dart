@@ -10,7 +10,8 @@ import 'package:assignment/model/malaysian_states.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 5 — registration region, state, city.
+/// Step 5 — region (West / East Malaysia), state, city. The state list is
+/// filtered by the chosen region.
 class StepLocation extends ConsumerStatefulWidget {
   const StepLocation({super.key});
 
@@ -40,7 +41,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
   Future<void> _pickRegion() async {
     final picked = await showSelectSheet<RegistrationRegion>(
       context: context,
-      title: 'Registration region',
+      title: 'Region',
       options: RegistrationRegion.values,
       labelOf: (r) => r.label,
       selected: ref.read(sellControllerProvider).registrationRegion,
@@ -49,10 +50,12 @@ class _StepLocationState extends ConsumerState<StepLocation> {
   }
 
   Future<void> _pickState() async {
+    final region = ref.read(sellControllerProvider).registrationRegion;
+    if (region == null) return;
     final picked = await showSelectSheet<String>(
       context: context,
       title: 'State',
-      options: MalaysianStates.all,
+      options: MalaysianStates.inRegion(region),
       labelOf: (s) => s,
       selected: ref.read(sellControllerProvider).state,
     );
@@ -65,13 +68,12 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     const placeholder = AppColors.tertiaryLabel;
     return SellStepScaffold(
       title: 'Registration & location',
-      subtitle:
-          'Where the car is registered can differ from where you are selling it.',
+      subtitle: 'Pick the region first — the state list follows from it.',
       children: [
         GroupedSection(
           children: [
             GroupedRow(
-              label: 'Registration region',
+              label: 'Region',
               value: draft.registrationRegion?.label ?? 'Select',
               valueColor: draft.registrationRegion == null ? placeholder : null,
               showChevron: true,
@@ -82,7 +84,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
               value: draft.state ?? 'Select',
               valueColor: draft.state == null ? placeholder : null,
               showChevron: true,
-              onTap: _pickState,
+              onTap: draft.registrationRegion == null ? null : _pickState,
             ),
           ],
         ),

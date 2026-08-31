@@ -6,10 +6,12 @@ import 'package:assignment/model/malaysian_states.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
+import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Registration step 3 — where the user is, via GPS or the state picker.
+/// Confirms the result inline so the user knows what was detected.
 class StepPickLocation extends ConsumerWidget {
   const StepPickLocation({super.key});
 
@@ -29,11 +31,13 @@ class StepPickLocation extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(registrationControllerProvider);
-    final text = Theme.of(context).textTheme;
+    final notifier = ref.read(registrationControllerProvider.notifier);
 
     return SellStepScaffold(
       title: 'Where are you?',
-      subtitle: 'We use this to show you cars for sale near you.',
+      subtitle:
+          'We show cars near you first and tell sellers roughly where '
+          'buyers are — only your state, never your address.',
       children: [
         GroupedSection(
           children: [
@@ -45,35 +49,47 @@ class StepPickLocation extends ConsumerWidget {
                   ? const SizedBox(
                       width: AppSpacing.iconMd,
                       height: AppSpacing.iconMd,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: AppSpacing.avatarRingWidth,
+                      ),
                     )
                   : const Icon(
                       Icons.my_location,
                       size: AppSpacing.iconMd,
                       color: AppColors.primary,
                     ),
-              onTap: s.detectingLocation
-                  ? null
-                  : ref
-                        .read(registrationControllerProvider.notifier)
-                        .detectLocation,
+              onTap: s.detectingLocation ? null : notifier.detectLocation,
             ),
             GroupedRow(
               label: 'State',
-              value: s.stateName ?? 'Select',
+              value: s.stateName ?? 'Choose manually',
               valueColor: s.stateName == null ? AppColors.tertiaryLabel : null,
               showChevron: true,
               onTap: () => _pickState(context, ref),
             ),
           ],
         ),
-        if (s.locationFailed) ...[
-          const SizedBox(height: AppSpacing.space12),
-          Text(
-            "We couldn't detect your location — pick your state above.",
-            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+        const SizedBox(height: AppSpacing.space12),
+        if (s.stateName != null)
+          InlineNotice(
+            kind: NoticeKind.success,
+            text:
+                'Set to ${s.stateName}. You can change it any time in My '
+                'Info.',
+          )
+        else if (s.locationFailed)
+          const InlineNotice(
+            kind: NoticeKind.error,
+            text:
+                'We couldn’t detect your location — choose your state '
+                'from the list instead.',
+          )
+        else
+          const InlineNotice(
+            text:
+                'Location is used for the “near you” recommendations and '
+                'market insights for your state.',
           ),
-        ],
       ],
     );
   }

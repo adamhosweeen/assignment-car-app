@@ -50,7 +50,7 @@ plus its SQL block(s) and its section(s) in the docs.
 
 | Module | `lib/control/` | `lib/model/` | `lib/widgets/` | `lib/views/` | SQL (in `0001_init.sql`, frozen — new work = new `000N_*.sql`) | Docs |
 |---|---|---|---|---|---|---|
-| **auth / profile** | `auth/` | `profile/`, `auth/` | `profile/` | `auth/`, `profile/` (hub, my_info, car_interests, edit_profile) | `profiles`, `handle_new_user`, Public profiles, avatars bucket, Account deletion | V1_SPEC §1 profiles, §4.1–4.2, §4.8 |
+| **auth / profile** | `auth/`, `admin/`, `reports/` | `profile/`, `auth/`, `admin/`, `report/` | `profile/` | `auth/`, `profile/` (hub, my_info, car_interests, edit_profile, admin_users, admin_reports) | `profiles`, `handle_new_user`, Public profiles, avatars bucket, Account deletion, `0002_admin_roles.sql`, `0003_reports_bans.sql` | V1_SPEC §1 profiles, §4.1–4.2, §4.8 |
 | **buy / listings** | `listings/` | `listing/` | `listing/` | `buy/`, `sell/` | `listings`, `listing_media`, listing-media bucket, Realtime (listings) | V1_SPEC §3, §4.4–4.7, §4.10 |
 | **profiles (public)** | `profiles/` | `profile/public_profile` | `profile/seller_row` | `profile/seller_search`, `profile/seller_profile` | Public profiles | V1_SPEC §4.10 |
 | **insights** | `insights/` | `insights/` | `insights/` | `profile/market_insights` | Market insights (`car_popularity`) + `supabase/seed/`, `tool/` | V1_SPEC §4.9 |

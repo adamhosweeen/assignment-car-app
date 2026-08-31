@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,10 +8,14 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/validators.dart';
+import 'package:assignment/widgets/auth/auth_hero.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
+import 'package:assignment/widgets/common/inline_notice.dart';
+import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Login with email and password. New users branch off to the multi-step
-/// registration flow.
+/// Login with email and password: black hero band up top, the form on a
+/// white rounded sheet below. Scrolls, so the keyboard never squeezes the
+/// layout.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,6 +26,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _obscure = true;
   bool _loading = false;
   String? _error;
@@ -29,6 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -37,7 +44,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _passwordController.text.isNotEmpty;
 
   Future<void> _logIn() async {
-    if (!_canSubmit) return;
+    if (!_canSubmit || _loading) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _loading = true;
       _error = null;
@@ -61,74 +69,159 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _back() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/welcome');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return Scaffold(
-      appBar: AppBar(),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.screenPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Welcome back', style: text.title1),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Log in with your email to keep buying and selling.',
-                style: text.subhead.copyWith(color: AppColors.secondaryLabel),
-              ),
-              const SizedBox(height: AppSpacing.space24),
-              TextField(
-                controller: _emailController,
-                autofocus: true,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                textInputAction: TextInputAction.next,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(hintText: 'Email'),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscure,
-                autocorrect: false,
-                textInputAction: TextInputAction.done,
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => _logIn(),
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  suffixIcon: IconButton(
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: Icon(
-                      _obscure ? Icons.visibility_off : Icons.visibility,
-                      size: AppSpacing.iconMd,
-                      color: AppColors.tertiaryLabel,
-                    ),
+    final emailTouched = _emailController.text.isNotEmpty;
+    final emailInvalid = emailTouched && !isValidEmail(_emailController.text);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: AutofillGroup(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                AuthHero(
+                  onBack: _back,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome\nback',
+                        style: text.largeTitle.copyWith(
+                          color: AppColors.onHero,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.space8),
+                      Text(
+                        'Log in to keep buying and selling.',
+                        style: text.subhead.copyWith(
+                          color: AppColors.onHeroSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Text(
-                  _error!,
-                  style: text.footnote.copyWith(color: AppColors.destructive),
+                AuthSheet(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const FieldLabel('Email'),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        autofillHints: const [AutofillHints.email],
+                        textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() => _error = null),
+                        onSubmitted: (_) => _passwordFocus.requestFocus(),
+                        decoration: const InputDecoration(
+                          hintText: 'you@example.com',
+                        ),
+                      ),
+                      if (emailInvalid) ...[
+                        const SizedBox(height: AppSpacing.space8),
+                        Text(
+                          "That email address doesn't look right.",
+                          style: text.footnote.copyWith(
+                            color: AppColors.destructive,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.space16),
+                      const FieldLabel('Password'),
+                      TextField(
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        obscureText: _obscure,
+                        autocorrect: false,
+                        autofillHints: const [AutofillHints.password],
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) => setState(() => _error = null),
+                        onSubmitted: (_) => _logIn(),
+                        decoration: InputDecoration(
+                          hintText: 'Your password',
+                          suffixIcon: IconButton(
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              size: AppSpacing.iconMd,
+                              color: AppColors.tertiaryLabel,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: AppSpacing.space16),
+                        InlineNotice(text: _error!, kind: NoticeKind.error),
+                      ],
+                      const SizedBox(height: AppSpacing.space24),
+                      FilledButton(
+                        style: AuthButtons.dark(context),
+                        onPressed: (_canSubmit && !_loading) ? _logIn : null,
+                        child: _loading
+                            ? const ButtonSpinner()
+                            : const Text('Log in'),
+                      ),
+                      const SizedBox(height: AppSpacing.space24),
+                      const _OrDivider(),
+                      const SizedBox(height: AppSpacing.space24),
+                      OutlinedButton(
+                        style: AuthButtons.darkOutlined(context),
+                        onPressed: _loading
+                            ? null
+                            : () => context.push('/register'),
+                        child: const Text('Create an account'),
+                      ),
+                      const SizedBox(height: AppSpacing.space12),
+                    ],
+                  ),
                 ),
               ],
-              const Spacer(),
-              FilledButton(
-                onPressed: (_canSubmit && !_loading) ? _logIn : null,
-                child: _loading ? const ButtonSpinner() : const Text('Log in'),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              TextButton(
-                onPressed: _loading ? null : () => context.push('/register'),
-                child: const Text('New here? Create an account'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "── New here? ──" separator between the two actions.
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider(height: AppSpacing.hairline)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
+          child: Text(
+            'New here?',
+            style: Theme.of(
+              context,
+            ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+        ),
+        const Expanded(child: Divider(height: AppSpacing.hairline)),
+      ],
     );
   }
 }

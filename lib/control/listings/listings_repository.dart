@@ -28,6 +28,11 @@ abstract interface class ListingsRepository {
   /// Mark a listing `sold`.
   Future<Result<void>> markSold(String id);
 
+  /// Complete a (dummy) purchase: flip an `active` listing to `sold`. Unlike
+  /// [markSold] this works for any signed-in user, not just the seller — it
+  /// goes through the `buy_listing` SECURITY DEFINER function (migration 0002).
+  Future<Result<void>> buy(String id);
+
   /// Soft-delete a listing (`status = deleted`); never hard-delete.
   Future<Result<void>> softDelete(String id);
 }

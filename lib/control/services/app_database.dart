@@ -8,7 +8,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -25,11 +25,26 @@ class AppDatabase {
           await _createListingCache(db);
         }
         if (oldVersion < 6) {
-          // v6 adds the chat read-cache (offline/cold-start Chat tab + thread).
-          await _createChatCache(db);
+          // v6 caches the profile's role (admin gate on Profile hub).
+          await db.execute('ALTER TABLE profile_cache ADD COLUMN role TEXT');
+          // v6 also collapses registration_region to west/east (migration
+          // 0005). Map any in-progress draft; the feed cache just re-fetches.
+          await db.execute('''
+            UPDATE listing_draft SET registration_region = CASE registration_region
+              WHEN 'peninsular' THEN 'west'
+              WHEN 'sabah' THEN 'east'
+              WHEN 'sarawak' THEN 'east'
+              ELSE registration_region END
+          ''');
+          await db.execute('DELETE FROM listing_cache_media');
+          await db.execute('DELETE FROM listing_cache');
         }
         if (oldVersion < 7) {
-          // v7 adds the public-profile read-cache (offline names/avatars for
+          // v7 adds the chat read-cache (offline/cold-start Chat tab + thread).
+          await _createChatCache(db);
+        }
+        if (oldVersion < 8) {
+          // v8 adds the public-profile read-cache (offline names/avatars for
           // the other person in a chat thread, seller rows, seller pages).
           await _createPublicProfileCache(db);
         }
@@ -195,6 +210,7 @@ class AppDatabase {
           state TEXT,
           interests_json TEXT,
           avatar_url TEXT,
+          role TEXT,
           created_at TEXT NOT NULL
         )
       ''');

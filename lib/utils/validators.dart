@@ -11,6 +11,23 @@ bool isValidPassword(String input) =>
     input.contains(RegExp('[A-Za-z]')) &&
     input.contains(RegExp('[0-9]'));
 
+/// The three password rules shown as a checklist during registration.
+bool hasMinLength(String p) => p.length >= 8;
+bool hasLetter(String p) => p.contains(RegExp('[A-Za-z]'));
+bool hasDigit(String p) => p.contains(RegExp('[0-9]'));
+
+/// 0 = empty, 1 = weak (some rules), 2 = okay (all rules), 3 = strong
+/// (all rules + 12 chars + a symbol or mixed case). Drives the strength meter.
+int passwordStrength(String p) {
+  if (p.isEmpty) return 0;
+  if (!isValidPassword(p)) return 1;
+  final extra =
+      p.length >= 12 &&
+      (p.contains(RegExp('[^A-Za-z0-9]')) ||
+          (p.contains(RegExp('[a-z]')) && p.contains(RegExp('[A-Z]'))));
+  return extra ? 3 : 2;
+}
+
 /// Whether someone born on [dob] is 18 or older. [now] is injectable for
 /// tests; someone turns 18 on their 18th birthday, not the day after.
 bool isAtLeast18(DateTime dob, {DateTime? now}) {
