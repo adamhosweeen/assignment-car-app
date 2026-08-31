@@ -19,6 +19,11 @@ import 'package:assignment/widgets/profile/profile_avatar.dart';
 class ChatScreen extends ConsumerWidget {
   const ChatScreen({super.key});
 
+  Future<void> _refresh(WidgetRef ref) async {
+    ref.invalidate(conversationsProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(conversationsProvider);
@@ -48,23 +53,26 @@ class ChatScreen extends ConsumerWidget {
                         'listing to start one.',
                   );
                 }
-                return ListView(
-                  padding: const EdgeInsets.all(AppSpacing.screenPadding),
-                  children: [
-                    GroupedSection(
-                      children: [
-                        for (final thread in threads)
-                          _ConversationRow(
-                            thread: thread,
-                            currentUserId: uid,
-                            onTap: () => context.push(
-                              '/chat/${thread.conversation.id}',
-                              extra: thread.conversation,
+                return RefreshIndicator(
+                  onRefresh: () => _refresh(ref),
+                  child: ListView(
+                    padding: const EdgeInsets.all(AppSpacing.screenPadding),
+                    children: [
+                      GroupedSection(
+                        children: [
+                          for (final thread in threads)
+                            _ConversationRow(
+                              thread: thread,
+                              currentUserId: uid,
+                              onTap: () => context.push(
+                                '/chat/${thread.conversation.id}',
+                                extra: thread.conversation,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
