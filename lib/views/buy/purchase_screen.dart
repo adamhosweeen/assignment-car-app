@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/providers.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -13,6 +14,7 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
+import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// A dummy checkout for a car. Shows a fake order summary; confirming flips the
 /// listing to `sold` via [ListingsRepository.markSold] so it leaves the Buy
@@ -130,6 +132,8 @@ class _Checkout extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.space20),
+              _SellerCard(sellerId: listing.sellerId),
+              const SizedBox(height: AppSpacing.space20),
               GroupedSection(
                 header: 'Buyer',
                 children: [
@@ -160,6 +164,46 @@ class _Checkout extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Who you're buying from. Mirrors the seller row on the listing detail
+/// screen; tapping opens the seller's public page. Hidden if the profile
+/// can't be loaded — the checkout still works without it.
+class _SellerCard extends ConsumerWidget {
+  const _SellerCard({required this.sellerId});
+
+  final String sellerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(publicProfileProvider(sellerId));
+    return async.when(
+      loading: () => const GroupedSection(
+        header: 'Seller',
+        children: [
+          Padding(
+            padding: EdgeInsets.all(AppSpacing.space16),
+            child: SizedBox(
+              height: AppSpacing.space12,
+              child: ColoredBox(color: AppColors.fill),
+            ),
+          ),
+        ],
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (profile) => profile == null
+          ? const SizedBox.shrink()
+          : GroupedSection(
+              header: 'Seller',
+              children: [
+                SellerRow(
+                  profile: profile,
+                  onTap: () => context.push('/seller/${profile.id}'),
+                ),
+              ],
+            ),
     );
   }
 }
