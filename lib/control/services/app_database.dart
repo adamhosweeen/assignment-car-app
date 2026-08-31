@@ -25,8 +25,20 @@ class AppDatabase {
           await _createListingCache(db);
         }
         if (oldVersion < 6) {
-          // v6 caches the profile's role (admin gate on the Profile hub).
+          // v6 (master) caches the profile's role (admin gate on Profile hub).
           await db.execute('ALTER TABLE profile_cache ADD COLUMN role TEXT');
+          // v6 (Listing) collapses registration_region to west/east
+          // (migration 0005). Map any in-progress draft; the feed cache
+          // just re-fetches.
+          await db.execute('''
+            UPDATE listing_draft SET registration_region = CASE registration_region
+              WHEN 'peninsular' THEN 'west'
+              WHEN 'sabah' THEN 'east'
+              WHEN 'sarawak' THEN 'east'
+              ELSE registration_region END
+          ''');
+          await db.execute('DELETE FROM listing_cache_media');
+          await db.execute('DELETE FROM listing_cache');
         }
       },
       onCreate: (db, version) async {

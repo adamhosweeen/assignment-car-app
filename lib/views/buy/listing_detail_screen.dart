@@ -61,7 +61,7 @@ class _DetailScaffold extends ConsumerWidget {
     await ref.read(draftRepositoryProvider).save(draftFromListing(listing));
     ref.invalidate(sellControllerProvider);
     if (!context.mounted) return;
-    context.push('/sell/new');
+    context.push('/sell/new', extra: true);
   }
 
   Future<void> _markSold(BuildContext context, WidgetRef ref) async {
@@ -136,18 +136,18 @@ class _DetailScaffold extends ConsumerWidget {
                           ? formatDate(listing.roadTaxExpiry!)
                           : '—',
                     ),
-                    GroupedRow(
-                      label: 'Registration',
-                      value: listing.registrationRegion.label,
-                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space20),
                 GroupedSection(
                   header: 'Location',
                   children: [
-                    GroupedRow(label: 'City', value: listing.city),
+                    GroupedRow(
+                      label: 'Region',
+                      value: listing.registrationRegion.label,
+                    ),
                     GroupedRow(label: 'State', value: listing.state),
+                    GroupedRow(label: 'City', value: listing.city),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space20),
@@ -184,6 +184,7 @@ class _DetailScaffold extends ConsumerWidget {
                 listing.sellerId,
             onEdit: () => _edit(context, ref),
             onMarkSold: () => _markSold(context, ref),
+            onBuy: () => context.push('/listing/${listing.id}/buy'),
           ),
         ),
       ),
@@ -236,23 +237,36 @@ class _Actions extends StatelessWidget {
     required this.isSeller,
     required this.onEdit,
     required this.onMarkSold,
+    required this.onBuy,
   });
 
   final Listing listing;
   final bool isSeller;
   final VoidCallback onEdit;
   final VoidCallback onMarkSold;
+  final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
     if (!isSeller) {
-      // Chat is reserved for v2 (§4.7).
-      return SizedBox(
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: null,
-          child: const Text('Chat with seller · Coming soon'),
-        ),
+      // Buy opens the (dummy) checkout; chat is still reserved for v2 (§4.7).
+      final available = listing.status == ListingStatus.active;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: available ? onBuy : null,
+              child: Text(available ? 'Buy this car' : 'Sold'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          const TextButton(
+            onPressed: null,
+            child: Text('Chat with seller · Coming soon'),
+          ),
+        ],
       );
     }
     final canMarkSold = listing.status == ListingStatus.active;

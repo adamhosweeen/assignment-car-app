@@ -230,6 +230,20 @@ class SupabaseListingsRepository implements ListingsRepository {
   Future<Result<void>> markSold(String id) => _setStatus(id, 'sold');
 
   @override
+  Future<Result<void>> buy(String id) async {
+    try {
+      await _client.rpc('buy_listing', params: {'p_listing_id': id});
+      return const Ok(null);
+    } on PostgrestException catch (e) {
+      // buy_listing() raises this when the car is no longer active.
+      if (e.message.contains('no longer available')) return Err(e.message);
+      return Err(mapError(e));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
   Future<Result<void>> softDelete(String id) => _setStatus(id, 'deleted');
 
   Future<Result<void>> _setStatus(String id, String status) async {

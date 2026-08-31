@@ -13,7 +13,7 @@ enum FuelType { petrol, diesel, hybrid, electric }
 
 enum BodyType { sedan, hatchback, suv, mpv, pickup, coupe, other }
 
-enum RegistrationRegion { peninsular, sabah, sarawak }
+enum RegistrationRegion { west, east }
 
 enum MediaType { photo, video }
 
@@ -50,9 +50,8 @@ extension BodyTypeLabel on BodyType {
 
 extension RegistrationRegionLabel on RegistrationRegion {
   String get label => switch (this) {
-    RegistrationRegion.peninsular => 'Peninsular Malaysia',
-    RegistrationRegion.sabah => 'Sabah',
-    RegistrationRegion.sarawak => 'Sarawak',
+    RegistrationRegion.west => 'West Malaysia',
+    RegistrationRegion.east => 'East Malaysia',
   };
 }
 

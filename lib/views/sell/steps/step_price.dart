@@ -50,8 +50,21 @@ class _StepPriceState extends ConsumerState<StepPrice> {
           controller: _price,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            prefixText: 'RM  ',
+          decoration: InputDecoration(
+            // `prefixText` is hidden until the field is focused or has text,
+            // so "RM" would vanish on an empty, unfocused field. A prefixIcon
+            // is always shown.
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.space12,
+                right: AppSpacing.space8,
+              ),
+              child: Text('RM', style: Theme.of(context).textTheme.body),
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
             hintText: '48000',
           ),
           onChanged: (v) => _notifier.setPrice(int.tryParse(v)),

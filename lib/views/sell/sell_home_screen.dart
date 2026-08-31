@@ -26,7 +26,11 @@ class SellHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
-  void _startSelling() => context.push('/sell/new');
+  /// Bottom padding so the last list row can scroll clear of the FAB.
+  static const double _fabClearance = 88;
+
+  void _startSelling({bool editing = false}) =>
+      context.push('/sell/new', extra: editing);
 
   Future<void> _discardDraft() async {
     await ref.read(draftRepositoryProvider).clear();
@@ -50,7 +54,7 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
     ref.invalidate(sellControllerProvider);
     if (!mounted) return;
     setState(() {});
-    _startSelling();
+    _startSelling(editing: true);
   }
 
   Future<void> _delete(Listing l) async {
@@ -142,6 +146,18 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('My Listings')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _startSelling,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        shape: const CircleBorder(),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        tooltip: 'Sell your car',
+        child: const Icon(Icons.add),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => _MessageState(
@@ -159,28 +175,25 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
           final isEmpty = active.isEmpty && sold.isEmpty;
 
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding,
+              AppSpacing.screenPadding,
+              AppSpacing.screenPadding,
+              _fabClearance,
+            ),
             children: [
               if (hasDraft) ...[
                 _ResumeBanner(
                   onContinue: _startSelling,
                   onDiscard: _discardDraft,
                 ),
-                const SizedBox(height: AppSpacing.space16),
+                const SizedBox(height: AppSpacing.space24),
               ],
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _startSelling,
-                  child: const Text('Sell your car'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space24),
               if (isEmpty)
                 const _MessageState(
                   icon: Icons.directions_car_outlined,
                   title: "You haven't listed a car yet",
-                  message: 'Tap “Sell your car” to create your first listing.',
+                  message: 'Tap + to create your first listing.',
                 )
               else ...[
                 if (active.isNotEmpty) ...[

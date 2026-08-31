@@ -91,6 +91,23 @@ backend).
 - Also recreates `admin_user_stats()` to include the `banned` column, so run
   this after 0002 even on a fresh project.
 
+### 2g. Buy checkout (dummy) (`migrations/0004_buy_listing.sql`)
+- SQL Editor → paste [`migrations/0004_buy_listing.sql`](migrations/0004_buy_listing.sql) → Run.
+  Additive and re-runnable (`create or replace`); apply **after** 0001.
+- Creates the `buy_listing(uuid)` SECURITY DEFINER function. The Buy button on a
+  listing calls it to flip an `active` listing to `sold`. Without it the
+  purchase appears to succeed but the RLS `listings_update_own` policy blocks a
+  non-seller's update, so the car stays in the Buy feed.
+
+### 2h. Region West / East (`migrations/0005_region_west_east.sql`)
+- SQL Editor → paste [`migrations/0005_region_west_east.sql`](migrations/0005_region_west_east.sql) → Run.
+  Additive and re-runnable; apply **after** 0001.
+- Collapses `listings.registration_region` from `{peninsular, sabah, sarawak}`
+  to `{west, east}` (maps existing rows) and swaps the CHECK constraint. The
+  sell form now picks a region first and filters the state list by it. Run
+  this before selling with an app build that includes the change, or publish
+  fails the constraint.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live
