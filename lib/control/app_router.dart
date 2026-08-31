@@ -12,6 +12,7 @@ import 'package:assignment/views/chat/chat_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
+import 'package:assignment/views/buy/purchase_screen.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
 import 'package:assignment/views/profile/car_interests_screen.dart';
@@ -61,6 +62,11 @@ GoRouter goRouter(Ref ref) {
         path: '/listing/:id',
         builder: (_, state) =>
             ListingDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/listing/:id/buy',
+        builder: (_, state) =>
+            PurchaseScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
       GoRoute(path: '/sellers', builder: (_, _) => const SellerSearchScreen()),
