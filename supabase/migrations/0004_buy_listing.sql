@@ -1,4 +1,4 @@
--- ═══ 0002 · buy_listing (module: buy) ═════════════════════════════════════════
+-- ═══ 0004 · buy_listing (module: buy) ═════════════════════════════════════════
 -- Dummy-checkout support. A buyer is not the seller, so the
 -- "listings_update_own" RLS policy in 0001 silently blocks them from changing a
 -- listing (the UPDATE matches zero rows and returns no error). This

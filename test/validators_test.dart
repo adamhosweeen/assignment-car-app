@@ -28,6 +28,27 @@ void main() {
       expect(isValidPassword('abcdefgh'), isFalse); // no digit
       expect(isValidPassword('12345678'), isFalse); // no letter
     });
+
+    test('passwordStrength tiers agree with isValidPassword', () {
+      expect(passwordStrength(''), 0);
+      expect(passwordStrength('abc'), 1); // some rules → weak
+      expect(passwordStrength('abcd1234'), 2); // all rules → okay
+      expect(passwordStrength('abcdefgh1234'), 2); // long but plain
+      expect(passwordStrength('abcdefgh123!'), 3); // long + symbol
+      expect(passwordStrength('Abcdefgh1234'), 3); // long + mixed case
+      for (final p in ['abc', 'abcd1234', 'Abcdefgh1234']) {
+        expect(passwordStrength(p) >= 2, isValidPassword(p));
+      }
+    });
+
+    test('rule helpers', () {
+      expect(hasMinLength('1234567'), isFalse);
+      expect(hasMinLength('12345678'), isTrue);
+      expect(hasLetter('1234'), isFalse);
+      expect(hasLetter('12a4'), isTrue);
+      expect(hasDigit('abcd'), isFalse);
+      expect(hasDigit('ab3d'), isTrue);
+    });
   });
 
   group('isAtLeast18', () {

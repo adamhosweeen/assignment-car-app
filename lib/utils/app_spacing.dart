@@ -120,6 +120,22 @@ abstract final class AppSpacing {
   /// Minimum visible height of a non-zero monthly bar.
   static const double monthlyBarMinHeight = 2;
 
+  // ── Auth screens ─────────────────────────────────────────────────────────
+  /// Top corner radius of the white sheet under the black auth hero.
+  static const double radiusHero = 32;
+
+  /// Height of the tall hero on Login (above the sheet).
+  static const double heroHeight = 260;
+
+  /// Height of the compact hero on the register steps.
+  static const double heroCompactHeight = 150;
+
+  /// Thickness of the password-strength segments.
+  static const double strengthBarHeight = 4;
+
+  /// Corner radius of inline notices.
+  static const double radiusNotice = 10;
+
   // ── Badges ───────────────────────────────────────────────────────────────
   /// Unread dot diameter (inbox rows, Profile tab icon).
   static const double badgeDot = 8;

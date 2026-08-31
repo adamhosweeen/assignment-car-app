@@ -42,6 +42,7 @@ Map<String, Object?> profileToRow(Profile profile) => {
   'state': profile.state,
   'interests_json': jsonEncode(profile.interests.toJson()),
   'avatar_url': profile.avatarUrl,
+  'role': profile.role,
   'created_at': profile.createdAt.toIso8601String(),
 };
 
@@ -55,6 +56,7 @@ Profile profileFromRow(Map<String, Object?> row) => Profile(
   state: row['state'] as String?,
   interests: decodeInterests(row['interests_json'] as String?),
   avatarUrl: row['avatar_url'] as String?,
+  role: row['role'] as String? ?? 'user',
   createdAt: DateTime.parse(row['created_at']! as String),
 );
 

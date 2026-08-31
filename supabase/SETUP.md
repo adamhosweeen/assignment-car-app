@@ -49,23 +49,6 @@ backend).
 - Nothing in the app inserts notifications; only these triggers do. The
   welcome row appears for accounts created **after** the trigger exists.
 
-### 2e. Buy checkout (dummy)
-- SQL Editor → paste [`migrations/0002_buy_listing.sql`](migrations/0002_buy_listing.sql) → Run.
-  Additive and re-runnable (`create or replace`); no reset.
-- Creates the `buy_listing(uuid)` SECURITY DEFINER function. The Buy button on a
-  listing calls it to flip an `active` listing to `sold`. Without it the
-  purchase appears to succeed but the RLS `listings_update_own` policy blocks a
-  non-seller's update, so the car stays in the Buy feed.
-
-### 2f. Region West / East
-- SQL Editor → paste [`migrations/0003_region_west_east.sql`](migrations/0003_region_west_east.sql) → Run.
-  Additive and re-runnable; no reset.
-- Collapses `listings.registration_region` from `{peninsular, sabah, sarawak}`
-  to `{west, east}` (maps existing rows) and swaps the CHECK constraint. The
-  sell form now picks a region first and filters the state list by it. Run
-  this before selling with an app build that includes the change, or publish
-  fails the constraint.
-
 ### 2b. Seed market insights
 - SQL Editor → paste [`seed/car_popularity.sql`](seed/car_popularity.sql) → Run.
   Without it, Profile → Market insights shows "not published yet" (no error).
@@ -79,6 +62,51 @@ backend).
   It is an upsert, so re-running it just replaces the row — no app release.
 - If your schema is already applied and you don't want a full reset, paste just
   the "Market insights" block from `0001_init.sql` first — it's additive.
+
+### 2e. Admin roles (`migrations/0002_admin_roles.sql`)
+- SQL Editor → paste all of
+  [`migrations/0002_admin_roles.sql`](migrations/0002_admin_roles.sql) → Run.
+  Additive and safe to re-run; apply **after** 0001.
+- Adds `profiles.role` (`'user'` default / `'admin'`), a trigger that blocks
+  role changes through the API (only an existing admin — or SQL run here in
+  the dashboard — can change one), and the `admin_user_stats()` function the
+  in-app admin screen calls. The function refuses non-admin callers.
+- Seed your first admin (dashboard SQL, one line — replace the email):
+  ```sql
+  update public.profiles set role = 'admin' where email = 'you@example.com';
+  ```
+- In the app, that account then shows an **Admin** row on the Profile tab
+  (log out/in, or pull-to-refresh Profile, to pick up the new role).
+
+### 2f. Reports & bans (`migrations/0003_reports_bans.sql`)
+- SQL Editor → paste all of
+  [`migrations/0003_reports_bans.sql`](migrations/0003_reports_bans.sql) → Run.
+  Additive and safe to re-run; apply **after** 0002 (it uses `is_admin()`).
+- Adds the `reports` table (users report a seller with a title + description;
+  insert-own RLS, admins read via `admin_reports()`), `admin_resolve_report()`,
+  and `admin_set_banned()` — banning sets `auth.users.banned_until` so the
+  user cannot log in or refresh their session, and flips `profiles.banned`,
+  which hides their active listings from buyers and removes them from seller
+  search. Unbanning reverses all of it.
+- Also recreates `admin_user_stats()` to include the `banned` column, so run
+  this after 0002 even on a fresh project.
+
+### 2g. Buy checkout (dummy) (`migrations/0004_buy_listing.sql`)
+- SQL Editor → paste [`migrations/0004_buy_listing.sql`](migrations/0004_buy_listing.sql) → Run.
+  Additive and re-runnable (`create or replace`); apply **after** 0001.
+- Creates the `buy_listing(uuid)` SECURITY DEFINER function. The Buy button on a
+  listing calls it to flip an `active` listing to `sold`. Without it the
+  purchase appears to succeed but the RLS `listings_update_own` policy blocks a
+  non-seller's update, so the car stays in the Buy feed.
+
+### 2h. Region West / East (`migrations/0005_region_west_east.sql`)
+- SQL Editor → paste [`migrations/0005_region_west_east.sql`](migrations/0005_region_west_east.sql) → Run.
+  Additive and re-runnable; apply **after** 0001.
+- Collapses `listings.registration_region` from `{peninsular, sabah, sarawak}`
+  to `{west, east}` (maps existing rows) and swaps the CHECK constraint. The
+  sell form now picks a region first and filters the state list by it. Run
+  this before selling with an app build that includes the change, or publish
+  fails the constraint.
 
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.

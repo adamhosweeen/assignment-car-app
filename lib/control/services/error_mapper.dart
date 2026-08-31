@@ -8,6 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 String mapError(Object error) {
   if (error is AuthException) {
     final m = error.message.toLowerCase();
+    if (m.contains('banned')) {
+      return 'This account has been banned.';
+    }
     if (m.contains('rate') || m.contains('too many') || m.contains('limit')) {
       return 'Too many attempts. Wait a minute, then try again.';
     }

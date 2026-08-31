@@ -1,4 +1,4 @@
--- ═══ 0003 · region West / East (module: sell) ════════════════════════════════
+-- ═══ 0005 · region West / East (module: sell) ════════════════════════════════
 -- `registration_region` was {peninsular, sabah, sarawak}. The sell form now
 -- offers just West / East Malaysia and filters the state list by it, so this
 -- collapses the values and swaps the CHECK constraint.
