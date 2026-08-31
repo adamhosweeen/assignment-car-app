@@ -16,13 +16,17 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
 /// One conversation thread, reached from the Chat tab or "Chat with seller"
-/// on Listing Detail. Takes the full [Conversation] via route `extra` — both
-/// entry points already have one in hand, so there's no separate
-/// "get conversation by id" fetch.
+/// on Listing Detail. Takes only [conversationId] — [seed], the
+/// [Conversation] the caller already has in hand (route `extra`), is just a
+/// same-session fast path so the first frame doesn't have to wait on a
+/// fetch. `extra` doesn't survive Android killing and restoring the app
+/// process, so [seed] is never required: when absent (or stale), the
+/// [Conversation] is fetched by id instead.
 class ChatThreadScreen extends ConsumerStatefulWidget {
-  const ChatThreadScreen({super.key, required this.conversation});
+  const ChatThreadScreen({super.key, required this.conversationId, this.seed});
 
-  final Conversation conversation;
+  final String conversationId;
+  final Conversation? seed;
 
   @override
   ConsumerState<ChatThreadScreen> createState() => _ChatThreadScreenState();
@@ -37,7 +41,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   void initState() {
     super.initState();
     // Fire and forget — a failure here is cosmetic, the badge just won't clear.
-    ref.read(chatRepositoryProvider).markRead(widget.conversation.id);
+    ref.read(chatRepositoryProvider).markRead(widget.conversationId);
   }
 
   @override
@@ -61,7 +65,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     _controller.clear();
     final res = await ref
         .read(chatRepositoryProvider)
-        .send(widget.conversation.id, text);
+        .send(widget.conversationId, text);
     if (!mounted) return;
     setState(() => _sending = false);
     if (res case Err(:final message)) {
@@ -73,13 +77,35 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final seed = widget.seed;
+    if (seed != null) return _buildThread(context, seed);
+
+    final conversationAsync = ref.watch(
+      conversationByIdProvider(widget.conversationId),
+    );
+    final conversation = conversationAsync.value;
+    if (conversation != null) return _buildThread(context, conversation);
+
+    return Scaffold(
+      appBar: AppBar(),
+      body: conversationAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => const _CenteredNote(
+          text: 'We couldn’t load this conversation. Check your connection.',
+        ),
+        data: (_) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  Widget _buildThread(BuildContext context, Conversation conversation) {
     final text = Theme.of(context).textTheme;
-    final conversation = widget.conversation;
     final uid = ref.watch(authRepositoryProvider).currentUser?.id;
     final otherId = uid == null
         ? conversation.sellerId
         : conversation.otherParticipantId(uid);
     final profile = ref.watch(publicProfileProvider(otherId)).value;
+    final displayName = profile?.name ?? 'Chat';
     final listing = ref
         .watch(listingByIdProvider(conversation.listingId))
         .value;
@@ -101,7 +127,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ProfileAvatar(
-                name: profile?.name ?? 'Chat',
+                name: displayName,
                 avatarUrl: profile?.avatarUrl,
                 size: AppSpacing.avatarSm,
               ),
@@ -112,7 +138,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      profile?.name ?? 'Chat',
+                      displayName,
                       style: text.headline,
                       overflow: TextOverflow.ellipsis,
                     ),

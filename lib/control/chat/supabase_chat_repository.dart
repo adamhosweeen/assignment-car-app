@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:assignment/control/chat/chat_cache_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/chat/conversation.dart';
@@ -13,11 +14,14 @@ import 'package:assignment/utils/result.dart';
 
 /// [ChatRepository] over `conversations`/`messages`, with the same
 /// fetch-on-realtime-change shape as `SupabaseListingsRepository._watch` /
-/// `SupabaseNotificationsRepository.watchInbox`.
+/// `SupabaseNotificationsRepository.watchInbox`. Every successful fetch is
+/// mirrored into [_cache] so the thread list and an open thread render
+/// instantly next time, offline or on cold start.
 class SupabaseChatRepository implements ChatRepository {
-  SupabaseChatRepository(this._client);
+  SupabaseChatRepository(this._client, this._cache);
 
   final SupabaseClient _client;
+  final ChatCacheRepository _cache;
   static const Duration _fetchTimeout = Duration(seconds: 8);
   static const int _messageLimit = 200;
 
@@ -73,16 +77,23 @@ class SupabaseChatRepository implements ChatRepository {
         loadedOnce = true;
         debugPrint('[chat] threads push: ${data.length} thread(s)');
         if (!controller.isClosed) controller.add(data);
+        await _cache.saveConversations(data);
       } catch (e) {
         debugPrint('[chat] threads push FAILED: $e');
         // A transient refresh failure keeps the last good list; a failed
-        // first load is a real error state.
+        // first load (with nothing cached to fall back on) is a real error
+        // state.
         if (!loadedOnce && !controller.isClosed) controller.addError(e);
       }
     }
 
     controller
       ..onListen = () {
+        final cached = _cache.cachedConversations;
+        if (cached.isNotEmpty) {
+          loadedOnce = true;
+          controller.add(cached);
+        }
         push();
         // A new message bumps `conversations.last_message_at` (caught by the
         // first listener); `markRead` only touches `messages.read_at`
@@ -148,14 +159,23 @@ class SupabaseChatRepository implements ChatRepository {
           '[chat] messages push ($conversationId): ${data.length} message(s)',
         );
         if (!controller.isClosed) controller.add(data);
+        await _cache.saveMessages(conversationId, data);
       } catch (e) {
         debugPrint('[chat] messages push FAILED ($conversationId): $e');
+        // A transient refresh failure keeps the last good list; a failed
+        // first load (with nothing cached to fall back on) is a real error
+        // state.
         if (!loadedOnce && !controller.isClosed) controller.addError(e);
       }
     }
 
     controller
-      ..onListen = () {
+      ..onListen = () async {
+        final cached = await _cache.getMessages(conversationId);
+        if (cached.isNotEmpty && !controller.isClosed) {
+          loadedOnce = true;
+          controller.add(cached);
+        }
         push();
         channel = _client.channel('chat-messages-$conversationId-${newId()}')
           ..onPostgresChanges(
@@ -220,6 +240,31 @@ class SupabaseChatRepository implements ChatRepository {
           .timeout(_fetchTimeout);
       return Ok(Conversation.fromJson(row));
     } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<Conversation>> getById(String id) async {
+    try {
+      final row = await _client
+          .from('conversations')
+          .select()
+          .eq('id', id)
+          .maybeSingle()
+          .timeout(_fetchTimeout);
+      if (row == null) {
+        return const Err('This conversation is no longer available.');
+      }
+      return Ok(Conversation.fromJson(row));
+    } catch (e) {
+      // Offline or timed out — a cached thread's conversation can still be
+      // shown.
+      final cached = _cache.cachedConversations
+          .map((t) => t.conversation)
+          .where((c) => c.id == id)
+          .firstOrNull;
+      if (cached != null) return Ok(cached);
       return Err(mapError(e));
     }
   }

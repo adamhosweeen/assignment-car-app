@@ -67,8 +67,16 @@ GoRouter goRouter(Ref ref) {
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
       GoRoute(
         path: '/chat/:id',
-        builder: (_, state) =>
-            ChatThreadScreen(conversation: state.extra as Conversation),
+        builder: (_, state) => ChatThreadScreen(
+          conversationId: state.pathParameters['id']!,
+          // `extra` is only a same-session fast path (avoids the initial
+          // fetch when we already have it in hand, e.g. tapping a thread
+          // row). It doesn't survive Android killing and restoring the app
+          // process, so never trust its type — fall back to fetching by id.
+          seed: state.extra is Conversation
+              ? state.extra as Conversation
+              : null,
+        ),
       ),
       GoRoute(path: '/sellers', builder: (_, _) => const SellerSearchScreen()),
       GoRoute(

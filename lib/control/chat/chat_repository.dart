@@ -17,6 +17,12 @@ abstract interface class ChatRepository {
   /// seller.
   Future<Result<Conversation>> openConversation(String listingId);
 
+  /// One conversation by id — used to rebuild the thread screen when it
+  /// wasn't reached with the [Conversation] already in hand (e.g. after
+  /// Android kills and restores the app process, where go_router's `extra`
+  /// doesn't survive).
+  Future<Result<Conversation>> getById(String id);
+
   /// Send a text message, or an offer when [offerAmountMyr] is given.
   Future<Result<Message>> send(
     String conversationId,

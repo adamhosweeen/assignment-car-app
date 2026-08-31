@@ -5,6 +5,7 @@ import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/chat/chat_cache_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/chat/supabase_chat_repository.dart';
 import 'package:assignment/control/insights/insights_repository.dart';
@@ -15,6 +16,7 @@ import 'package:assignment/control/listings/supabase_listings_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/notifications/notifications_repository.dart';
 import 'package:assignment/control/notifications/supabase_notifications_repository.dart';
+import 'package:assignment/control/profiles/profiles_cache_repository.dart';
 import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/control/profiles/supabase_profiles_repository.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -41,9 +43,16 @@ ProfileCacheRepository profileCacheRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+ChatCacheRepository chatCacheRepository(Ref ref) {
+  final storage = ref.watch(appStorageProvider);
+  return ChatCacheRepository(storage.db, storage.initialConversationRows);
+}
+
+@Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) => SupabaseAuthRepository(
   Supabase.instance.client,
   ref.watch(profileCacheRepositoryProvider),
+  ref.watch(chatCacheRepositoryProvider),
 );
 
 @Riverpod(keepAlive: true)
@@ -67,10 +76,17 @@ ListingsRepository listingsRepository(Ref ref) => SupabaseListingsRepository(
 NotificationsRepository notificationsRepository(Ref ref) =>
     SupabaseNotificationsRepository(Supabase.instance.client);
 
-/// Other users' public profiles (seller search, seller pages).
 @Riverpod(keepAlive: true)
-ProfilesRepository profilesRepository(Ref ref) =>
-    SupabaseProfilesRepository(Supabase.instance.client);
+ProfilesCacheRepository profilesCacheRepository(Ref ref) =>
+    ProfilesCacheRepository(ref.watch(appStorageProvider).db);
+
+/// Other users' public profiles (seller search, seller pages, the other
+/// participant in a chat thread).
+@Riverpod(keepAlive: true)
+ProfilesRepository profilesRepository(Ref ref) => SupabaseProfilesRepository(
+  Supabase.instance.client,
+  ref.watch(profilesCacheRepositoryProvider),
+);
 
 /// Read-only market snapshot (Profile → Market insights).
 @Riverpod(keepAlive: true)
@@ -79,8 +95,10 @@ InsightsRepository insightsRepository(Ref ref) =>
 
 /// Buyer ↔ seller chat threads (Chat tab, Listing Detail's "Chat with seller").
 @Riverpod(keepAlive: true)
-ChatRepository chatRepository(Ref ref) =>
-    SupabaseChatRepository(Supabase.instance.client);
+ChatRepository chatRepository(Ref ref) => SupabaseChatRepository(
+  Supabase.instance.client,
+  ref.watch(chatCacheRepositoryProvider),
+);
 
 @Riverpod(keepAlive: true)
 DraftRepository draftRepository(Ref ref) {

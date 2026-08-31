@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:assignment/control/profiles/profiles_cache_repository.dart';
 import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/profile/public_profile.dart';
@@ -7,11 +8,15 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/search.dart';
 
 /// [ProfilesRepository] over the `public_profiles` view, which exposes only
-/// safe columns (id, display_name, avatar_url, state, created_at).
+/// safe columns (id, display_name, avatar_url, state, created_at). Every
+/// successful [getById] is mirrored into [_cache] so a previously-seen
+/// profile (a chat participant, a seller) still renders — name, avatar —
+/// when offline.
 class SupabaseProfilesRepository implements ProfilesRepository {
-  SupabaseProfilesRepository(this._client);
+  SupabaseProfilesRepository(this._client, this._cache);
 
   final SupabaseClient _client;
+  final ProfilesCacheRepository _cache;
   static const String _view = 'public_profiles';
   static const Duration _fetchTimeout = Duration(seconds: 8);
 
@@ -24,8 +29,15 @@ class SupabaseProfilesRepository implements ProfilesRepository {
           .eq('id', id)
           .maybeSingle()
           .timeout(_fetchTimeout);
-      return Ok(row == null ? null : PublicProfile.fromJson(row));
+      if (row == null) return const Ok(null);
+      final profile = PublicProfile.fromJson(row);
+      await _cache.save(profile);
+      return Ok(profile);
     } catch (e) {
+      // Offline or timed out — a previously cached profile can still be
+      // shown.
+      final cached = await _cache.getById(id);
+      if (cached != null) return Ok(cached);
       return Err(mapError(e));
     }
   }

@@ -1,8 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:assignment/control/providers.dart';
+import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/conversation_thread.dart';
 import 'package:assignment/model/chat/message.dart';
+import 'package:assignment/utils/result.dart';
 
 part 'chat_providers.g.dart';
 
@@ -20,6 +22,18 @@ Stream<List<ConversationThread>> conversations(Ref ref) {
 @riverpod
 Stream<List<Message>> messages(Ref ref, String conversationId) =>
     ref.watch(chatRepositoryProvider).watchMessages(conversationId);
+
+/// One conversation by id — rebuilds the thread screen when it wasn't
+/// reached with the [Conversation] already in hand (route `extra` doesn't
+/// survive Android killing and restoring the app process).
+@riverpod
+Future<Conversation> conversationById(Ref ref, String id) async {
+  final res = await ref.watch(chatRepositoryProvider).getById(id);
+  return switch (res) {
+    Ok(:final value) => value,
+    Err(:final message) => throw Exception(message),
+  };
+}
 
 /// Total unread messages across every thread, for the Chat tab badge.
 @riverpod
