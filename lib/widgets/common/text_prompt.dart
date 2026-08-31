@@ -12,7 +12,8 @@ Future<String?> promptForText(
 }) async {
   final result = await showDialog<String>(
     context: context,
-    builder: (_) => _TextPromptDialog(title: title, initial: initial, hint: hint),
+    builder: (_) =>
+        _TextPromptDialog(title: title, initial: initial, hint: hint),
   );
   return (result == null || result.isEmpty) ? null : result;
 }

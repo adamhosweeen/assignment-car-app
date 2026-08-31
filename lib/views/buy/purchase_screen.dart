@@ -91,8 +91,7 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
       appBar: AppBar(title: const Text('Checkout')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) =>
-            const _Message('This listing is no longer available.'),
+        error: (_, _) => const _Message('This listing is no longer available.'),
         data: (listing) => _Checkout(
           listing: listing,
           buyer: ref.read(authRepositoryProvider).currentUser,
@@ -188,9 +187,7 @@ class _Checkout extends StatelessWidget {
               onPressed: submitting ? null : onConfirm,
               child: submitting
                   ? const ButtonSpinner()
-                  : Text(
-                      'Confirm purchase · ${formatPrice(listing.priceMyr)}',
-                    ),
+                  : Text('Confirm purchase · ${formatPrice(listing.priceMyr)}'),
             ),
           ),
         ),
@@ -255,10 +252,7 @@ class _CarHeader extends StatelessWidget {
           child: SizedBox(
             width: AppSpacing.thumbMd,
             height: AppSpacing.thumbMd,
-            child: CoverImage(
-              media: listing.cover,
-              height: AppSpacing.thumbMd,
-            ),
+            child: CoverImage(media: listing.cover, height: AppSpacing.thumbMd),
           ),
         ),
         const SizedBox(width: AppSpacing.space12),
@@ -349,10 +343,7 @@ class _PurchaseSuccess extends StatelessWidget {
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            child: FilledButton(
-              onPressed: onDone,
-              child: const Text('Done'),
-            ),
+            child: FilledButton(onPressed: onDone, child: const Text('Done')),
           ),
         ),
       ],

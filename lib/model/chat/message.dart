@@ -6,8 +6,7 @@ part 'message.g.dart';
 /// Kind of message; `offer` carries [Message.offerAmountMyr].
 enum MessageType { text, offer }
 
-/// One message in a [Conversation] — a row of `messages` (V1_SPEC §1).
-/// Model only for now: the Chat tab is a placeholder in v1.
+/// One message in a [Conversation] — a row of `messages`.
 @freezed
 abstract class Message with _$Message {
   const factory Message({
@@ -21,6 +20,11 @@ abstract class Message with _$Message {
     DateTime? readAt,
   }) = _Message;
 
+  const Message._();
+
   factory Message.fromJson(Map<String, dynamic> json) =>
       _$MessageFromJson(json);
+
+  /// Whether [currentUserId] sent this message (right-aligned bubble).
+  bool isMine(String currentUserId) => senderId == currentUserId;
 }

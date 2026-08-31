@@ -7,9 +7,11 @@ import 'package:assignment/control/providers.dart';
 import 'package:assignment/views/auth/login_screen.dart';
 import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
+import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/views/auth/welcome_screen.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
+import 'package:assignment/views/chat/chat_thread_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
@@ -73,10 +75,22 @@ GoRouter goRouter(Ref ref) {
       ),
       GoRoute(
         path: '/listing/:id/buy',
-        builder: (_, state) =>
-            PurchaseScreen(id: state.pathParameters['id']!),
+        builder: (_, state) => PurchaseScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
+      GoRoute(
+        path: '/chat/:id',
+        builder: (_, state) => ChatThreadScreen(
+          conversationId: state.pathParameters['id']!,
+          // `extra` is only a same-session fast path (avoids the initial
+          // fetch when we already have it in hand, e.g. tapping a thread
+          // row). It doesn't survive Android killing and restoring the app
+          // process, so never trust its type — fall back to fetching by id.
+          seed: state.extra is Conversation
+              ? state.extra as Conversation
+              : null,
+        ),
+      ),
       GoRoute(path: '/sellers', builder: (_, _) => const SellerSearchScreen()),
       GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
       GoRoute(

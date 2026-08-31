@@ -19,6 +19,7 @@ class AppStorage {
     this.initialProfileRow,
     this.initialListingRows,
     this.initialListingMediaRows,
+    this.initialConversationRows,
   );
 
   final Database db;
@@ -27,6 +28,7 @@ class AppStorage {
   final Map<String, Object?>? initialProfileRow;
   final List<Map<String, Object?>> initialListingRows;
   final List<Map<String, Object?>> initialListingMediaRows;
+  final List<Map<String, Object?>> initialConversationRows;
 
   static Future<AppStorage> init() async {
     final db = await AppDatabase.open();
@@ -54,6 +56,11 @@ class AppStorage {
     );
     final listingMediaRows = await db.query('listing_cache_media');
 
+    final conversationRows = await db.query(
+      'conversation_cache',
+      orderBy: 'sort_order ASC',
+    );
+
     return AppStorage._(
       db,
       draftRow,
@@ -61,6 +68,7 @@ class AppStorage {
       profileRow,
       listingRows,
       listingMediaRows,
+      conversationRows,
     );
   }
 }

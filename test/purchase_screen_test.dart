@@ -65,8 +65,7 @@ class _FakeListingsRepo implements ListingsRepository {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeAuth implements AuthRepository {
@@ -77,8 +76,7 @@ class _FakeAuth implements AuthRepository {
   Stream<Profile?> authState() => Stream.value(_buyer);
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Widget _app(_FakeListingsRepo repo) {
@@ -121,20 +119,24 @@ void main() {
     expect(find.text('Petrol'), findsOneWidget);
 
     // Seller section, further down the form.
-    await tester.scrollUntilVisible(find.text('Sally Seller'), 200,
-        scrollable: list);
+    await tester.scrollUntilVisible(
+      find.text('Sally Seller'),
+      200,
+      scrollable: list,
+    );
     expect(find.text('SELLER'), findsOneWidget);
     expect(find.text('Sally Seller'), findsOneWidget);
 
     // Buyer section, at the bottom.
-    await tester.scrollUntilVisible(find.text('Bob Tan'), 200,
-        scrollable: list);
+    await tester.scrollUntilVisible(
+      find.text('Bob Tan'),
+      200,
+      scrollable: list,
+    );
     expect(find.text('Bob Tan'), findsOneWidget);
   });
 
-  testWidgets('confirming buys the listing and shows success', (
-    tester,
-  ) async {
+  testWidgets('confirming buys the listing and shows success', (tester) async {
     final repo = _FakeListingsRepo();
     await tester.pumpWidget(_app(repo));
     await tester.pumpAndSettle();

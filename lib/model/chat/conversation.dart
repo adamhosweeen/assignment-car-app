@@ -4,8 +4,7 @@ part 'conversation.freezed.dart';
 part 'conversation.g.dart';
 
 /// A buyer ↔ seller thread about one listing — a row of `conversations`
-/// (V1_SPEC §1; unique on `listing_id + buyer_id`). Model only for now: the
-/// Chat tab is a placeholder in v1 and nothing reads this yet.
+/// (unique on `listing_id + buyer_id`).
 @freezed
 abstract class Conversation with _$Conversation {
   const factory Conversation({
@@ -17,6 +16,13 @@ abstract class Conversation with _$Conversation {
     DateTime? lastMessageAt,
   }) = _Conversation;
 
+  const Conversation._();
+
   factory Conversation.fromJson(Map<String, dynamic> json) =>
       _$ConversationFromJson(json);
+
+  /// The participant who isn't [currentUserId] — the person to show in the
+  /// thread list / thread header.
+  String otherParticipantId(String currentUserId) =>
+      currentUserId == buyerId ? sellerId : buyerId;
 }

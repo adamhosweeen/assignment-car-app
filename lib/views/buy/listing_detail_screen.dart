@@ -17,6 +17,7 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
+import 'package:assignment/widgets/listing/status_badge.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// Standalone listing detail, reachable from the Buy feed and My Listings
@@ -76,6 +77,21 @@ class _DetailScaffold extends ConsumerWidget {
     }
   }
 
+  Future<void> _openChat(BuildContext context, WidgetRef ref) async {
+    final res = await ref
+        .read(chatRepositoryProvider)
+        .openConversation(listing.id);
+    if (!context.mounted) return;
+    switch (res) {
+      case Ok(:final value):
+        context.push('/chat/${value.id}', extra: value);
+      case Err(:final message):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
@@ -106,6 +122,10 @@ class _DetailScaffold extends ConsumerWidget {
                     if (listing.negotiable) ...[
                       const SizedBox(width: AppSpacing.space12),
                       const _NegotiableChip(),
+                    ],
+                    if (listing.status == ListingStatus.sold) ...[
+                      const SizedBox(width: AppSpacing.space12),
+                      StatusBadge(status: listing.status),
                     ],
                   ],
                 ),
@@ -184,6 +204,7 @@ class _DetailScaffold extends ConsumerWidget {
                 listing.sellerId,
             onEdit: () => _edit(context, ref),
             onMarkSold: () => _markSold(context, ref),
+            onChat: () => _openChat(context, ref),
             onBuy: () => context.push('/listing/${listing.id}/buy'),
           ),
         ),
@@ -237,6 +258,7 @@ class _Actions extends StatelessWidget {
     required this.isSeller,
     required this.onEdit,
     required this.onMarkSold,
+    required this.onChat,
     required this.onBuy,
   });
 
@@ -244,12 +266,12 @@ class _Actions extends StatelessWidget {
   final bool isSeller;
   final VoidCallback onEdit;
   final VoidCallback onMarkSold;
+  final VoidCallback onChat;
   final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
     if (!isSeller) {
-      // Buy opens the (dummy) checkout; chat is still reserved for v2 (§4.7).
       final available = listing.status == ListingStatus.active;
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -262,9 +284,16 @@ class _Actions extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.space8),
-          const TextButton(
-            onPressed: null,
-            child: Text('Chat with seller · Coming soon'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: AppColors.primary,
+              ),
+              onPressed: onChat,
+              child: const Text('Chat with seller'),
+            ),
           ),
         ],
       );

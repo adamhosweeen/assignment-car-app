@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
+import 'package:assignment/control/chat/chat_cache_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -15,15 +16,19 @@ import 'package:assignment/control/auth/auth_repository.dart';
 /// Real email+password auth via Supabase. Supabase persists its own session,
 /// so a returning user is not asked to log in again (V1_SPEC §5.2). The last
 /// fetched profile is mirrored into the sqflite [ProfileCacheRepository] so
-/// identity renders fully on cold start and offline.
+/// identity renders fully on cold start and offline. Signing out also wipes
+/// [_chatCache] — chat messages are private to the account, unlike the
+/// public listings cache, so a shared device must not leave them behind for
+/// the next person to sign in.
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._client, this._cache) {
+  SupabaseAuthRepository(this._client, this._cache, this._chatCache) {
     _refreshEnriched();
     _client.auth.onAuthStateChange.listen((_) => _refreshEnriched());
   }
 
   final SupabaseClient _client;
   final ProfileCacheRepository _cache;
+  final ChatCacheRepository _chatCache;
 
   // The whole own row (RLS limits it to the caller's anyway) — resilient to
   // columns added by later migrations, e.g. `role` from 0002.
@@ -337,6 +342,7 @@ class SupabaseAuthRepository implements AuthRepository {
       // 3. Local cleanup. The session token now points at a deleted user, so
       //    the server may reject sign-out — clear what we can regardless.
       await _cache.clear();
+      await _chatCache.clear();
       try {
         await _client.auth.signOut();
       } catch (_) {}
@@ -349,6 +355,7 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _cache.clear();
+    await _chatCache.clear();
     await _client.auth.signOut();
   }
 }

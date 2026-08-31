@@ -49,12 +49,13 @@ Widget _app(ListingDraft draft) {
   );
 }
 
-ListingDraft _draft({RegistrationRegion? region, String? state}) => ListingDraft(
-  id: 'l1',
-  registrationRegion: region,
-  state: state,
-  updatedAt: DateTime.utc(2026, 3, 12),
-);
+ListingDraft _draft({RegistrationRegion? region, String? state}) =>
+    ListingDraft(
+      id: 'l1',
+      registrationRegion: region,
+      state: state,
+      updatedAt: DateTime.utc(2026, 3, 12),
+    );
 
 GroupedRow _row(WidgetTester tester, String label) => tester.widget<GroupedRow>(
   find.byWidgetPredicate((w) => w is GroupedRow && w.label == label),

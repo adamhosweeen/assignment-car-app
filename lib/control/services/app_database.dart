@@ -8,7 +8,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 8,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -25,11 +25,10 @@ class AppDatabase {
           await _createListingCache(db);
         }
         if (oldVersion < 6) {
-          // v6 (master) caches the profile's role (admin gate on Profile hub).
+          // v6 caches the profile's role (admin gate on Profile hub).
           await db.execute('ALTER TABLE profile_cache ADD COLUMN role TEXT');
-          // v6 (Listing) collapses registration_region to west/east
-          // (migration 0005). Map any in-progress draft; the feed cache
-          // just re-fetches.
+          // v6 also collapses registration_region to west/east (migration
+          // 0005). Map any in-progress draft; the feed cache just re-fetches.
           await db.execute('''
             UPDATE listing_draft SET registration_region = CASE registration_region
               WHEN 'peninsular' THEN 'west'
@@ -39,6 +38,15 @@ class AppDatabase {
           ''');
           await db.execute('DELETE FROM listing_cache_media');
           await db.execute('DELETE FROM listing_cache');
+        }
+        if (oldVersion < 7) {
+          // v7 adds the chat read-cache (offline/cold-start Chat tab + thread).
+          await _createChatCache(db);
+        }
+        if (oldVersion < 8) {
+          // v8 adds the public-profile read-cache (offline names/avatars for
+          // the other person in a chat thread, seller rows, seller pages).
+          await _createPublicProfileCache(db);
         }
       },
       onCreate: (db, version) async {
@@ -78,6 +86,8 @@ class AppDatabase {
         ''');
         await _createProfileCache(db);
         await _createListingCache(db);
+        await _createChatCache(db);
+        await _createPublicProfileCache(db);
       },
     );
   }
@@ -126,6 +136,65 @@ class AppDatabase {
         )
       ''');
   }
+
+  /// Read-cache of the signed-in user's chat threads (`conversation_cache`,
+  /// one denormalised row per thread with its last-message preview) and, per
+  /// thread, its full message history (`message_cache`). So the Chat tab and
+  /// an already-opened thread render instantly on cold start and stay
+  /// browsable offline. Written only after successful Supabase reads; never
+  /// authoritative (CLAUDE.md §3).
+  static Future<void> _createChatCache(Database db) async {
+    await db.execute('''
+        CREATE TABLE conversation_cache (
+          id TEXT PRIMARY KEY,
+          listing_id TEXT NOT NULL,
+          buyer_id TEXT NOT NULL,
+          seller_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          last_message_at TEXT,
+          unread_count INTEGER NOT NULL,
+          sort_order INTEGER NOT NULL,
+          last_msg_id TEXT,
+          last_msg_sender_id TEXT,
+          last_msg_body TEXT,
+          last_msg_type TEXT,
+          last_msg_offer_amount_myr INTEGER,
+          last_msg_created_at TEXT,
+          last_msg_read_at TEXT
+        )
+      ''');
+    await db.execute('''
+        CREATE TABLE message_cache (
+          id TEXT PRIMARY KEY,
+          conversation_id TEXT NOT NULL,
+          sender_id TEXT NOT NULL,
+          body TEXT NOT NULL,
+          message_type TEXT NOT NULL,
+          offer_amount_myr INTEGER,
+          created_at TEXT NOT NULL,
+          read_at TEXT
+        )
+      ''');
+    await db.execute('''
+        CREATE INDEX message_cache_conversation_idx
+          ON message_cache (conversation_id)
+      ''');
+  }
+
+  /// Read-cache of other users' `public_profiles` rows (`public_profile_cache`,
+  /// one row per id ever looked up) — the other participant's name/avatar in
+  /// a chat thread, a seller row on Listing Detail, a seller page. Written
+  /// after every successful Supabase lookup; never authoritative (CLAUDE.md
+  /// §3).
+  static Future<void> _createPublicProfileCache(Database db) => db.execute('''
+        CREATE TABLE public_profile_cache (
+          id TEXT PRIMARY KEY,
+          display_name TEXT,
+          avatar_url TEXT,
+          state TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
 
   /// Read-cache of the signed-in user's `profiles` row, so identity renders
   /// instantly on cold start and offline. Written only after successful

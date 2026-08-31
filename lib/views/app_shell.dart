@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:assignment/control/chat/chat_providers.dart';
 import 'package:assignment/control/notifications/notifications_providers.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
 /// The signed-in shell: five tabs (Buy / Sell / Bid / Chat / Profile) over a
 /// flat, iOS-style bottom bar. Each tab keeps its own navigation stack via
-/// [StatefulNavigationShell]. The Profile tab shows a dot while the inbox
-/// has unread notifications.
+/// [StatefulNavigationShell]. The Chat tab shows a dot while any thread has
+/// unread messages; the Profile tab shows one while the inbox does.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
@@ -18,9 +19,14 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(unreadCountProvider);
+    final chatUnread = ref.watch(unreadChatCountProvider);
     return Scaffold(
       body: shell,
-      bottomNavigationBar: _BottomNav(shell: shell, profileBadge: unread > 0),
+      bottomNavigationBar: _BottomNav(
+        shell: shell,
+        profileBadge: unread > 0,
+        chatBadge: chatUnread > 0,
+      ),
     );
   }
 }
@@ -40,14 +46,22 @@ const List<_NavDef> _tabs = [
   _NavDef(Icons.person_outline, Icons.person, 'Profile'),
 ];
 
+/// Index of the Chat tab (unread-messages badge).
+const int _chatIndex = 3;
+
 /// Index of the Profile tab (the one that carries the inbox badge).
 const int _profileIndex = 4;
 
 class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.shell, required this.profileBadge});
+  const _BottomNav({
+    required this.shell,
+    required this.profileBadge,
+    required this.chatBadge,
+  });
 
   final StatefulNavigationShell shell;
   final bool profileBadge;
+  final bool chatBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +86,9 @@ class _BottomNav extends StatelessWidget {
                   child: _NavItem(
                     def: _tabs[i],
                     selected: i == shell.currentIndex,
-                    badge: profileBadge && i == _profileIndex,
+                    badge:
+                        (profileBadge && i == _profileIndex) ||
+                        (chatBadge && i == _chatIndex),
                     onTap: () => shell.goBranch(
                       i,
                       initialLocation: i == shell.currentIndex,

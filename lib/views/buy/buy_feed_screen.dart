@@ -130,9 +130,7 @@ class _RefreshableFeed extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.screenPadding,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.screenPadding),
         itemCount: listings.length,
         itemBuilder: (_, i) {
           final l = listings[i];

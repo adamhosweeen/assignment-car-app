@@ -94,6 +94,7 @@ class SellController extends _$SellController {
       ),
     );
   }
+
   Future<void> setStateName(String? s) => _commit(state.copyWith(state: s));
   Future<void> setCity(String? c) => _commit(state.copyWith(city: c));
 

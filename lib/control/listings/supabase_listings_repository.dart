@@ -101,7 +101,10 @@ class SupabaseListingsRepository implements ListingsRepository {
 
   /// Emit the cached feed (if any) and an initial fetch, then re-fetch
   /// whenever `listings` changes (realtime). Successful fetches are mirrored
-  /// into the cache via [onFetched]; failed ones keep the last good value.
+  /// into the cache via [onFetched]; a transient refresh failure keeps the
+  /// last good (or cached) value, but a failed first load with nothing to
+  /// show yet is surfaced as a real error — otherwise the stream never emits
+  /// anything at all and the screen spins forever.
   Stream<List<Listing>> _watch(
     Future<List<Listing>> Function() fetch,
     String channelName, {

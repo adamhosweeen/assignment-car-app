@@ -108,6 +108,25 @@ backend).
   this before selling with an app build that includes the change, or publish
   fails the constraint.
 
+### 2i. Chat realtime + read receipts (`migrations/0006_chat_realtime.sql`)
+- SQL Editor → paste [`migrations/0006_chat_realtime.sql`](migrations/0006_chat_realtime.sql) → Run.
+- Paste-alone safe and re-runnable — adds `conversations`/`messages` to the
+  realtime publication, a couple of indexes, and the
+  `mark_conversation_read()` function (participants only; lets a user mark the
+  *other* person's messages read, which the frozen `messages_participants`
+  policy in `0001_init.sql` can't do via a plain client-side update). Without
+  it, Chat has no realtime updates and unread dots never clear.
+
+### 2j. Chat listing visibility (`migrations/0007_chat_listing_visibility.sql`)
+- SQL Editor → paste [`migrations/0007_chat_listing_visibility.sql`](migrations/0007_chat_listing_visibility.sql) → Run.
+- Paste-alone safe and re-runnable — adds a second `listings`/`listing_media`
+  SELECT policy so a conversation's buyer and seller can still see the listing
+  (status, photos, everything) after it's marked sold or deleted, instead of
+  the row vanishing behind the frozen `status = 'active' or seller_id =
+  auth.uid()` policy in `0001_init.sql`. Without it, tapping the listing name
+  in a chat thread for a car that's since been marked sold shows "This listing
+  is no longer available." instead of the real "Sold" state.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live

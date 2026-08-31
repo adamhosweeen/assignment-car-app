@@ -6,10 +6,11 @@ import 'package:assignment/model/malaysian_states.dart';
 void main() {
   group('MalaysianStates.inRegion', () {
     test('East Malaysia is only the Borneo states/territory', () {
-      expect(
-        MalaysianStates.inRegion(RegistrationRegion.east),
-        ['Sabah', 'Sarawak', 'WP Labuan'],
-      );
+      expect(MalaysianStates.inRegion(RegistrationRegion.east), [
+        'Sabah',
+        'Sarawak',
+        'WP Labuan',
+      ]);
     });
 
     test('West Malaysia excludes Sabah, Sarawak and Labuan', () {
