@@ -26,7 +26,8 @@ class SellHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
-  void _startSelling() => context.push('/sell/new');
+  void _startSelling({bool editing = false}) =>
+      context.push('/sell/new', extra: editing);
 
   Future<void> _discardDraft() async {
     await ref.read(draftRepositoryProvider).clear();
@@ -50,7 +51,7 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
     ref.invalidate(sellControllerProvider);
     if (!mounted) return;
     setState(() {});
-    _startSelling();
+    _startSelling(editing: true);
   }
 
   Future<void> _delete(Listing l) async {

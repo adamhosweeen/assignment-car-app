@@ -57,7 +57,10 @@ GoRouter goRouter(Ref ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterFlowScreen()),
-      GoRoute(path: '/sell/new', builder: (_, _) => const SellFlowScreen()),
+      GoRoute(
+        path: '/sell/new',
+        builder: (_, state) => SellFlowScreen(editing: state.extra == true),
+      ),
       GoRoute(
         path: '/listing/:id',
         builder: (_, state) =>

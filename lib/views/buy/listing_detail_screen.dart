@@ -61,7 +61,7 @@ class _DetailScaffold extends ConsumerWidget {
     await ref.read(draftRepositoryProvider).save(draftFromListing(listing));
     ref.invalidate(sellControllerProvider);
     if (!context.mounted) return;
-    context.push('/sell/new');
+    context.push('/sell/new', extra: true);
   }
 
   Future<void> _markSold(BuildContext context, WidgetRef ref) async {
