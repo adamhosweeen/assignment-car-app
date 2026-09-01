@@ -148,6 +148,9 @@ class _InboxRow extends StatelessWidget {
     NotificationKind.welcome => Icons.waving_hand_outlined,
     NotificationKind.listingMatch => Icons.directions_car_outlined,
     NotificationKind.insightsUpdated => Icons.bar_chart,
+    NotificationKind.bidPlaced => Icons.gavel_outlined,
+    NotificationKind.bidAccepted => Icons.check_circle_outline,
+    NotificationKind.bidRejected => Icons.cancel_outlined,
   };
 
   @override

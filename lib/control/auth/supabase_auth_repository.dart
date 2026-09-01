@@ -12,16 +12,23 @@ import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/bid/bids_cache_repository.dart';
 
 /// Real email+password auth via Supabase. Supabase persists its own session,
 /// so a returning user is not asked to log in again (V1_SPEC §5.2). The last
 /// fetched profile is mirrored into the sqflite [ProfileCacheRepository] so
 /// identity renders fully on cold start and offline. Signing out also wipes
-/// [_chatCache] — chat messages are private to the account, unlike the
-/// public listings cache, so a shared device must not leave them behind for
-/// the next person to sign in.
+/// [_chatCache] and [_bidsCache] — chat messages and bids (their amounts, and
+/// the contact numbers on them) are private to the account, unlike the public
+/// listings cache, so a shared device must not leave them behind for the next
+/// person to sign in.
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._client, this._cache, this._chatCache) {
+  SupabaseAuthRepository(
+    this._client,
+    this._cache,
+    this._chatCache,
+    this._bidsCache,
+  ) {
     _refreshEnriched();
     _client.auth.onAuthStateChange.listen((_) => _refreshEnriched());
   }
@@ -29,6 +36,7 @@ class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
   final ProfileCacheRepository _cache;
   final ChatCacheRepository _chatCache;
+  final BidsCacheRepository _bidsCache;
 
   // The whole own row (RLS limits it to the caller's anyway) — resilient to
   // columns added by later migrations, e.g. `role` from 0002.
@@ -343,6 +351,7 @@ class SupabaseAuthRepository implements AuthRepository {
       //    the server may reject sign-out — clear what we can regardless.
       await _cache.clear();
       await _chatCache.clear();
+      await _bidsCache.clear();
       try {
         await _client.auth.signOut();
       } catch (_) {}

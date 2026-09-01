@@ -12,6 +12,7 @@ import 'package:assignment/model/listing/draft_from_listing.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/listing/listing_media.dart';
+import 'package:assignment/control/bid/bids_providers.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
@@ -206,6 +207,11 @@ class _DetailScaffold extends ConsumerWidget {
             onMarkSold: () => _markSold(context, ref),
             onChat: () => _openChat(context, ref),
             onBuy: () => context.push('/listing/${listing.id}/buy'),
+            onBid: () => context.push('/listing/${listing.id}/bid'),
+            // Null while it loads, so the button reads "Place a bid" until we
+            // know otherwise rather than flickering between the two labels.
+            hasPendingBid:
+                ref.watch(myPendingBidProvider(listing.id)).value != null,
           ),
         ),
       ),
@@ -260,6 +266,8 @@ class _Actions extends StatelessWidget {
     required this.onMarkSold,
     required this.onChat,
     required this.onBuy,
+    required this.onBid,
+    required this.hasPendingBid,
   });
 
   final Listing listing;
@@ -268,6 +276,11 @@ class _Actions extends StatelessWidget {
   final VoidCallback onMarkSold;
   final VoidCallback onChat;
   final VoidCallback onBuy;
+  final VoidCallback onBid;
+
+  /// Whether the viewer already has a live bid on this car — the bid button
+  /// then offers to change it rather than to place a second one.
+  final bool hasPendingBid;
 
   @override
   Widget build(BuildContext context) {
@@ -284,16 +297,32 @@ class _Actions extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.space8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.groupedBackground,
-                foregroundColor: AppColors.primary,
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.groupedBackground,
+                    foregroundColor: AppColors.primary,
+                  ),
+                  // Bidding on a sold car is pointless, and the server would
+                  // reject it anyway — so the button goes with the price.
+                  onPressed: available ? onBid : null,
+                  child: Text(hasPendingBid ? 'Change bid' : 'Place a bid'),
+                ),
               ),
-              onPressed: onChat,
-              child: const Text('Chat with seller'),
-            ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.groupedBackground,
+                    foregroundColor: AppColors.primary,
+                  ),
+                  onPressed: onChat,
+                  child: const Text('Chat'),
+                ),
+              ),
+            ],
           ),
         ],
       );

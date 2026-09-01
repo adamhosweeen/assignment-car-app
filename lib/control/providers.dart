@@ -7,6 +7,9 @@ import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/bid/bids_cache_repository.dart';
+import 'package:assignment/control/bid/bids_repository.dart';
+import 'package:assignment/control/bid/supabase_bids_repository.dart';
 import 'package:assignment/control/chat/chat_cache_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/chat/supabase_chat_repository.dart';
@@ -53,10 +56,22 @@ ChatCacheRepository chatCacheRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+BidsCacheRepository bidsCacheRepository(Ref ref) {
+  final storage = ref.watch(appStorageProvider);
+  return BidsCacheRepository(
+    storage.db,
+    storage.initialBidRows,
+    storage.initialBidListingRows,
+    storage.initialBidListingMediaRows,
+  );
+}
+
+@Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) => SupabaseAuthRepository(
   Supabase.instance.client,
   ref.watch(profileCacheRepositoryProvider),
   ref.watch(chatCacheRepositoryProvider),
+  ref.watch(bidsCacheRepositoryProvider),
 );
 
 @Riverpod(keepAlive: true)
@@ -102,6 +117,13 @@ InsightsRepository insightsRepository(Ref ref) =>
 ChatRepository chatRepository(Ref ref) => SupabaseChatRepository(
   Supabase.instance.client,
   ref.watch(chatCacheRepositoryProvider),
+);
+
+/// Bids on listings (Bid tab, Listing Detail's "Place a bid").
+@Riverpod(keepAlive: true)
+BidsRepository bidsRepository(Ref ref) => SupabaseBidsRepository(
+  Supabase.instance.client,
+  ref.watch(bidsCacheRepositoryProvider),
 );
 
 /// Admin-only reads (Profile → Admin); the server rejects non-admin callers.
