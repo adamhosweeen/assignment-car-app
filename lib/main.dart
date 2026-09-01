@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import 'package:assignment/control/providers.dart';
 import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/services/supabase_config.dart';
-import 'package:assignment/control/app_router.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
@@ -22,8 +22,8 @@ Future<void> main() async {
   );
   final storage = await AppStorage.init();
   runApp(
-    ProviderScope(
-      overrides: [appStorageProvider.overrideWith((ref) => storage)],
+    MultiProvider(
+      providers: appProviders(storage),
       child: const AssignmentApp(),
     ),
   );
@@ -83,16 +83,16 @@ class MissingConfigApp extends StatelessWidget {
 
 /// Root of the app. [MaterialApp.router] with Material widgets styled to feel
 /// iOS — never [CupertinoApp] (CLAUDE.md §5).
-class AssignmentApp extends ConsumerWidget {
+class AssignmentApp extends StatelessWidget {
   const AssignmentApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Assignment',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      routerConfig: ref.watch(goRouterProvider),
+      routerConfig: context.read<GoRouter>(),
     );
   }
 }

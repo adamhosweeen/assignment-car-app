@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
@@ -9,13 +9,13 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Step 4 — previous owners, accident-free, optional road-tax expiry.
-class StepCondition extends ConsumerWidget {
+class StepCondition extends StatelessWidget {
   const StepCondition({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final draft = ref.watch(sellControllerProvider);
-    final notifier = ref.read(sellControllerProvider.notifier);
+  Widget build(BuildContext context) {
+    final draft = context.watch<SellController>().draft;
+    final notifier = context.read<SellController>();
     const placeholder = AppColors.tertiaryLabel;
 
     Future<void> pickOwners() async {

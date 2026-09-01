@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
-import 'package:assignment/control/listings/listings_providers.dart';
-import 'package:assignment/control/profiles/profiles_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -58,6 +56,9 @@ class _FakeListingsRepo implements ListingsRepository {
   String? lastBoughtId;
 
   @override
+  Future<Result<Listing>> getById(String id) async => Ok(_listing);
+
+  @override
   Future<Result<void>> buy(String id) async {
     buyCalls++;
     lastBoughtId = id;
@@ -79,16 +80,20 @@ class _FakeAuth implements AuthRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _FakeProfiles implements ProfilesRepository {
+  @override
+  Future<Result<PublicProfile?>> getById(String id) async => Ok(_seller);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 Widget _app(_FakeListingsRepo repo) {
-  return ProviderScope(
-    overrides: [
-      listingsRepositoryProvider.overrideWithValue(repo),
-      authRepositoryProvider.overrideWithValue(_FakeAuth()),
-      activeListingsProvider.overrideWith(
-        (ref) => Stream.value(const <Listing>[]),
-      ),
-      listingByIdProvider('l1').overrideWith((ref) async => _listing),
-      publicProfileProvider('s1').overrideWith((ref) async => _seller),
+  return MultiProvider(
+    providers: [
+      Provider<ListingsRepository>.value(value: repo),
+      Provider<AuthRepository>.value(value: _FakeAuth()),
+      Provider<ProfilesRepository>.value(value: _FakeProfiles()),
     ],
     child: MaterialApp(
       theme: AppTheme.light,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/admin/admin_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/admin/admin_repository.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/model/admin/admin_user_stats.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -17,14 +18,23 @@ import 'package:assignment/widgets/profile/profile_avatar.dart';
 /// listed and sold, searchable and sortable, with ban/unban in the detail
 /// sheet. Reads the guarded `admin_user_stats()` RPC — a non-admin reaching
 /// this just sees the error state.
-class AdminUsersTab extends ConsumerStatefulWidget {
-  const AdminUsersTab({super.key});
+class AdminUsersTab extends StatefulWidget {
+  const AdminUsersTab({
+    super.key,
+    required this.users,
+    required this.onChanged,
+  });
+
+  final Future<List<AdminUserStats>> users;
+
+  /// Re-runs both admin fetches — banning a user changes the Reports tab too.
+  final VoidCallback onChanged;
 
   @override
-  ConsumerState<AdminUsersTab> createState() => _AdminUsersTabState();
+  State<AdminUsersTab> createState() => _AdminUsersTabState();
 }
 
-class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
+class _AdminUsersTabState extends State<AdminUsersTab> {
   AdminSort _sort = AdminSort.newest;
   final _search = TextEditingController();
   String _query = '';
@@ -36,6 +46,8 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   }
 
   Future<void> _confirmSetBanned(AdminUserStats user, bool ban) async {
+    // Read before awaiting the dialog — the context can't be used across it.
+    final admin = context.read<AdminRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -70,13 +82,12 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    final res = await ref.read(adminRepositoryProvider).setBanned(user.id, ban);
+    final res = await admin.setBanned(user.id, ban);
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     switch (res) {
       case Ok():
-        ref.invalidate(adminUsersProvider);
-        ref.invalidate(adminReportsProvider);
+        widget.onChanged();
       case Err(:final message):
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -143,7 +154,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                 ],
               ),
               if (user.id !=
-                  ref.read(authRepositoryProvider).currentUser?.id) ...[
+                  context.read<AuthRepository>().currentUser?.id) ...[
                 const SizedBox(height: AppSpacing.space16),
                 FilledButton(
                   style: user.banned
@@ -168,32 +179,40 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(adminUsersProvider);
     final text = Theme.of(context).textTheme;
 
-    return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$e',
-                textAlign: TextAlign.center,
-                style: text.subhead.copyWith(color: AppColors.secondaryLabel),
+    return FutureBuilder<List<AdminUserStats>>(
+      future: widget.users,
+      builder: (context, snapshot) {
+        final error = snapshot.error;
+        if (error != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$error',
+                    textAlign: TextAlign.center,
+                    style: text.subhead.copyWith(
+                      color: AppColors.secondaryLabel,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  TextButton(
+                    onPressed: widget.onChanged,
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.space16),
-              TextButton(
-                onPressed: () => ref.invalidate(adminUsersProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      ),
-      data: (users) {
+            ),
+          );
+        }
+        final users = snapshot.data;
+        if (users == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
         if (users.isEmpty) {
           return Center(
             child: Text(
@@ -207,7 +226,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
         final totalSold = users.fold(0, (n, u) => n + u.soldCount);
 
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(adminUsersProvider),
+          onRefresh: () async => widget.onChanged(),
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
             children: [

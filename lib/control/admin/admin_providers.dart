@@ -1,14 +1,10 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/admin/admin_repository.dart';
 import 'package:assignment/model/admin/admin_user_stats.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/result.dart';
 
-part 'admin_providers.g.dart';
-
-/// Carries the repository's user-facing message through Riverpod's error
-/// channel without exposing a raw backend exception to the UI.
+/// Carries the repository's user-facing message through a `FutureBuilder`'s
+/// error channel without exposing a raw backend exception to the UI.
 class AdminException implements Exception {
   const AdminException(this.message);
 
@@ -20,9 +16,8 @@ class AdminException implements Exception {
 
 /// All users with their listing counts (admin screen). Errors for non-admin
 /// callers — the server refuses the RPC.
-@riverpod
-Future<List<AdminUserStats>> adminUsers(Ref ref) async {
-  final res = await ref.watch(adminRepositoryProvider).listUsers();
+Future<List<AdminUserStats>> fetchAdminUsers(AdminRepository admin) async {
+  final res = await admin.listUsers();
   return switch (res) {
     Ok(:final value) => value,
     Err(:final message) => throw AdminException(message),
@@ -30,9 +25,8 @@ Future<List<AdminUserStats>> adminUsers(Ref ref) async {
 }
 
 /// All user-filed reports, newest first (admin reports screen).
-@riverpod
-Future<List<AdminReport>> adminReports(Ref ref) async {
-  final res = await ref.watch(adminRepositoryProvider).listReports();
+Future<List<AdminReport>> fetchAdminReports(AdminRepository admin) async {
+  final res = await admin.listReports();
   return switch (res) {
     Ok(:final value) => value,
     Err(:final message) => throw AdminException(message),

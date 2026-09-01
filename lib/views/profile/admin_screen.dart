@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:assignment/control/admin/admin_providers.dart';
+import 'package:assignment/control/admin/admin_repository.dart';
+import 'package:assignment/model/admin/admin_user_stats.dart';
+import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/profile/admin_reports_screen.dart';
@@ -18,6 +23,25 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   int _tab = 0;
+
+  /// Both fetches live here rather than in the tabs: banning a user from
+  /// either tab changes what the other one shows, so they refresh together.
+  late Future<List<AdminUserStats>> _users;
+  late Future<List<AdminReport>> _reports;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    final admin = context.read<AdminRepository>();
+    _users = fetchAdminUsers(admin);
+    _reports = fetchAdminReports(admin);
+  }
+
+  void _reload() => setState(_load);
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +68,10 @@ class _AdminScreenState extends State<AdminScreen> {
             // the Open/Resolved toggle survive switching back and forth.
             child: IndexedStack(
               index: _tab,
-              children: const [AdminUsersTab(), AdminReportsTab()],
+              children: [
+                AdminUsersTab(users: _users, onChanged: _reload),
+                AdminReportsTab(reports: _reports, onChanged: _reload),
+              ],
             ),
           ),
         ],

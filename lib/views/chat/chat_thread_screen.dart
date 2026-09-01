@@ -1,16 +1,22 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_providers.dart';
+import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/message.dart';
+import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_draft.dart' show kMaxPriceMyr;
 import 'package:assignment/model/listing/listing_enums.dart';
+import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -25,21 +31,36 @@ import 'package:assignment/widgets/profile/profile_avatar.dart';
 /// fetch. `extra` doesn't survive Android killing and restoring the app
 /// process, so [seed] is never required: when absent (or stale), the
 /// [Conversation] is fetched by id instead.
-class ChatThreadScreen extends ConsumerStatefulWidget {
+class ChatThreadScreen extends StatefulWidget {
   const ChatThreadScreen({super.key, required this.conversationId, this.seed});
 
   final String conversationId;
   final Conversation? seed;
 
   @override
-  ConsumerState<ChatThreadScreen> createState() => _ChatThreadScreenState();
+  State<ChatThreadScreen> createState() => _ChatThreadScreenState();
 }
 
-class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
+class _ChatThreadScreenState extends State<ChatThreadScreen> {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
   bool _sending = false;
   String? _actingOnMessageId;
+
+  /// The thread itself: [ChatThreadScreen.seed] when the caller had it in
+  /// hand, otherwise fetched by id.
+  Conversation? _conversation;
+  bool _conversationFailed = false;
+
+  late final Stream<List<Message>> _messages;
+
+  /// Both are one-shot fetches keyed off the conversation, so they are held
+  /// here rather than rebuilt — see [_loadConversationDetails].
+  Future<Listing>? _listing;
+  Future<PublicProfile?>? _otherProfile;
+
+  /// The message list the loaded [_listing] was fetched against.
+  List<Message>? _seenMessages;
 
   /// Offers the seller has countered with a "New price" — disables that
   /// original offer's Confirm/New price row so it can't also be accepted or
@@ -51,8 +72,59 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   @override
   void initState() {
     super.initState();
+    final chat = context.read<ChatRepository>();
     // Fire and forget — a failure here is cosmetic, the badge just won't clear.
-    ref.read(chatRepositoryProvider).markRead(widget.conversationId);
+    chat.markRead(widget.conversationId);
+    _messages = watchMessages(chat, widget.conversationId);
+
+    final seed = widget.seed;
+    if (seed != null) {
+      _conversation = seed;
+      _loadConversationDetails();
+      return;
+    }
+    fetchConversationById(chat, widget.conversationId)
+        .then((conversation) {
+          if (!mounted) return;
+          setState(() {
+            _conversation = conversation;
+            _loadConversationDetails();
+          });
+        })
+        .catchError((Object _) {
+          if (mounted) setState(() => _conversationFailed = true);
+        });
+  }
+
+  /// (Re-)fetch the car and the other participant. Call inside `setState`
+  /// unless you are still in [initState].
+  void _loadConversationDetails() {
+    final conversation = _conversation;
+    if (conversation == null) return;
+    _listing = fetchListingById(
+      context.read<ListingsRepository>(),
+      conversation.listingId,
+    );
+    final uid = context.read<AuthRepository>().currentUser?.id;
+    _otherProfile = fetchPublicProfile(
+      context.read<ProfilesRepository>(),
+      uid == null
+          ? conversation.sellerId
+          : conversation.otherParticipantId(uid),
+    );
+  }
+
+  /// The car is a one-shot fetch, not realtime, so a status or price change
+  /// made by the other participant (they just completed a purchase via
+  /// `buy_at_offer`, say) never reaches this screen on its own. Messages
+  /// *are* realtime, and an offer's confirm/buy always touches a message row
+  /// — so piggyback on that to re-check the listing.
+  void _onMessages(List<Message> messages) {
+    if (listEquals(_seenMessages, messages)) return;
+    _seenMessages = messages;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(_loadConversationDetails);
+    });
   }
 
   @override
@@ -80,9 +152,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final body = text.isEmpty ? 'Offer: ${formatPrice(offerAmountMyr!)}' : text;
     setState(() => _sending = true);
     _controller.clear();
-    final res = await ref
-        .read(chatRepositoryProvider)
-        .send(widget.conversationId, body, offerAmountMyr: offerAmountMyr);
+    final res = await context.read<ChatRepository>().send(
+      widget.conversationId,
+      body,
+      offerAmountMyr: offerAmountMyr,
+    );
     if (!mounted) return false;
     setState(() => _sending = false);
     if (res case Err(:final message)) {
@@ -115,7 +189,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   /// The recipient of a buyer's offer (the seller) accepts its price.
   Future<void> _confirmOffer(Message offer) async {
     setState(() => _actingOnMessageId = offer.id);
-    final res = await ref.read(chatRepositoryProvider).confirmOffer(offer.id);
+    final res = await context.read<ChatRepository>().confirmOffer(offer.id);
     if (!mounted) return;
     setState(() => _actingOnMessageId = null);
     if (res case Err(:final message)) {
@@ -138,60 +212,45 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final seed = widget.seed;
-    if (seed != null) return _buildThread(context, seed);
+    final conversation = _conversation;
+    if (conversation == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: _conversationFailed
+            ? const _CenteredNote(
+                text:
+                    'We couldn’t load this conversation. Check your '
+                    'connection.',
+              )
+            : const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final conversationAsync = ref.watch(
-      conversationByIdProvider(widget.conversationId),
-    );
-    final conversation = conversationAsync.value;
-    if (conversation != null) return _buildThread(context, conversation);
-
-    return Scaffold(
-      appBar: AppBar(),
-      body: conversationAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const _CenteredNote(
-          text: 'We couldn’t load this conversation. Check your connection.',
-        ),
-        data: (_) => const SizedBox.shrink(),
+    return FutureBuilder<PublicProfile?>(
+      future: _otherProfile,
+      builder: (context, profile) => FutureBuilder<Listing>(
+        future: _listing,
+        builder: (context, listing) =>
+            _buildThread(context, conversation, profile.data, listing.data),
       ),
     );
   }
 
-  Widget _buildThread(BuildContext context, Conversation conversation) {
+  Widget _buildThread(
+    BuildContext context,
+    Conversation conversation,
+    PublicProfile? profile,
+    Listing? listing,
+  ) {
     final text = Theme.of(context).textTheme;
-    final uid = ref.watch(authRepositoryProvider).currentUser?.id;
-    final otherId = uid == null
-        ? conversation.sellerId
-        : conversation.otherParticipantId(uid);
-    final profile = ref.watch(publicProfileProvider(otherId)).value;
+    final uid = context.read<AuthRepository>().currentUser?.id;
     final displayName = profile?.name ?? 'Chat';
-    final listing = ref
-        .watch(listingByIdProvider(conversation.listingId))
-        .value;
-    final messagesAsync = ref.watch(messagesProvider(conversation.id));
-    // listingByIdProvider is a one-shot fetch, not realtime, so a status/price
-    // change made by the other participant (e.g. they just completed a
-    // purchase via buy_at_offer) never reaches this screen on its own.
-    // messages, however, already are realtime — an offer's confirm/buy always
-    // touches a message row, so piggyback on that to re-check the listing.
-    ref.listen(messagesProvider(conversation.id), (_, _) {
-      ref.invalidate(listingByIdProvider(conversation.listingId));
-    });
 
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            // listingByIdProvider is a one-shot fetch, not realtime — this
-            // screen keeps watching it underneath the pushed route, so
-            // without invalidating first the detail screen would just reuse
-            // whatever was cached from before the listing was marked sold.
-            ref.invalidate(listingByIdProvider(conversation.listingId));
-            context.push('/listing/${conversation.listingId}');
-          },
+          onTap: () => context.push('/listing/${conversation.listingId}'),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -231,14 +290,21 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       body: Column(
         children: [
           Expanded(
-            child: messagesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => _CenteredNote(
-                text:
-                    'We couldn’t load this conversation. Check your '
-                    'connection.',
-              ),
-              data: (msgs) {
+            child: StreamBuilder<List<Message>>(
+              stream: _messages,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const _CenteredNote(
+                    text:
+                        'We couldn’t load this conversation. Check your '
+                        'connection.',
+                  );
+                }
+                final msgs = snapshot.data;
+                if (msgs == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                _onMessages(msgs);
                 if (msgs.isEmpty) {
                   return const _CenteredNote(
                     text: 'No messages yet. Say hello.',

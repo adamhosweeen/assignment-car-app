@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/registration_controller.dart';
 import 'package:assignment/model/malaysian_states.dart';
@@ -12,26 +12,26 @@ import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Registration step 3 — where the user is, via GPS or the state picker.
 /// Confirms the result inline so the user knows what was detected.
-class StepPickLocation extends ConsumerWidget {
+class StepPickLocation extends StatelessWidget {
   const StepPickLocation({super.key});
 
-  Future<void> _pickState(BuildContext context, WidgetRef ref) async {
+  Future<void> _pickState(BuildContext context) async {
+    // Read before the sheet: the context can't be used across the await.
+    final registration = context.read<RegistrationController>();
     final picked = await showSelectSheet<String>(
       context: context,
       title: 'Your state',
       options: MalaysianStates.all,
       labelOf: (s) => s,
-      selected: ref.read(registrationControllerProvider).stateName,
+      selected: registration.state.stateName,
     );
-    if (picked != null) {
-      ref.read(registrationControllerProvider.notifier).setStateName(picked);
-    }
+    if (picked != null) registration.setStateName(picked);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = ref.watch(registrationControllerProvider);
-    final notifier = ref.read(registrationControllerProvider.notifier);
+  Widget build(BuildContext context) {
+    final s = context.watch<RegistrationController>().state;
+    final notifier = context.read<RegistrationController>();
 
     return SellStepScaffold(
       title: 'Where are you?',
@@ -65,7 +65,7 @@ class StepPickLocation extends ConsumerWidget {
               value: s.stateName ?? 'Choose manually',
               valueColor: s.stateName == null ? AppColors.tertiaryLabel : null,
               showChevron: true,
-              onTap: () => _pickState(context, ref),
+              onTap: () => _pickState(context),
             ),
           ],
         ),

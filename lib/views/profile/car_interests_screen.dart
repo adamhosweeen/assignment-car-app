@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import 'package:assignment/control/providers.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/profile/car_interests.dart';
+import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -12,36 +12,35 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 
 /// Profile → Car Interests: the saved questionnaire answers that drive the
 /// "Recommended for you" row. Read-only here; edited on Edit Profile.
-class CarInterestsScreen extends ConsumerWidget {
+class CarInterestsScreen extends StatelessWidget {
   const CarInterestsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(authStateProvider);
-    final text = Theme.of(context).textTheme;
+  Widget build(BuildContext context) {
+    final profile = context.watch<Profile?>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Car Interests'),
         actions: [
-          if (async.value != null)
+          if (profile != null)
             TextButton(
               onPressed: () => context.push('/profile/edit'),
               child: const Text('Edit'),
             ),
         ],
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
-          child: Text('Something went wrong. Go back and try again.'),
-        ),
-        data: (profile) {
-          if (profile == null) {
-            return const Center(child: Text('You’re signed out.'));
-          }
-          final interests = profile.interests;
-          return ListView(
+      body: _body(context, profile),
+    );
+  }
+
+  Widget _body(BuildContext context, Profile? profile) {
+    final text = Theme.of(context).textTheme;
+    if (profile == null) {
+      return const Center(child: Text('You’re signed out.'));
+    }
+    final interests = profile.interests;
+    return ListView(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
             children: [
               GroupedSection(
@@ -88,9 +87,6 @@ class CarInterestsScreen extends ConsumerWidget {
               ),
             ],
           );
-        },
-      ),
-    );
   }
 
   String _formatBudget(CarInterests interests) {

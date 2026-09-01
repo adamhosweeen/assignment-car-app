@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/listings/recommendations_provider.dart';
 import 'package:assignment/model/listing/listing.dart';
+import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/widgets/common/search_field.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
@@ -19,25 +21,37 @@ import 'package:assignment/widgets/listing/listing_card.dart';
 ///
 /// Grouped layout: grey background, white cards. The outer list pads
 /// vertically only — each row insets itself.
-class BuyFeedScreen extends ConsumerStatefulWidget {
+class BuyFeedScreen extends StatefulWidget {
   const BuyFeedScreen({super.key});
 
   @override
-  ConsumerState<BuyFeedScreen> createState() => _BuyFeedScreenState();
+  State<BuyFeedScreen> createState() => _BuyFeedScreenState();
 }
 
-class _BuyFeedScreenState extends ConsumerState<BuyFeedScreen> {
+class _BuyFeedScreenState extends State<BuyFeedScreen> {
   /// 0 = Recommended for you, 1 = Newest listings.
   int _tab = 0;
 
+  /// One subscription feeds both tabs — "Recommended for you" is this same
+  /// list ranked against the signed-in profile, not a second query.
+  late Stream<List<Listing>> _listings;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  void _subscribe() =>
+      _listings = watchActiveListings(context.read<ListingsRepository>());
+
   Future<void> _refresh() async {
-    ref.invalidate(activeListingsProvider);
+    setState(_subscribe);
     await Future<void>.delayed(const Duration(milliseconds: 400));
   }
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(activeListingsProvider);
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
@@ -74,19 +88,26 @@ class _BuyFeedScreenState extends ConsumerState<BuyFeedScreen> {
           ),
         ),
       ),
-      body: async.when(
-        loading: () => const _FeedSkeleton(),
-        error: (_, _) => const _FeedMessage(
-          icon: Icons.error_outline,
-          title: 'Something went wrong',
-          message: 'We couldn’t load listings. Pull down to try again.',
-        ),
-        data: (listings) {
+      body: StreamBuilder<List<Listing>>(
+        stream: _listings,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const _FeedMessage(
+              icon: Icons.error_outline,
+              title: 'Something went wrong',
+              message: 'We couldn’t load listings. Pull down to try again.',
+            );
+          }
+          final listings = snapshot.data;
+          if (listings == null) return const _FeedSkeleton();
           if (listings.isEmpty) {
             return _EmptyFeed(onSell: () => context.go('/home/sell'));
           }
           if (_tab == 0) {
-            final recommended = ref.watch(recommendedListingsProvider);
+            final recommended = recommendedListings(
+              context.watch<Profile?>(),
+              listings,
+            );
             if (recommended.isEmpty) {
               return const _FeedMessage(
                 icon: Icons.recommend_outlined,

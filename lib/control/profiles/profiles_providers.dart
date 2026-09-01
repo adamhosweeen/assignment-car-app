@@ -1,13 +1,9 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/result.dart';
 
-part 'profiles_providers.g.dart';
-
-/// Carries a repository's user-facing message through Riverpod's error
-/// channel without exposing a raw backend exception to the UI.
+/// Carries a repository's user-facing message through a `FutureBuilder`'s
+/// error channel without exposing a raw backend exception to the UI.
 class ProfilesException implements Exception {
   const ProfilesException(this.message);
 
@@ -19,9 +15,11 @@ class ProfilesException implements Exception {
 
 /// One user's public profile (seller page, seller row on Listing Detail).
 /// Null when the account no longer exists.
-@riverpod
-Future<PublicProfile?> publicProfile(Ref ref, String id) async {
-  final res = await ref.watch(profilesRepositoryProvider).getById(id);
+Future<PublicProfile?> fetchPublicProfile(
+  ProfilesRepository profiles,
+  String id,
+) async {
+  final res = await profiles.getById(id);
   return switch (res) {
     Ok(:final value) => value,
     Err(:final message) => throw ProfilesException(message),
@@ -29,10 +27,12 @@ Future<PublicProfile?> publicProfile(Ref ref, String id) async {
 }
 
 /// Seller-name search. Empty query → empty list, no request.
-@riverpod
-Future<List<PublicProfile>> sellerSearch(Ref ref, String query) async {
+Future<List<PublicProfile>> searchSellers(
+  ProfilesRepository profiles,
+  String query,
+) async {
   if (query.trim().isEmpty) return const [];
-  final res = await ref.watch(profilesRepositoryProvider).search(query);
+  final res = await profiles.search(query);
   return switch (res) {
     Ok(:final value) => value,
     Err(:final message) => throw ProfilesException(message),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
@@ -12,21 +12,21 @@ import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Step 5 — region (West / East Malaysia), state, city. The state list is
 /// filtered by the chosen region.
-class StepLocation extends ConsumerStatefulWidget {
+class StepLocation extends StatefulWidget {
   const StepLocation({super.key});
 
   @override
-  ConsumerState<StepLocation> createState() => _StepLocationState();
+  State<StepLocation> createState() => _StepLocationState();
 }
 
-class _StepLocationState extends ConsumerState<StepLocation> {
+class _StepLocationState extends State<StepLocation> {
   late final TextEditingController _city;
 
   @override
   void initState() {
     super.initState();
     _city = TextEditingController(
-      text: ref.read(sellControllerProvider).city ?? '',
+      text: context.read<SellController>().draft.city ?? '',
     );
   }
 
@@ -36,7 +36,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     super.dispose();
   }
 
-  SellController get _notifier => ref.read(sellControllerProvider.notifier);
+  SellController get _notifier => context.read<SellController>();
 
   Future<void> _pickRegion() async {
     final picked = await showSelectSheet<RegistrationRegion>(
@@ -44,27 +44,27 @@ class _StepLocationState extends ConsumerState<StepLocation> {
       title: 'Region',
       options: RegistrationRegion.values,
       labelOf: (r) => r.label,
-      selected: ref.read(sellControllerProvider).registrationRegion,
+      selected: context.read<SellController>().draft.registrationRegion,
     );
     if (picked != null) _notifier.setRegion(picked);
   }
 
   Future<void> _pickState() async {
-    final region = ref.read(sellControllerProvider).registrationRegion;
+    final region = context.read<SellController>().draft.registrationRegion;
     if (region == null) return;
     final picked = await showSelectSheet<String>(
       context: context,
       title: 'State',
       options: MalaysianStates.inRegion(region),
       labelOf: (s) => s,
-      selected: ref.read(sellControllerProvider).state,
+      selected: context.read<SellController>().draft.state,
     );
     if (picked != null) _notifier.setStateName(picked);
   }
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(sellControllerProvider);
+    final draft = context.watch<SellController>().draft;
     const placeholder = AppColors.tertiaryLabel;
     return SellStepScaffold(
       title: 'Registration & location',

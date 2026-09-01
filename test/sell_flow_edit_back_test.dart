@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 
-/// A [SellController] that skips sqflite persistence: [build] returns a fixed
-/// draft and [setStep] just moves the in-memory step.
-class _FakeSellController extends SellController {
-  _FakeSellController(this._draft);
+/// Seeds the draft and swallows persistence, so the real [SellController]
+/// runs in a widget test without sqflite.
+class _SeededDraftRepo implements DraftRepository {
+  _SeededDraftRepo(this._draft);
 
   final ListingDraft _draft;
 
   @override
-  ListingDraft build() => _draft;
+  bool get hasDraft => true;
 
   @override
-  Future<void> setStep(int step) async {
-    state = state.copyWith(currentStep: step);
-  }
+  ListingDraft? load() => _draft;
+
+  @override
+  Future<void> save(ListingDraft draft) async {}
+
+  @override
+  Future<void> clear() async {}
 }
 
 ListingDraft _draftAtReview() => ListingDraft(
@@ -61,12 +66,8 @@ Future<void> _pumpEditFlow(WidgetTester tester) async {
   );
 
   await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        sellControllerProvider.overrideWith(
-          () => _FakeSellController(_draftAtReview()),
-        ),
-      ],
+    ChangeNotifierProvider<SellController>(
+      create: (_) => SellController(_SeededDraftRepo(_draftAtReview())),
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),
   );

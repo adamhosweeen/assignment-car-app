@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
@@ -11,21 +11,21 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Step 6 — asking price, negotiable toggle, and an optional description.
-class StepPrice extends ConsumerStatefulWidget {
+class StepPrice extends StatefulWidget {
   const StepPrice({super.key});
 
   @override
-  ConsumerState<StepPrice> createState() => _StepPriceState();
+  State<StepPrice> createState() => _StepPriceState();
 }
 
-class _StepPriceState extends ConsumerState<StepPrice> {
+class _StepPriceState extends State<StepPrice> {
   late final TextEditingController _price;
   late final TextEditingController _description;
 
   @override
   void initState() {
     super.initState();
-    final draft = ref.read(sellControllerProvider);
+    final draft = context.read<SellController>().draft;
     _price = TextEditingController(text: draft.priceMyr?.toString() ?? '');
     _description = TextEditingController(text: draft.description ?? '');
   }
@@ -37,11 +37,11 @@ class _StepPriceState extends ConsumerState<StepPrice> {
     super.dispose();
   }
 
-  SellController get _notifier => ref.read(sellControllerProvider.notifier);
+  SellController get _notifier => context.read<SellController>();
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(sellControllerProvider);
+    final draft = context.watch<SellController>().draft;
     return SellStepScaffold(
       title: 'Price',
       children: [

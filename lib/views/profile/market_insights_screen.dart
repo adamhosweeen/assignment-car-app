@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/insights/insights_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/insights/insights_repository.dart';
 import 'package:assignment/model/insights/car_popularity.dart';
+import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -32,35 +33,58 @@ extension on _Segment {
 ///
 /// Laid out as a compact summary plus a segmented control so each view fits
 /// on one screen: lists show their top 5 with a "Show all" toggle.
-class MarketInsightsScreen extends ConsumerStatefulWidget {
+class MarketInsightsScreen extends StatefulWidget {
   const MarketInsightsScreen({super.key});
 
   @override
-  ConsumerState<MarketInsightsScreen> createState() =>
-      _MarketInsightsScreenState();
+  State<MarketInsightsScreen> createState() => _MarketInsightsScreenState();
 }
 
-class _MarketInsightsScreenState extends ConsumerState<MarketInsightsScreen> {
+class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
   _Segment _segment = _Segment.brands;
   bool _showAll = false;
 
+  /// A one-shot fetch, held so a rebuild (a segment change, say) doesn't
+  /// re-issue it. Retry and pull-to-refresh replace it outright.
+  late Future<CarPopularity?> _popularity;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  void _fetch() =>
+      _popularity = fetchCarPopularity(context.read<InsightsRepository>());
+
+  Future<void> _refresh() async {
+    setState(_fetch);
+    await _popularity.catchError((Object _) => null);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(carPopularityProvider);
-    final userState = ref.watch(authStateProvider).value?.state;
+    final userState = context.watch<Profile?>()?.state;
 
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('Market Insights')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _Message(
-          text: error is InsightsException
-              ? error.message
-              : 'Something went wrong. Please try again.',
-          onRetry: () => ref.invalidate(carPopularityProvider),
-        ),
-        data: (snapshot) {
+      body: FutureBuilder<CarPopularity?>(
+        future: _popularity,
+        builder: (context, result) {
+          final error = result.error;
+          if (error != null) {
+            return _Message(
+              text: error is InsightsException
+                  ? error.message
+                  : 'Something went wrong. Please try again.',
+              onRetry: () => setState(_fetch),
+            );
+          }
+          if (result.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final snapshot = result.data;
           if (snapshot == null) {
             return const _Message(
               text:
@@ -69,10 +93,7 @@ class _MarketInsightsScreenState extends ConsumerState<MarketInsightsScreen> {
             );
           }
           return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(carPopularityProvider);
-              await ref.read(carPopularityProvider.future);
-            },
+            onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSpacing.screenPadding),

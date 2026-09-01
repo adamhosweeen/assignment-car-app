@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/notifications/notifications_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/notifications/notifications_repository.dart';
 import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -14,29 +14,21 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 /// Profile → Inbox: server-generated notifications (welcome, listings that
 /// match your interests, market-insights refreshes). Live over realtime;
 /// tap opens the linked screen and marks the row read; swipe left deletes.
-class InboxScreen extends ConsumerWidget {
+class InboxScreen extends StatelessWidget {
   const InboxScreen({super.key});
 
-  Future<void> _open(
-    BuildContext context,
-    WidgetRef ref,
-    AppNotification n,
-  ) async {
+  Future<void> _open(BuildContext context, AppNotification n) async {
     if (!n.isRead) {
       // Fire and forget — realtime refreshes the list; an error here is
       // cosmetic and shouldn't block navigation.
-      ref.read(notificationsRepositoryProvider).markRead(n.id);
+      context.read<NotificationsRepository>().markRead(n.id);
     }
     final route = n.route;
     if (route != null && context.mounted) context.push(route);
   }
 
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    AppNotification n,
-  ) async {
-    final res = await ref.read(notificationsRepositoryProvider).delete(n.id);
+  Future<void> _delete(BuildContext context, AppNotification n) async {
+    final res = await context.read<NotificationsRepository>().delete(n.id);
     if (!context.mounted) return;
     if (res case Err(:final message)) {
       ScaffoldMessenger.of(context)
@@ -45,8 +37,8 @@ class InboxScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _markAllRead(BuildContext context, WidgetRef ref) async {
-    final res = await ref.read(notificationsRepositoryProvider).markAllRead();
+  Future<void> _markAllRead(BuildContext context) async {
+    final res = await context.read<NotificationsRepository>().markAllRead();
     if (!context.mounted) return;
     if (res case Err(:final message)) {
       ScaffoldMessenger.of(context)
@@ -56,9 +48,9 @@ class InboxScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(inboxProvider);
-    final unread = ref.watch(unreadCountProvider);
+  Widget build(BuildContext context) {
+    final snapshot = context.watch<AsyncSnapshot<List<AppNotification>>>();
+    final unread = unreadCountOf(snapshot);
 
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
@@ -67,73 +59,79 @@ class InboxScreen extends ConsumerWidget {
         actions: [
           if (unread > 0)
             TextButton(
-              onPressed: () => _markAllRead(context, ref),
+              onPressed: () => _markAllRead(context),
               child: const Text('Mark all read'),
             ),
         ],
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => _Message(
-          icon: Icons.error_outline,
-          text: 'We couldn’t load your inbox. Check your connection.',
-          onRetry: () => ref.invalidate(inboxProvider),
-        ),
-        data: (items) {
-          if (items.isEmpty) {
-            return const _Message(
-              icon: Icons.inbox_outlined,
-              text:
-                  'Nothing here yet. You’ll hear about cars that match your '
-                  'interests and new market data.',
-            );
-          }
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            children: [
-              GroupedSection(
-                children: [
-                  for (final n in items)
-                    Dismissible(
-                      key: ValueKey(n.id),
-                      direction: DismissDirection.endToStart,
-                      background: const ColoredBox(
-                        color: AppColors.destructive,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding: EdgeInsets.only(right: AppSpacing.space16),
-                            child: Icon(
-                              Icons.delete_outline,
-                              color: AppColors.onPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      onDismissed: (_) => _delete(context, ref, n),
-                      child: _InboxRow(
-                        notification: n,
-                        onTap: () => _open(context, ref, n),
+      body: _body(context, snapshot),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    AsyncSnapshot<List<AppNotification>> snapshot,
+  ) {
+    if (snapshot.hasError) {
+      return _Message(
+        icon: Icons.error_outline,
+        text: 'We couldn’t load your inbox. Check your connection.',
+        onRetry: () => context.read<InboxFeed>().restart(),
+      );
+    }
+    final items = snapshot.data;
+    if (items == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (items.isEmpty) {
+      return const _Message(
+        icon: Icons.inbox_outlined,
+        text:
+            'Nothing here yet. You’ll hear about cars that match your '
+            'interests and new market data.',
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      children: [
+        GroupedSection(
+          children: [
+            for (final n in items)
+              Dismissible(
+                key: ValueKey(n.id),
+                direction: DismissDirection.endToStart,
+                background: const ColoredBox(
+                  color: AppColors.destructive,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: AppSpacing.space16),
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: AppColors.onPrimary,
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space4,
-                ),
-                child: Text(
-                  'Swipe left to delete.',
-                  style: Theme.of(context).textTheme.footnote.copyWith(
-                    color: AppColors.secondaryLabel,
                   ),
                 ),
+                onDismissed: (_) => _delete(context, n),
+                child: _InboxRow(
+                  notification: n,
+                  onTap: () => _open(context, n),
+                ),
               ),
-            ],
-          );
-        },
-      ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+          child: Text(
+            'Swipe left to delete.',
+            style: Theme.of(
+              context,
+            ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+        ),
+      ],
     );
   }
 }

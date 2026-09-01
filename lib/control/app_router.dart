@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/views/app_shell.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/auth/registration_controller.dart';
+import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/views/auth/login_screen.dart';
 import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
@@ -29,21 +33,26 @@ import 'package:assignment/views/profile/profile_screen.dart';
 import 'package:assignment/views/profile/seller_profile_screen.dart';
 import 'package:assignment/views/profile/seller_search_screen.dart';
 
-part 'app_router.g.dart';
+/// Re-runs the redirect guard whenever auth state flips. Lives as long as the
+/// router does, which is the life of the app.
+class _AuthRefresh extends ChangeNotifier {
+  _AuthRefresh(AuthRepository auth) {
+    _sub = auth.authState().listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<Profile?> _sub;
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
 
 /// The app router. Splash decides the first destination; the redirect guard
 /// keeps signed-out users in the login flow and signed-in users out of it.
-@Riverpod(keepAlive: true)
-GoRouter goRouter(Ref ref) {
-  final auth = ref.watch(authRepositoryProvider);
-
-  // Re-run redirects whenever auth state flips.
-  final refresh = ValueNotifier<int>(0);
-  final sub = auth.authState().listen((_) => refresh.value++);
-  ref.onDispose(() {
-    sub.cancel();
-    refresh.dispose();
-  });
+GoRouter createRouter(AuthRepository auth) {
+  final refresh = _AuthRefresh(auth);
 
   return GoRouter(
     initialLocation: '/splash',
@@ -64,7 +73,15 @@ GoRouter goRouter(Ref ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, _) => const RegisterFlowScreen()),
+      // The half-filled signup form is scoped to this route, so leaving the
+      // flow throws it away.
+      GoRoute(
+        path: '/register',
+        builder: (_, _) => ChangeNotifierProvider(
+          create: (_) => RegistrationController(),
+          child: const RegisterFlowScreen(),
+        ),
+      ),
       GoRoute(
         path: '/sell/new',
         builder: (_, state) => SellFlowScreen(editing: state.extra == true),

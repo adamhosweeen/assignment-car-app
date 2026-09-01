@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/control/bid/bids_providers.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
-import 'package:assignment/control/listings/listings_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
@@ -48,10 +46,18 @@ final _bidder = Profile(
 );
 
 class _FakeBidsRepo implements BidsRepository {
+  _FakeBidsRepo({this.existing});
+
+  /// The bidder's live bid on this car, if any.
+  final Bid? existing;
+
   int placeCalls = 0;
   int? lastAmount;
   String? lastPhone;
   bool? lastNotify;
+
+  @override
+  Future<Result<Bid?>> myPendingBidFor(String listingId) async => Ok(existing);
 
   @override
   Future<Result<Bid>> placeBid(
@@ -93,16 +99,26 @@ class _FakeAuth implements AuthRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Widget _app(_FakeBidsRepo repo, {Bid? existing, Listing? listing}) {
-  return ProviderScope(
-    overrides: [
-      bidsRepositoryProvider.overrideWithValue(repo),
-      authRepositoryProvider.overrideWithValue(_FakeAuth()),
-      listingByIdProvider(
-        'l1',
-      ).overrideWith((ref) async => listing ?? _listing),
-      myPendingBidProvider('l1').overrideWith((ref) async => existing),
-      myBidsProvider.overrideWith((ref) => const Stream.empty()),
+class _FakeListingsRepo implements ListingsRepository {
+  _FakeListingsRepo(this._listing);
+
+  final Listing _listing;
+
+  @override
+  Future<Result<Listing>> getById(String id) async => Ok(_listing);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+Widget _app(_FakeBidsRepo repo, {Listing? listing}) {
+  return MultiProvider(
+    providers: [
+      Provider<BidsRepository>.value(value: repo),
+      Provider<AuthRepository>.value(value: _FakeAuth()),
+      Provider<ListingsRepository>.value(
+        value: _FakeListingsRepo(listing ?? _listing),
+      ),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -266,7 +282,7 @@ void main() {
       createdAt: DateTime.utc(2026, 8, 1),
       updatedAt: DateTime.utc(2026, 8, 1),
     );
-    await tester.pumpWidget(_app(_FakeBidsRepo(), existing: existing));
+    await tester.pumpWidget(_app(_FakeBidsRepo(existing: existing)));
     await tester.pumpAndSettle();
 
     expect(find.text('Update Your Bid'), findsOneWidget);

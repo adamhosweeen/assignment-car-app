@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/reports/reports_repository.dart';
+import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -22,10 +26,29 @@ import 'package:assignment/widgets/profile/profile_avatar.dart';
 /// Another user's public page: photo, name, state, member since, and the
 /// cars they currently have for sale. Never shows contact details
 /// (V1_SPEC §4.10). Reached from seller search and from Listing Detail.
-class SellerProfileScreen extends ConsumerWidget {
+class SellerProfileScreen extends StatefulWidget {
   const SellerProfileScreen({super.key, required this.id});
 
   final String id;
+
+  @override
+  State<SellerProfileScreen> createState() => _SellerProfileScreenState();
+}
+
+class _SellerProfileScreenState extends State<SellerProfileScreen> {
+  /// A one-shot fetch, held so a rebuild never re-issues it.
+  late Future<PublicProfile?> _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  void _fetch() => _profile = fetchPublicProfile(
+    context.read<ProfilesRepository>(),
+    widget.id,
+  );
 
   void _openReportSheet(BuildContext context) {
     showModalBottomSheet<void>(
@@ -37,14 +60,14 @@ class SellerProfileScreen extends ConsumerWidget {
           top: Radius.circular(AppSpacing.radiusSheet),
         ),
       ),
-      builder: (_) => _ReportSheet(reportedId: id),
+      builder: (_) => _ReportSheet(reportedId: widget.id),
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(publicProfileProvider(id));
-    final isSelf = ref.read(authRepositoryProvider).currentUser?.id == id;
+  Widget build(BuildContext context) {
+    final isSelf =
+        context.read<AuthRepository>().currentUser?.id == widget.id;
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
@@ -62,16 +85,23 @@ class SellerProfileScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => SearchMessage(
-          icon: Icons.error_outline,
-          text: error is ProfilesException
-              ? error.message
-              : 'We couldn’t load this seller. Please try again.',
-          onRetry: () => ref.invalidate(publicProfileProvider(id)),
-        ),
-        data: (profile) {
+      body: FutureBuilder<PublicProfile?>(
+        future: _profile,
+        builder: (context, snapshot) {
+          final error = snapshot.error;
+          if (error != null) {
+            return SearchMessage(
+              icon: Icons.error_outline,
+              text: error is ProfilesException
+                  ? error.message
+                  : 'We couldn’t load this seller. Please try again.',
+              onRetry: () => setState(_fetch),
+            );
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final profile = snapshot.data;
           if (profile == null) {
             return const SearchMessage(
               icon: Icons.person_off_outlined,
@@ -85,15 +115,25 @@ class SellerProfileScreen extends ConsumerWidget {
   }
 }
 
-class _Body extends ConsumerWidget {
+class _Body extends StatefulWidget {
   const _Body({required this.profile});
 
   final PublicProfile profile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends State<_Body> {
+  late final Stream<List<Listing>> _listings = watchSellerListings(
+    context.read<ListingsRepository>(),
+    widget.profile.id,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profile;
     final text = Theme.of(context).textTheme;
-    final listings = ref.watch(sellerListingsProvider(profile.id));
     final meta = [
       if (profile.state != null) profile.state!,
       'Member since ${formatMonthYear(profile.createdAt)}',
@@ -123,15 +163,21 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.space32),
         const SectionHeader('For sale'),
-        listings.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.only(top: AppSpacing.space24),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (_, _) => const _Note(
-            'We couldn’t load this seller’s cars. Pull down to try again.',
-          ),
-          data: (items) {
+        StreamBuilder<List<Listing>>(
+          stream: _listings,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const _Note(
+                'We couldn’t load this seller’s cars. Pull down to try again.',
+              );
+            }
+            final items = snapshot.data;
+            if (items == null) {
+              return const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.space24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
             if (items.isEmpty) {
               return const _Note('No cars for sale right now.');
             }
@@ -158,16 +204,16 @@ class _Body extends ConsumerWidget {
 }
 
 /// Bottom sheet for filing a report: a short title, what happened, submit.
-class _ReportSheet extends ConsumerStatefulWidget {
+class _ReportSheet extends StatefulWidget {
   const _ReportSheet({required this.reportedId});
 
   final String reportedId;
 
   @override
-  ConsumerState<_ReportSheet> createState() => _ReportSheetState();
+  State<_ReportSheet> createState() => _ReportSheetState();
 }
 
-class _ReportSheetState extends ConsumerState<_ReportSheet> {
+class _ReportSheetState extends State<_ReportSheet> {
   final _title = TextEditingController();
   final _description = TextEditingController();
   bool _submitting = false;
@@ -193,13 +239,11 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
       _submitting = true;
       _error = null;
     });
-    final res = await ref
-        .read(reportsRepositoryProvider)
-        .submit(
-          reportedId: widget.reportedId,
-          title: _title.text,
-          description: _description.text,
-        );
+    final res = await context.read<ReportsRepository>().submit(
+      reportedId: widget.reportedId,
+      title: _title.text,
+      description: _description.text,
+    );
     if (!mounted) return;
     switch (res) {
       case Ok():

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -21,7 +22,7 @@ const int _lastStep = 6;
 
 /// The 7-step create-listing flow. One step per screen, a thin progress bar,
 /// back preserves data, and the draft is written to sqflite after every step.
-class SellFlowScreen extends ConsumerStatefulWidget {
+class SellFlowScreen extends StatefulWidget {
   const SellFlowScreen({super.key, this.editing = false});
 
   /// True when the flow was opened to edit an existing listing (it starts on
@@ -31,23 +32,23 @@ class SellFlowScreen extends ConsumerStatefulWidget {
   final bool editing;
 
   @override
-  ConsumerState<SellFlowScreen> createState() => _SellFlowScreenState();
+  State<SellFlowScreen> createState() => _SellFlowScreenState();
 }
 
-class _SellFlowScreenState extends ConsumerState<SellFlowScreen> {
+class _SellFlowScreenState extends State<SellFlowScreen> {
   int _step = 0;
   bool _publishing = false;
 
   @override
   void initState() {
     super.initState();
-    _step = ref.read(sellControllerProvider).currentStep.clamp(0, _lastStep);
+    _step = context.read<SellController>().draft.currentStep.clamp(0, _lastStep);
   }
 
   void _goTo(int step) {
     final target = step.clamp(0, _lastStep);
     setState(() => _step = target);
-    ref.read(sellControllerProvider.notifier).setStep(target);
+    context.read<SellController>().setStep(target);
   }
 
   void _back() {
@@ -78,17 +79,18 @@ class _SellFlowScreenState extends ConsumerState<SellFlowScreen> {
   }
 
   Future<void> _publish() async {
-    final user = ref.read(authRepositoryProvider).currentUser;
+    final user = context.read<AuthRepository>().currentUser;
     if (user == null) return;
     setState(() => _publishing = true);
-    final draft = ref.read(sellControllerProvider);
-    final res = await ref
-        .read(listingsRepositoryProvider)
-        .publish(draft, user.id);
+    final draft = context.read<SellController>().draft;
+    final res = await context.read<ListingsRepository>().publish(
+      draft,
+      user.id,
+    );
     if (!mounted) return;
     switch (res) {
       case Ok():
-        await ref.read(sellControllerProvider.notifier).discard();
+        await context.read<SellController>().discard();
         if (!mounted) return;
         context.go('/home/sell');
       case Err(:final message):
@@ -119,7 +121,7 @@ class _SellFlowScreenState extends ConsumerState<SellFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(sellControllerProvider);
+    final draft = context.watch<SellController>().draft;
     final isReview = _step == _lastStep;
     final content = switch (_step) {
       0 => const StepPhotos(),

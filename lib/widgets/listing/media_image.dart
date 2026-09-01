@@ -2,18 +2,18 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
-import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/services/signed_url_cache.dart';
 
 /// Displays a listing photo from any source:
 /// - a local file path (a freshly-picked photo in the Sell flow) → [Image.file]
 /// - an `http(s)` URL → cached network image
 /// - a Supabase storage bucket path → resolved to a signed URL, then cached
 /// Falls back to a neutral placeholder while loading or on failure.
-class MediaImage extends ConsumerWidget {
+class MediaImage extends StatelessWidget {
   const MediaImage({
     super.key,
     required this.path,
@@ -33,7 +33,7 @@ class MediaImage extends ConsumerWidget {
   final Widget? placeholder;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final p = path;
     if (p == null || p.isEmpty) return _placeholder();
     if (p.startsWith('http')) return _network(p);
@@ -43,14 +43,16 @@ class MediaImage extends ConsumerWidget {
       return Image.file(file, width: width, height: height, fit: fit);
     }
 
-    // A Supabase bucket path — resolve to a signed URL.
-    return ref
-        .watch(signedImageUrlProvider(p))
-        .when(
-          data: (url) => url == null ? _placeholder() : _network(url),
-          loading: _placeholder,
-          error: (_, _) => _placeholder(),
-        );
+    // A Supabase bucket path — resolve to a signed URL. The cache keeps the
+    // future alive across the rebuilds a scrolling list causes, so the same
+    // path is only signed once.
+    return FutureBuilder<String?>(
+      future: context.read<SignedUrlCache>().resolve(p),
+      builder: (_, snapshot) {
+        final url = snapshot.data;
+        return url == null ? _placeholder() : _network(url);
+      },
+    );
   }
 
   Widget _network(String url) => CachedNetworkImage(

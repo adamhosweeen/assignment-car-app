@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_providers.dart';
+import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_validation.dart';
 import 'package:assignment/model/listing/listing.dart';
@@ -38,18 +40,22 @@ const Key bidPhoneFieldKey = Key('bid-phone-field');
 /// `bid_validation.dart`); the repository re-checks against a fresh copy of
 /// the listing before writing, because the car may have sold while this
 /// screen was open.
-class PlaceBidScreen extends ConsumerStatefulWidget {
+class PlaceBidScreen extends StatefulWidget {
   const PlaceBidScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  ConsumerState<PlaceBidScreen> createState() => _PlaceBidScreenState();
+  State<PlaceBidScreen> createState() => _PlaceBidScreenState();
 }
 
-class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
+class _PlaceBidScreenState extends State<PlaceBidScreen> {
   final _amount = TextEditingController();
   final _phone = TextEditingController();
+
+  /// Both are one-shot fetches held here so a rebuild never re-issues them.
+  late Future<Listing> _listing;
+  late Future<Bid?> _existingBid;
 
   bool _notifyWhatsapp = false;
   bool _submitting = false;
@@ -61,9 +67,9 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
   String? _amountError;
   String? _phoneError;
 
-  /// Guards the one-shot prefill from an existing bid, so a later re-emit
-  /// (a realtime refresh, say) never overwrites what they are typing.
-  bool _prefilled = false;
+  /// The bidder's live bid on this car, once [_existingBid] has resolved.
+  /// Turns the form into an update.
+  Bid? _existing;
 
   /// Set once the bid is in — the screen then shows its confirmation instead
   /// of the form.
@@ -74,7 +80,16 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
     super.initState();
     // Their own number is the one they'll almost always want, and it is
     // available synchronously from the cached profile.
-    _phone.text = ref.read(authRepositoryProvider).currentUser?.phone ?? '';
+    _phone.text = context.read<AuthRepository>().currentUser?.phone ?? '';
+    _listing = fetchListingById(
+      context.read<ListingsRepository>(),
+      widget.listingId,
+    );
+    _existingBid = fetchMyPendingBid(
+      context.read<AuthRepository>(),
+      context.read<BidsRepository>(),
+      widget.listingId,
+    );
     _prefillFromExistingBid();
   }
 
@@ -88,23 +103,22 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
   /// If they already have a live bid on this car, open the form on it so
   /// "update" means editing a number rather than retyping one.
   ///
-  /// Listened to rather than read in `build`, because writing to a controller
-  /// during a build schedules a rebuild from inside one. `fireImmediately`
-  /// covers the value already being cached; the listener covers it arriving
-  /// later. Prefill is a convenience — an error just leaves the form on the
-  /// profile's number.
+  /// Done off the future rather than read in `build`, because writing to a
+  /// controller during a build schedules a rebuild from inside one. Prefill is
+  /// a convenience — an error just leaves the form on the profile's number.
   void _prefillFromExistingBid() {
-    ref.listenManual(myPendingBidProvider(widget.listingId), (_, next) {
-      final existing = next.value;
-      if (!mounted || existing == null || _prefilled) return;
-      setState(() {
-        _prefilled = true;
-        _amount.text = existing.amountMyr.toString();
-        final phone = existing.contactPhone;
-        if (phone != null && phone.isNotEmpty) _phone.text = phone;
-        _notifyWhatsapp = existing.notifyWhatsapp;
-      });
-    }, fireImmediately: true);
+    _existingBid
+        .then((existing) {
+          if (!mounted || existing == null) return;
+          setState(() {
+            _existing = existing;
+            _amount.text = existing.amountMyr.toString();
+            final phone = existing.contactPhone;
+            if (phone != null && phone.isNotEmpty) _phone.text = phone;
+            _notifyWhatsapp = existing.notifyWhatsapp;
+          });
+        })
+        .catchError((Object _) {});
   }
 
   /// Re-run both field rules. Returns true when the form is safe to submit.
@@ -129,25 +143,21 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
     if (amount == null) return; // _validate already surfaced this
 
     setState(() => _submitting = true);
-    final res = await ref
-        .read(bidsRepositoryProvider)
-        .placeBid(
-          listing.id,
-          amount,
-          contactPhone: _phone.text.trim(),
-          notifyWhatsapp: _notifyWhatsapp,
-        );
+    final res = await context.read<BidsRepository>().placeBid(
+      listing.id,
+      amount,
+      contactPhone: _phone.text.trim(),
+      notifyWhatsapp: _notifyWhatsapp,
+    );
     if (!mounted) return;
 
     switch (res) {
       case Ok(:final value):
-        // The lists and the "do I have a bid on this car" flag are both stale
-        // now; the streams re-push on realtime, but invalidating keeps the
-        // screen we pop back to correct even if that event is slow.
-        ref.invalidate(myBidsProvider);
-        ref.invalidate(myPendingBidProvider(listing.id));
+        // The Bid tab's lists are stale now, but they are realtime-backed and
+        // this write is exactly the change they are listening for.
         setState(() {
           _submitting = false;
+          _existing = value;
           _placed = value;
         });
       case Err(:final message):
@@ -158,10 +168,16 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
     }
   }
 
+  void _reloadListing() => setState(() {
+    _listing = fetchListingById(
+      context.read<ListingsRepository>(),
+      widget.listingId,
+    );
+  });
+
   @override
   Widget build(BuildContext context) {
     final placed = _placed;
-    final listingAsync = ref.watch(listingByIdProvider(widget.listingId));
 
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
@@ -169,13 +185,19 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
         title: Text(placed == null ? 'Place your bid' : 'Bid placed'),
         automaticallyImplyLeading: placed == null,
       ),
-      body: listingAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => _CentredMessage(
-          text: 'This listing is no longer available.',
-          onRetry: () => ref.invalidate(listingByIdProvider(widget.listingId)),
-        ),
-        data: (listing) {
+      body: FutureBuilder<Listing>(
+        future: _listing,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _CentredMessage(
+              text: 'This listing is no longer available.',
+              onRetry: _reloadListing,
+            );
+          }
+          final listing = snapshot.data;
+          if (listing == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           if (placed != null) {
             return _BidPlaced(
               bid: placed,
@@ -192,7 +214,7 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
   /// The two cases where there is no bid to place at all. Checked before the
   /// form renders so a dead end never looks like a working form.
   Widget? _guard(Listing listing) {
-    final me = ref.read(authRepositoryProvider).currentUser;
+    final me = context.read<AuthRepository>().currentUser;
     if (me != null && listing.sellerId == me.id) {
       return const _CentredMessage(
         text:
@@ -211,7 +233,7 @@ class _PlaceBidScreenState extends ConsumerState<PlaceBidScreen> {
   Widget _form(Listing listing) {
     // An existing pending bid turns this screen into an edit: the CTA says
     // "Update", and placing it withdraws the old bid server-side.
-    final existing = ref.watch(myPendingBidProvider(listing.id)).value;
+    final existing = _existing;
 
     final text = Theme.of(context).textTheme;
     final amount = parseBidAmount(_amount.text);

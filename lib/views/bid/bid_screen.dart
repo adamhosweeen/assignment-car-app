@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_listing.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -19,57 +20,86 @@ import 'package:assignment/widgets/common/segmented_control.dart';
 /// Both lists are realtime-backed and cached, so they render instantly on
 /// cold start and keep working offline; each handles loading, empty and error
 /// explicitly.
-class BidScreen extends ConsumerStatefulWidget {
+class BidScreen extends StatefulWidget {
   const BidScreen({super.key});
 
   @override
-  ConsumerState<BidScreen> createState() => _BidScreenState();
+  State<BidScreen> createState() => _BidScreenState();
 }
 
-class _BidScreenState extends ConsumerState<BidScreen> {
+class _BidScreenState extends State<BidScreen> {
   int _segment = 0;
+
+  /// Both streams live here rather than in the two list widgets, because the
+  /// segment label needs the received count while the "My bids" segment is
+  /// showing — and each `listen` opens its own realtime channel, so they must
+  /// be subscribed to exactly once.
+  late Stream<List<BidWithListing>> _myBids;
+  late Stream<List<BidWithListing>> _received;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  void _subscribe() {
+    final auth = context.read<AuthRepository>();
+    final bids = context.read<BidsRepository>();
+    _myBids = watchMyBids(auth, bids);
+    _received = watchBidsReceived(auth, bids);
+  }
+
+  /// Backs both lists' "Try again": drop the subscriptions and start over.
+  void _retry() => setState(_subscribe);
 
   @override
   Widget build(BuildContext context) {
-    final pending = ref.watch(pendingBidsReceivedCountProvider);
-    return Scaffold(
-      backgroundColor: AppColors.groupedBackground,
-      appBar: AppBar(
-        title: const Text('Bids'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(AppSpacing.searchBarHeight),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screenPadding,
-              0,
-              AppSpacing.screenPadding,
-              AppSpacing.space12,
-            ),
-            child: SegmentedControl(
-              labels: [
-                'My bids',
-                pending > 0 ? 'On my cars ($pending)' : 'On my cars',
-              ],
-              selected: _segment,
-              onChanged: (i) => setState(() => _segment = i),
+    return StreamBuilder<List<BidWithListing>>(
+      stream: _received,
+      builder: (context, received) {
+        final pending = pendingBidsReceivedCount(received.data);
+        return Scaffold(
+          backgroundColor: AppColors.groupedBackground,
+          appBar: AppBar(
+            title: const Text('Bids'),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(AppSpacing.searchBarHeight),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenPadding,
+                  0,
+                  AppSpacing.screenPadding,
+                  AppSpacing.space12,
+                ),
+                child: SegmentedControl(
+                  labels: [
+                    'My bids',
+                    pending > 0 ? 'On my cars ($pending)' : 'On my cars',
+                  ],
+                  selected: _segment,
+                  onChanged: (i) => setState(() => _segment = i),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-      body: _segment == 0 ? const _MyBidsList() : const _ReceivedList(),
+          body: _segment == 0
+              ? _MyBidsList(stream: _myBids, onRetry: _retry)
+              : _ReceivedList(snapshot: received, onRetry: _retry),
+        );
+      },
     );
   }
 }
 
 /// Bids I placed. Live ones can be withdrawn; resolved ones stay as history.
-class _MyBidsList extends ConsumerWidget {
-  const _MyBidsList();
+class _MyBidsList extends StatelessWidget {
+  const _MyBidsList({required this.stream, required this.onRetry});
 
-  Future<void> _withdraw(
-    BuildContext context,
-    WidgetRef ref,
-    BidWithListing entry,
-  ) async {
+  final Stream<List<BidWithListing>> stream;
+  final VoidCallback onRetry;
+
+  Future<void> _withdraw(BuildContext context, BidWithListing entry) async {
     final confirmed = await _confirm(
       context,
       title: 'Withdraw bid?',
@@ -82,27 +112,22 @@ class _MyBidsList extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
 
-    final res = await ref
-        .read(bidsRepositoryProvider)
-        .withdrawBid(entry.bid.id);
+    final res = await context.read<BidsRepository>().withdrawBid(entry.bid.id);
     if (!context.mounted) return;
     if (res case Err(:final message)) {
       _toast(context, message);
-    } else {
-      ref.invalidate(myPendingBidProvider(entry.listing.id));
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(myBidsProvider);
+  Widget build(BuildContext context) {
     return _BidList(
-      async: async,
+      stream: stream,
       emptyTitle: 'No bids yet',
       emptyMessage:
           'Find a car in the Buy tab and place a bid — the seller can accept, '
           'reject, or let you know they want more.',
-      onRetry: () => ref.invalidate(myBidsProvider),
+      onRetry: onRetry,
       cardBuilder: (entry) => BidCard(
         entry: entry,
         subtitle: 'Placed ${formatRelative(entry.bid.createdAt)}',
@@ -114,7 +139,7 @@ class _MyBidsList extends ConsumerWidget {
                 backgroundColor: AppColors.groupedBackground,
                 foregroundColor: AppColors.destructive,
               ),
-              onPressed: () => _withdraw(context, ref, entry),
+              onPressed: () => _withdraw(context, entry),
               child: const Text('Withdraw'),
             ),
         ],
@@ -125,12 +150,14 @@ class _MyBidsList extends ConsumerWidget {
 
 /// Bids on my cars. Accepting one sells the car at that price and rejects the
 /// rest, so it asks first.
-class _ReceivedList extends ConsumerWidget {
-  const _ReceivedList();
+class _ReceivedList extends StatelessWidget {
+  const _ReceivedList({required this.snapshot, required this.onRetry});
+
+  final AsyncSnapshot<List<BidWithListing>> snapshot;
+  final VoidCallback onRetry;
 
   Future<void> _respond(
     BuildContext context,
-    WidgetRef ref,
     BidWithListing entry, {
     required bool accept,
   }) async {
@@ -147,9 +174,10 @@ class _ReceivedList extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
 
-    final res = await ref
-        .read(bidsRepositoryProvider)
-        .respondToBid(entry.bid.id, accept: accept);
+    final res = await context.read<BidsRepository>().respondToBid(
+      entry.bid.id,
+      accept: accept,
+    );
     if (!context.mounted) return;
     if (res case Err(:final message)) {
       _toast(context, message);
@@ -162,15 +190,14 @@ class _ReceivedList extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(bidsReceivedProvider);
+  Widget build(BuildContext context) {
     return _BidList(
-      async: async,
+      snapshot: snapshot,
       emptyTitle: 'No bids on your cars',
       emptyMessage:
           'When someone bids on a car you have listed, it shows up here for '
           'you to accept or reject.',
-      onRetry: () => ref.invalidate(bidsReceivedProvider),
+      onRetry: onRetry,
       cardBuilder: (entry) => BidCard(
         entry: entry,
         subtitle: _receivedSubtitle(entry.bid),
@@ -182,11 +209,11 @@ class _ReceivedList extends ConsumerWidget {
                 backgroundColor: AppColors.groupedBackground,
                 foregroundColor: AppColors.destructive,
               ),
-              onPressed: () => _respond(context, ref, entry, accept: false),
+              onPressed: () => _respond(context, entry, accept: false),
               child: const Text('Reject'),
             ),
             FilledButton(
-              onPressed: () => _respond(context, ref, entry, accept: true),
+              onPressed: () => _respond(context, entry, accept: true),
               child: const Text('Accept'),
             ),
           ],
@@ -205,17 +232,24 @@ class _ReceivedList extends ConsumerWidget {
   }
 }
 
-/// Shared list body: loading, empty, error, and the populated case.
+/// Shared list body: loading, empty, error, and the populated case. Takes
+/// either a stream to subscribe to, or a snapshot the caller is already
+/// watching.
 class _BidList extends StatelessWidget {
   const _BidList({
-    required this.async,
+    this.stream,
+    this.snapshot,
     required this.emptyTitle,
     required this.emptyMessage,
     required this.onRetry,
     required this.cardBuilder,
-  });
+  }) : assert(
+         (stream == null) != (snapshot == null),
+         'pass exactly one of stream / snapshot',
+       );
 
-  final AsyncValue<List<BidWithListing>> async;
+  final Stream<List<BidWithListing>>? stream;
+  final AsyncSnapshot<List<BidWithListing>>? snapshot;
   final String emptyTitle;
   final String emptyMessage;
   final VoidCallback onRetry;
@@ -223,30 +257,39 @@ class _BidList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => _EmptyState(
+    final snapshot = this.snapshot;
+    if (snapshot != null) return _body(snapshot);
+    return StreamBuilder<List<BidWithListing>>(
+      stream: stream,
+      builder: (_, snapshot) => _body(snapshot),
+    );
+  }
+
+  Widget _body(AsyncSnapshot<List<BidWithListing>> snapshot) {
+    if (snapshot.hasError) {
+      return _EmptyState(
         icon: Icons.cloud_off_outlined,
         title: 'Couldn’t load bids',
         message: 'Check your connection and try again.',
         onRetry: onRetry,
-      ),
-      data: (bids) {
-        if (bids.isEmpty) {
-          return _EmptyState(
-            icon: Icons.gavel_outlined,
-            title: emptyTitle,
-            message: emptyMessage,
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(AppSpacing.screenPadding),
-          itemCount: bids.length,
-          separatorBuilder: (_, _) =>
-              const SizedBox(height: AppSpacing.space12),
-          itemBuilder: (_, i) => cardBuilder(bids[i]),
-        );
-      },
+      );
+    }
+    final bids = snapshot.data;
+    if (bids == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (bids.isEmpty) {
+      return _EmptyState(
+        icon: Icons.gavel_outlined,
+        title: emptyTitle,
+        message: emptyMessage,
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      itemCount: bids.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space12),
+      itemBuilder: (_, i) => cardBuilder(bids[i]),
     );
   }
 }

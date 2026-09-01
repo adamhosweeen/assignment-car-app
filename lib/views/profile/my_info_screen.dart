@@ -1,42 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 
 /// Profile → My Info: the user's identity and contact details, read-only.
 /// Editing happens on the shared Edit Profile screen (app bar action).
-class MyInfoScreen extends ConsumerWidget {
+class MyInfoScreen extends StatelessWidget {
   const MyInfoScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(authStateProvider);
+  Widget build(BuildContext context) {
+    final profile = context.watch<Profile?>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Info'),
         actions: [
-          if (async.value != null)
+          if (profile != null)
             TextButton(
               onPressed: () => context.push('/profile/edit'),
               child: const Text('Edit'),
             ),
         ],
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
-          child: Text('Something went wrong. Go back and try again.'),
-        ),
-        data: (profile) {
-          if (profile == null) {
-            return const Center(child: Text('You’re signed out.'));
-          }
-          return ListView(
+      body: _body(profile),
+    );
+  }
+
+  Widget _body(Profile? profile) {
+    if (profile == null) {
+      return const Center(child: Text('You’re signed out.'));
+    }
+    return ListView(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
             children: [
               GroupedSection(
@@ -82,8 +81,5 @@ class MyInfoScreen extends ConsumerWidget {
               ),
             ],
           );
-        },
-      ),
-    );
   }
 }

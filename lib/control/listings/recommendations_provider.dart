@@ -1,21 +1,12 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-import 'package:assignment/control/listings/listings_providers.dart';
-import 'package:assignment/control/providers.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/profile/profile.dart';
 
-part 'recommendations_provider.g.dart';
-
 /// Listings recommended for the signed-in user, matched client-side against
 /// their saved car interests and location — no extra backend query; it reuses
-/// the already-streamed active listings.
-@riverpod
-List<Listing> recommendedListings(Ref ref) {
-  final profile = ref.watch(authStateProvider).value;
+/// the active listings the Buy feed is already streaming.
+List<Listing> recommendedListings(Profile? profile, List<Listing>? listings) {
   if (profile == null) return const [];
-  final listings = ref.watch(activeListingsProvider).value ?? const <Listing>[];
-  return rankRecommended(listings, profile);
+  return rankRecommended(listings ?? const <Listing>[], profile);
 }
 
 /// Deterministic matching. A listing is recommended only when it satisfies

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -24,7 +28,7 @@ import 'package:assignment/widgets/profile/seller_row.dart';
 /// set), [ChatRepository.buyAtOffer] (the negotiated price) — so it leaves the
 /// Buy feed, then shows a receipt with an order reference. No payment and no
 /// real fulfilment — enough to demo the buy path.
-class PurchaseScreen extends ConsumerStatefulWidget {
+class PurchaseScreen extends StatefulWidget {
   const PurchaseScreen({
     super.key,
     required this.id,
@@ -40,11 +44,17 @@ class PurchaseScreen extends ConsumerStatefulWidget {
   final int? offerAmountMyr;
 
   @override
-  ConsumerState<PurchaseScreen> createState() => _PurchaseScreenState();
+  State<PurchaseScreen> createState() => _PurchaseScreenState();
 }
 
-class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
+class _PurchaseScreenState extends State<PurchaseScreen> {
   bool _submitting = false;
+
+  /// A one-shot fetch, held so a rebuild never re-issues it.
+  late final Future<Listing> _listing = fetchListingById(
+    context.read<ListingsRepository>(),
+    widget.id,
+  );
 
   /// Set once the sale goes through; the success screen reads the car from
   /// here so it no longer depends on re-fetching the (now sold) listing.
@@ -66,8 +76,8 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
     setState(() => _submitting = true);
     final offerMessageId = widget.offerMessageId;
     final res = offerMessageId == null
-        ? await ref.read(listingsRepositoryProvider).buy(listing.id)
-        : await ref.read(chatRepositoryProvider).buyAtOffer(offerMessageId);
+        ? await context.read<ListingsRepository>().buy(listing.id)
+        : await context.read<ChatRepository>().buyAtOffer(offerMessageId);
     if (!mounted) return;
     if (res case Err(:final message)) {
       setState(() => _submitting = false);
@@ -76,7 +86,8 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
         ..showSnackBar(SnackBar(content: Text(message)));
       return;
     }
-    ref.invalidate(activeListingsProvider);
+    // The Buy feed is realtime-backed and this write is exactly the change it
+    // is listening for, so it drops the car on its own.
     setState(() {
       _submitting = false;
       // buy_at_offer records the offer's amount as the listing's final
@@ -98,14 +109,19 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
       return _successScaffold(purchased);
     }
 
-    final async = ref.watch(listingByIdProvider(widget.id));
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('Checkout')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const _Message('This listing is no longer available.'),
-        data: (listing) {
+      body: FutureBuilder<Listing>(
+        future: _listing,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const _Message('This listing is no longer available.');
+          }
+          final listing = snapshot.data;
+          if (listing == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           // Already sold on arrival — e.g. a chat offer just completed the
           // purchase via `buy_at_offer` before this screen was even reached.
           // Show the same receipt instead of a stale "confirm purchase" form
@@ -117,7 +133,7 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
             listing: listing,
             priceMyr: widget.offerAmountMyr ?? listing.priceMyr,
             negotiated: widget.offerAmountMyr != null,
-            buyer: ref.read(authRepositoryProvider).currentUser,
+            buyer: context.read<AuthRepository>().currentUser,
             submitting: _submitting,
             onConfirm: () => _confirm(listing),
           );
@@ -245,39 +261,53 @@ class _Checkout extends StatelessWidget {
 /// Who you're buying from. Mirrors the seller row on the listing detail
 /// screen; tapping opens the seller's public page. Hidden if the profile
 /// can't be loaded — the checkout still works without it.
-class _SellerCard extends ConsumerWidget {
+class _SellerCard extends StatefulWidget {
   const _SellerCard({required this.sellerId});
 
   final String sellerId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(publicProfileProvider(sellerId));
-    return async.when(
-      loading: () => const GroupedSection(
-        header: 'Seller',
-        children: [
-          Padding(
-            padding: EdgeInsets.all(AppSpacing.space16),
-            child: SizedBox(
-              height: AppSpacing.space12,
-              child: ColoredBox(color: AppColors.fill),
-            ),
-          ),
-        ],
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (profile) => profile == null
-          ? const SizedBox.shrink()
-          : GroupedSection(
-              header: 'Seller',
-              children: [
-                SellerRow(
-                  profile: profile,
-                  onTap: () => context.push('/seller/${profile.id}'),
+  State<_SellerCard> createState() => _SellerCardState();
+}
+
+class _SellerCardState extends State<_SellerCard> {
+  late final Future<PublicProfile?> _profile = fetchPublicProfile(
+    context.read<ProfilesRepository>(),
+    widget.sellerId,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PublicProfile?>(
+      future: _profile,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const SizedBox.shrink();
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const GroupedSection(
+            header: 'Seller',
+            children: [
+              Padding(
+                padding: EdgeInsets.all(AppSpacing.space16),
+                child: SizedBox(
+                  height: AppSpacing.space12,
+                  child: ColoredBox(color: AppColors.fill),
                 ),
-              ],
+              ),
+            ],
+          );
+        }
+        final profile = snapshot.data;
+        if (profile == null) return const SizedBox.shrink();
+        return GroupedSection(
+          header: 'Seller',
+          children: [
+            SellerRow(
+              profile: profile,
+              onTap: () => context.push('/seller/${profile.id}'),
             ),
+          ],
+        );
+      },
     );
   }
 }

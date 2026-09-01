@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/auth/registration_controller.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -23,14 +23,14 @@ const int _lastStep = 3;
 /// The 4-step registration flow: account → about you → location → interests.
 /// Mirrors [SellFlowScreen]'s mechanics; on success the router's auth
 /// redirect lands the new user on the Buy feed.
-class RegisterFlowScreen extends ConsumerStatefulWidget {
+class RegisterFlowScreen extends StatefulWidget {
   const RegisterFlowScreen({super.key});
 
   @override
-  ConsumerState<RegisterFlowScreen> createState() => _RegisterFlowScreenState();
+  State<RegisterFlowScreen> createState() => _RegisterFlowScreenState();
 }
 
-class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
+class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
   int _step = 0;
   bool _submitting = false;
   String? _error;
@@ -62,16 +62,18 @@ class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
       _submitting = true;
       _error = null;
     });
-    final s = ref.read(registrationControllerProvider);
-    final data = ref.read(registrationControllerProvider.notifier).buildData();
-    final res = await ref
-        .read(authRepositoryProvider)
-        .signUp(email: s.email.trim(), password: s.password, data: data);
+    final registration = context.read<RegistrationController>();
+    final s = registration.state;
+    final res = await context.read<AuthRepository>().signUp(
+      email: s.email.trim(),
+      password: s.password,
+      data: registration.buildData(),
+    );
     if (!mounted) return;
     switch (res) {
       case Ok():
         // The router's refreshListenable redirects to /home/buy.
-        ref.invalidate(registrationControllerProvider);
+        registration.reset();
         setState(() => _submitting = false);
       case Err(:final message):
         setState(() {
@@ -102,7 +104,7 @@ class _RegisterFlowScreenState extends ConsumerState<RegisterFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(registrationControllerProvider);
+    final s = context.watch<RegistrationController>().state;
     final isLast = _step == _lastStep;
     final content = switch (_step) {
       0 => const StepAccount(),

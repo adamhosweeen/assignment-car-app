@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
@@ -11,21 +11,21 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Step 3 — mileage, transmission, fuel type, body type, colour.
-class StepSpecs extends ConsumerStatefulWidget {
+class StepSpecs extends StatefulWidget {
   const StepSpecs({super.key});
 
   @override
-  ConsumerState<StepSpecs> createState() => _StepSpecsState();
+  State<StepSpecs> createState() => _StepSpecsState();
 }
 
-class _StepSpecsState extends ConsumerState<StepSpecs> {
+class _StepSpecsState extends State<StepSpecs> {
   late final TextEditingController _mileage;
   late final TextEditingController _colour;
 
   @override
   void initState() {
     super.initState();
-    final draft = ref.read(sellControllerProvider);
+    final draft = context.read<SellController>().draft;
     _mileage = TextEditingController(text: draft.mileageKm?.toString() ?? '');
     _colour = TextEditingController(text: draft.colour ?? '');
   }
@@ -37,7 +37,7 @@ class _StepSpecsState extends ConsumerState<StepSpecs> {
     super.dispose();
   }
 
-  SellController get _notifier => ref.read(sellControllerProvider.notifier);
+  SellController get _notifier => context.read<SellController>();
 
   Future<void> _pickTransmission() async {
     final picked = await showSelectSheet<Transmission>(
@@ -45,7 +45,7 @@ class _StepSpecsState extends ConsumerState<StepSpecs> {
       title: 'Transmission',
       options: Transmission.values,
       labelOf: (t) => t.label,
-      selected: ref.read(sellControllerProvider).transmission,
+      selected: context.read<SellController>().draft.transmission,
     );
     if (picked != null) _notifier.setTransmission(picked);
   }
@@ -56,7 +56,7 @@ class _StepSpecsState extends ConsumerState<StepSpecs> {
       title: 'Fuel type',
       options: FuelType.values,
       labelOf: (f) => f.label,
-      selected: ref.read(sellControllerProvider).fuelType,
+      selected: context.read<SellController>().draft.fuelType,
     );
     if (picked != null) _notifier.setFuel(picked);
   }
@@ -67,14 +67,14 @@ class _StepSpecsState extends ConsumerState<StepSpecs> {
       title: 'Body type',
       options: BodyType.values,
       labelOf: (b) => b.label,
-      selected: ref.read(sellControllerProvider).bodyType,
+      selected: context.read<SellController>().draft.bodyType,
     );
     if (picked != null) _notifier.setBody(picked);
   }
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(sellControllerProvider);
+    final draft = context.watch<SellController>().draft;
     const placeholder = AppColors.tertiaryLabel;
     return SellStepScaffold(
       title: 'Specs',

@@ -1,5 +1,5 @@
+import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:assignment/control/auth/location_service.dart';
 import 'package:assignment/model/profile/car_interests.dart';
@@ -7,7 +7,6 @@ import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/utils/formatters.dart';
 
 part 'registration_controller.freezed.dart';
-part 'registration_controller.g.dart';
 
 /// Everything the registration flow has collected so far. Ephemeral — unlike
 /// the sell draft, a half-finished signup is not persisted across app kills.
@@ -29,34 +28,46 @@ abstract class RegistrationState with _$RegistrationState {
 }
 
 /// Owns the in-progress registration form across its steps. Same shape as
-/// [SellController], minus the sqflite persistence.
-@riverpod
-class RegistrationController extends _$RegistrationController {
-  @override
-  RegistrationState build() => const RegistrationState();
+/// `SellController`, minus the sqflite persistence — it is scoped to the
+/// `/register` route, so leaving the flow throws the half-filled form away.
+class RegistrationController extends ChangeNotifier {
+  RegistrationState _state = const RegistrationState();
 
-  void setEmail(String v) => state = state.copyWith(email: v);
-  void setPassword(String v) => state = state.copyWith(password: v);
+  /// Everything collected so far. Watch this to rebuild a step on every edit.
+  RegistrationState get state => _state;
+
+  void _set(RegistrationState next) {
+    _state = next;
+    notifyListeners();
+  }
+
+  void setEmail(String v) => _set(_state.copyWith(email: v));
+  void setPassword(String v) => _set(_state.copyWith(password: v));
   void setConfirmPassword(String v) =>
-      state = state.copyWith(confirmPassword: v);
-  void setFirstName(String v) => state = state.copyWith(firstName: v);
-  void setLastName(String v) => state = state.copyWith(lastName: v);
-  void setDob(DateTime? v) => state = state.copyWith(dob: v);
-  void setPhoneInput(String v) => state = state.copyWith(phoneInput: v);
+      _set(_state.copyWith(confirmPassword: v));
+  void setFirstName(String v) => _set(_state.copyWith(firstName: v));
+  void setLastName(String v) => _set(_state.copyWith(lastName: v));
+  void setDob(DateTime? v) => _set(_state.copyWith(dob: v));
+  void setPhoneInput(String v) => _set(_state.copyWith(phoneInput: v));
   void setStateName(String? v) =>
-      state = state.copyWith(stateName: v, locationFailed: false);
-  void setInterests(CarInterests v) => state = state.copyWith(interests: v);
+      _set(_state.copyWith(stateName: v, locationFailed: false));
+  void setInterests(CarInterests v) => _set(_state.copyWith(interests: v));
+
+  /// Back to an empty form, after a successful signup.
+  void reset() => _set(const RegistrationState());
 
   /// Try GPS; on success fill in the state, on failure flag it so the step
   /// can point at the manual picker.
   Future<void> detectLocation() async {
-    if (state.detectingLocation) return;
-    state = state.copyWith(detectingLocation: true, locationFailed: false);
+    if (_state.detectingLocation) return;
+    _set(_state.copyWith(detectingLocation: true, locationFailed: false));
     final detected = await detectStateName();
-    state = state.copyWith(
-      detectingLocation: false,
-      stateName: detected ?? state.stateName,
-      locationFailed: detected == null,
+    _set(
+      _state.copyWith(
+        detectingLocation: false,
+        stateName: detected ?? _state.stateName,
+        locationFailed: detected == null,
+      ),
     );
   }
 

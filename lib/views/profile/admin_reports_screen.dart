@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
-import 'package:assignment/control/admin/admin_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/admin/admin_repository.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -14,20 +13,26 @@ import 'package:assignment/widgets/common/segmented_control.dart';
 /// The Reports tab of the Admin screen: user-filed reports, split Open /
 /// Resolved. From a report the admin can ban (or unban) the reported user
 /// and mark the report resolved.
-class AdminReportsTab extends ConsumerStatefulWidget {
-  const AdminReportsTab({super.key});
+class AdminReportsTab extends StatefulWidget {
+  const AdminReportsTab({
+    super.key,
+    required this.reports,
+    required this.onChanged,
+  });
+
+  final Future<List<AdminReport>> reports;
+
+  /// Re-runs both admin fetches — banning a user changes the Users tab too.
+  final VoidCallback onChanged;
 
   @override
-  ConsumerState<AdminReportsTab> createState() => _AdminReportsTabState();
+  State<AdminReportsTab> createState() => _AdminReportsTabState();
 }
 
-class _AdminReportsTabState extends ConsumerState<AdminReportsTab> {
+class _AdminReportsTabState extends State<AdminReportsTab> {
   bool _showOpen = true;
 
-  void _refresh() {
-    ref.invalidate(adminReportsProvider);
-    ref.invalidate(adminUsersProvider);
-  }
+  void _refresh() => widget.onChanged();
 
   Future<void> _runAction(Future<Result<void>> Function() action) async {
     showDialog<void>(
@@ -49,6 +54,8 @@ class _AdminReportsTabState extends ConsumerState<AdminReportsTab> {
   }
 
   Future<void> _confirmSetBanned(AdminReport report, bool ban) async {
+    // Read before awaiting the dialog — the context can't be used across it.
+    final admin = context.read<AdminRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -79,13 +86,12 @@ class _AdminReportsTabState extends ConsumerState<AdminReportsTab> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    await _runAction(
-      () => ref.read(adminRepositoryProvider).setBanned(report.reportedId, ban),
-    );
+    await _runAction(() => admin.setBanned(report.reportedId, ban));
   }
 
   void _showDetails(AdminReport report) {
     final text = Theme.of(context).textTheme;
+    final admin = context.read<AdminRepository>();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -144,11 +150,7 @@ class _AdminReportsTabState extends ConsumerState<AdminReportsTab> {
                   ),
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    _runAction(
-                      () => ref
-                          .read(adminRepositoryProvider)
-                          .resolveReport(report.id),
-                    );
+                    _runAction(() => admin.resolveReport(report.id));
                   },
                   child: const Text('Mark resolved'),
                 ),
@@ -162,29 +164,40 @@ class _AdminReportsTabState extends ConsumerState<AdminReportsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(adminReportsProvider);
     final text = Theme.of(context).textTheme;
 
-    return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$e',
-                textAlign: TextAlign.center,
-                style: text.subhead.copyWith(color: AppColors.secondaryLabel),
+    return FutureBuilder<List<AdminReport>>(
+      future: widget.reports,
+      builder: (context, snapshot) {
+        final error = snapshot.error;
+        if (error != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$error',
+                    textAlign: TextAlign.center,
+                    style: text.subhead.copyWith(
+                      color: AppColors.secondaryLabel,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  TextButton(
+                    onPressed: _refresh,
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.space16),
-              TextButton(onPressed: _refresh, child: const Text('Retry')),
-            ],
-          ),
-        ),
-      ),
-      data: (reports) {
+            ),
+          );
+        }
+        final reports = snapshot.data;
+        if (reports == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final visible = [
           for (final r in reports)
             if (r.isOpen == _showOpen) r,

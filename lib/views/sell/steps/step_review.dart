@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
@@ -11,14 +11,14 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Step 7 — full summary; tap a section's Edit to jump back (V1_SPEC §4.5).
-class StepReview extends ConsumerWidget {
+class StepReview extends StatelessWidget {
   const StepReview({super.key, required this.onEditStep});
 
   final void Function(int step) onEditStep;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final d = ref.watch(sellControllerProvider);
+  Widget build(BuildContext context) {
+    final d = context.watch<SellController>().draft;
     return SellStepScaffold(
       title: 'Review & publish',
       subtitle: 'Check everything, then publish. Tap Edit to change a section.',

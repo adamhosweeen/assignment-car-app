@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/registration_controller.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -10,14 +10,14 @@ import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Registration step 1 — email and password, with a live strength meter and
 /// rule checklist instead of a single "too weak" line.
-class StepAccount extends ConsumerStatefulWidget {
+class StepAccount extends StatefulWidget {
   const StepAccount({super.key});
 
   @override
-  ConsumerState<StepAccount> createState() => _StepAccountState();
+  State<StepAccount> createState() => _StepAccountState();
 }
 
-class _StepAccountState extends ConsumerState<StepAccount> {
+class _StepAccountState extends State<StepAccount> {
   late final TextEditingController _email;
   late final TextEditingController _password;
   late final TextEditingController _confirm;
@@ -28,7 +28,7 @@ class _StepAccountState extends ConsumerState<StepAccount> {
   @override
   void initState() {
     super.initState();
-    final s = ref.read(registrationControllerProvider);
+    final s = context.read<RegistrationController>().state;
     _email = TextEditingController(text: s.email);
     _password = TextEditingController(text: s.password);
     _confirm = TextEditingController(text: s.confirmPassword);
@@ -45,11 +45,11 @@ class _StepAccountState extends ConsumerState<StepAccount> {
   }
 
   RegistrationController get _notifier =>
-      ref.read(registrationControllerProvider.notifier);
+      context.read<RegistrationController>();
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(registrationControllerProvider);
+    final s = context.watch<RegistrationController>().state;
     final text = Theme.of(context).textTheme;
     final emailInvalid = s.email.isNotEmpty && !isValidEmail(s.email);
     final confirmMatches =

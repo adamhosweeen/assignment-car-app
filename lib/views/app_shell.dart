@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/chat/chat_providers.dart';
 import 'package:assignment/control/notifications/notifications_providers.dart';
+import 'package:assignment/model/chat/conversation_thread.dart';
+import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
@@ -11,15 +13,19 @@ import 'package:assignment/utils/app_theme.dart';
 /// flat, iOS-style bottom bar. Each tab keeps its own navigation stack via
 /// [StatefulNavigationShell]. The Chat tab shows a dot while any thread has
 /// unread messages; the Profile tab shows one while the inbox does.
-class AppShell extends ConsumerWidget {
+class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadCountProvider);
-    final chatUnread = ref.watch(unreadChatCountProvider);
+  Widget build(BuildContext context) {
+    final unread = unreadCountOf(
+      context.watch<AsyncSnapshot<List<AppNotification>>>(),
+    );
+    final chatUnread = unreadChatCountOf(
+      context.watch<AsyncSnapshot<List<ConversationThread>>>(),
+    );
     return Scaffold(
       body: shell,
       bottomNavigationBar: _BottomNav(

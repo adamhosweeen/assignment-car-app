@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
@@ -11,21 +11,21 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Step 2 — make → model → variant (optional) → year.
-class StepIdentity extends ConsumerStatefulWidget {
+class StepIdentity extends StatefulWidget {
   const StepIdentity({super.key});
 
   @override
-  ConsumerState<StepIdentity> createState() => _StepIdentityState();
+  State<StepIdentity> createState() => _StepIdentityState();
 }
 
-class _StepIdentityState extends ConsumerState<StepIdentity> {
+class _StepIdentityState extends State<StepIdentity> {
   late final TextEditingController _variant;
 
   @override
   void initState() {
     super.initState();
     _variant = TextEditingController(
-      text: ref.read(sellControllerProvider).variant ?? '',
+      text: context.read<SellController>().draft.variant ?? '',
     );
   }
 
@@ -35,10 +35,10 @@ class _StepIdentityState extends ConsumerState<StepIdentity> {
     super.dispose();
   }
 
-  SellController get _notifier => ref.read(sellControllerProvider.notifier);
+  SellController get _notifier => context.read<SellController>();
 
   Future<void> _pickMake() async {
-    final current = ref.read(sellControllerProvider).make;
+    final current = context.read<SellController>().draft.make;
     final picked = await showSelectSheet<String>(
       context: context,
       title: 'Make',
@@ -61,7 +61,7 @@ class _StepIdentityState extends ConsumerState<StepIdentity> {
   }
 
   Future<void> _pickModel() async {
-    final draft = ref.read(sellControllerProvider);
+    final draft = context.read<SellController>().draft;
     if (draft.make == null) return;
     final picked = await showSelectSheet<String>(
       context: context,
@@ -91,14 +91,14 @@ class _StepIdentityState extends ConsumerState<StepIdentity> {
       title: 'Year',
       options: years,
       labelOf: (y) => '$y',
-      selected: ref.read(sellControllerProvider).year,
+      selected: context.read<SellController>().draft.year,
     );
     if (picked != null) _notifier.setYear(picked);
   }
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(sellControllerProvider);
+    final draft = context.watch<SellController>().draft;
     const placeholder = AppColors.tertiaryLabel;
     return SellStepScaffold(
       title: 'Car identity',

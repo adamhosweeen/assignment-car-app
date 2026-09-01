@@ -26,8 +26,8 @@ the backend is required.
 
 ## Code generation
 
-This project uses `freezed`, `json_serializable`, and `riverpod_generator`. After
-pulling changes that touch models or providers, regenerate:
+This project uses `freezed` and `json_serializable`. After pulling changes that
+touch models, regenerate:
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```

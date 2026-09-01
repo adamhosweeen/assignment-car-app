@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:assignment/control/notifications/notifications_providers.dart';
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/listings/draft_repository.dart';
+import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -28,14 +30,10 @@ extension on _PhotoAction {
 /// photo), then a hub of three rows that each push their own screen — My
 /// Info, Car Interests, Market Insights — followed by the destructive Log out
 /// / Delete account rows.
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  Future<void> _changePhoto(
-    BuildContext context,
-    WidgetRef ref,
-    Profile profile,
-  ) async {
+  Future<void> _changePhoto(BuildContext context, Profile profile) async {
     final action = await showSelectSheet<_PhotoAction>(
       context: context,
       title: 'Profile photo',
@@ -48,7 +46,7 @@ class ProfileScreen extends ConsumerWidget {
     );
     if (action == null || !context.mounted) return;
 
-    final auth = ref.read(authRepositoryProvider);
+    final auth = context.read<AuthRepository>();
     final Future<Result<Profile>> Function() run;
     if (action == _PhotoAction.remove) {
       run = auth.removeAvatar;
@@ -85,10 +83,11 @@ class ProfileScreen extends ConsumerWidget {
     // On success the auth stream re-emits the profile and the avatar rebuilds.
   }
 
-  Future<void> _confirmDeleteAccount(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    // Read before awaiting the dialogs — the context can't be used across
+    // them.
+    final auth = context.read<AuthRepository>();
+    final drafts = context.read<DraftRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -118,14 +117,14 @@ class ProfileScreen extends ConsumerWidget {
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    final res = await ref.read(authRepositoryProvider).deleteAccount();
+    final res = await auth.deleteAccount();
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     switch (res) {
       case Ok():
         // Also discard any local sell draft; the router redirect handles
         // navigation back to the login screen.
-        await ref.read(draftRepositoryProvider).clear();
+        await drafts.clear();
       case Err(:final message):
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -133,7 +132,9 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmLogOut(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmLogOut(BuildContext context) async {
+    // Read before awaiting the dialog — the context can't be used across it.
+    final auth = context.read<AuthRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -153,29 +154,28 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(authRepositoryProvider).signOut();
-    }
+    if (confirmed == true) await auth.signOut();
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(authStateProvider);
-    final unread = ref.watch(unreadCountProvider);
+  Widget build(BuildContext context) {
+    final profile = context.watch<Profile?>();
+    final unread = unreadCountOf(
+      context.watch<AsyncSnapshot<List<AppNotification>>>(),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
-          child: Text('Something went wrong. Pull down to try again.'),
-        ),
-        data: (profile) {
-          if (profile == null) {
-            return const Center(child: Text('You’re signed out.'));
-          }
+      body: _body(context, profile, unread),
+    );
+  }
 
-          return ListView(
+  Widget _body(BuildContext context, Profile? profile, int unread) {
+    if (profile == null) {
+      return const Center(child: Text('You’re signed out.'));
+    }
+
+    return ListView(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
             children: [
               Center(
@@ -183,7 +183,7 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     ProfileAvatar.fromProfile(
                       profile,
-                      onTap: () => _changePhoto(context, ref, profile),
+                      onTap: () => _changePhoto(context, profile),
                     ),
                     const SizedBox(height: AppSpacing.space16),
                     Text(
@@ -246,7 +246,7 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   _CentredActionRow(
                     label: 'Log out',
-                    onTap: () => _confirmLogOut(context, ref),
+                    onTap: () => _confirmLogOut(context),
                   ),
                 ],
               ),
@@ -255,15 +255,12 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   _CentredActionRow(
                     label: 'Delete account',
-                    onTap: () => _confirmDeleteAccount(context, ref),
+                    onTap: () => _confirmDeleteAccount(context),
                   ),
                 ],
               ),
             ],
           );
-        },
-      ),
-    );
   }
 }
 

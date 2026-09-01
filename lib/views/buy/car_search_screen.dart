@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/listings/listings_providers.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
+import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/widgets/common/search_scaffold.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
@@ -23,24 +25,53 @@ class CarSearchScreen extends StatelessWidget {
   }
 }
 
-class _Results extends ConsumerWidget {
+class _Results extends StatefulWidget {
   const _Results({required this.query});
 
   final String query;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(carSearchProvider(query));
-    return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => SearchMessage(
-        icon: Icons.error_outline,
-        text: 'We couldn’t search right now. Check your connection.',
-        onRetry: () => ref.invalidate(carSearchProvider(query)),
-      ),
-      data: (listings) {
+  State<_Results> createState() => _ResultsState();
+}
+
+class _ResultsState extends State<_Results> {
+  /// Held so a rebuild doesn't re-issue the request; the search field is
+  /// already debounced, and a new query replaces this outright.
+  late Future<List<Listing>> _results;
+
+  @override
+  void initState() {
+    super.initState();
+    _search();
+  }
+
+  @override
+  void didUpdateWidget(_Results old) {
+    super.didUpdateWidget(old);
+    if (widget.query != old.query) _search();
+  }
+
+  void _search() =>
+      _results = searchListings(context.read<ListingsRepository>(), widget.query);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Listing>>(
+      future: _results,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return SearchMessage(
+            icon: Icons.error_outline,
+            text: 'We couldn’t search right now. Check your connection.',
+            onRetry: () => setState(_search),
+          );
+        }
+        final listings = snapshot.data;
+        if (listings == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
         if (listings.isEmpty) {
-          return SearchMessage(text: 'No cars match “$query”.');
+          return SearchMessage(text: 'No cars match “${widget.query}”.');
         }
         return ListView.separated(
           padding: const EdgeInsets.all(AppSpacing.screenPadding),

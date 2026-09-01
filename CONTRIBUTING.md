@@ -87,12 +87,16 @@ lib/model/<module>/       freezed models (+ enums) mirroring the Postgres schema
 lib/control/<module>/     <module>_repository.dart      — abstract interface
                           supabase_<module>_repository.dart — the only file that
                                                            talks to Supabase
-                          <module>_providers.dart       — Riverpod providers
+                          <module>_providers.dart       — the module's queries
+                                                           (and any app-scoped
+                                                           `provider` entries)
 lib/widgets/<module>/     reusable UI for this module only
 lib/views/<module>/       screens (one file per screen)
 ```
-Wire the repository in `lib/control/providers.dart` (one `@Riverpod(keepAlive: true)`
-line). Nothing else in the app should construct a repository.
+Wire the repository in `lib/control/providers.dart` (one `Provider<T>` line in
+`appProviders`). Nothing else in the app should construct a repository. Screens
+take repositories with `context.read<T>()`, hold the resulting future/stream in
+their `State`, and render it through a `FutureBuilder` / `StreamBuilder`.
 
 ### 3.2 Dependency direction
 - `views` → `control` (providers) → `repository interface` → `model`.

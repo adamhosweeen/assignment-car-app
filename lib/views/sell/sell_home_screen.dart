@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/listings/draft_repository.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -18,22 +20,33 @@ import 'package:assignment/widgets/listing/status_badge.dart';
 
 /// The Sell tab: an entry point to create a listing plus the user's own
 /// listings, split into Active and Sold (V1_SPEC §4.3, §4.6).
-class SellHomeScreen extends ConsumerStatefulWidget {
+class SellHomeScreen extends StatefulWidget {
   const SellHomeScreen({super.key});
 
   @override
-  ConsumerState<SellHomeScreen> createState() => _SellHomeScreenState();
+  State<SellHomeScreen> createState() => _SellHomeScreenState();
 }
 
-class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
+class _SellHomeScreenState extends State<SellHomeScreen> {
   /// Bottom padding so the last list row can scroll clear of the FAB.
   static const double _fabClearance = 88;
+
+  late Stream<List<Listing>> _myListings;
+
+  @override
+  void initState() {
+    super.initState();
+    _myListings = watchMyListings(
+      context.read<AuthRepository>(),
+      context.read<ListingsRepository>(),
+    );
+  }
 
   void _startSelling({bool editing = false}) =>
       context.push('/sell/new', extra: editing);
 
   Future<void> _discardDraft() async {
-    await ref.read(draftRepositoryProvider).clear();
+    await context.read<DraftRepository>().clear();
     if (mounted) setState(() {});
   }
 
@@ -44,20 +57,23 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
   }
 
   Future<void> _markSold(Listing l) async {
-    final res = await ref.read(listingsRepositoryProvider).markSold(l.id);
+    final res = await context.read<ListingsRepository>().markSold(l.id);
     if (!mounted) return;
     if (res case Err(:final message)) _showError(message);
   }
 
   Future<void> _edit(Listing l) async {
-    await ref.read(draftRepositoryProvider).save(draftFromListing(l));
-    ref.invalidate(sellControllerProvider);
+    await context.read<DraftRepository>().save(draftFromListing(l));
     if (!mounted) return;
-    setState(() {});
+    // The sell flow is about to open on this draft, so the app-scoped
+    // controller has to pick up what was just written.
+    setState(context.read<SellController>().reload);
     _startSelling(editing: true);
   }
 
   Future<void> _delete(Listing l) async {
+    // Read before awaiting the dialog — the context can't be used across it.
+    final listings = context.read<ListingsRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -80,7 +96,7 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
       ),
     );
     if (confirmed != true) return;
-    final res = await ref.read(listingsRepositoryProvider).softDelete(l.id);
+    final res = await listings.softDelete(l.id);
     if (!mounted) return;
     if (res case Err(:final message)) _showError(message);
   }
@@ -142,8 +158,7 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(myListingsProvider);
-    final hasDraft = ref.read(draftRepositoryProvider).hasDraft;
+    final hasDraft = context.read<DraftRepository>().hasDraft;
 
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
@@ -160,14 +175,21 @@ class _SellHomeScreenState extends ConsumerState<SellHomeScreen> {
         tooltip: 'Sell your car',
         child: const Icon(Icons.add),
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => _MessageState(
-          icon: Icons.error_outline,
-          title: 'Something went wrong',
-          message: 'We couldn’t load your listings. Pull down to try again.',
-        ),
-        data: (all) {
+      body: StreamBuilder<List<Listing>>(
+        stream: _myListings,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const _MessageState(
+              icon: Icons.error_outline,
+              title: 'Something went wrong',
+              message:
+                  'We couldn’t load your listings. Pull down to try again.',
+            );
+          }
+          final all = snapshot.data;
+          if (all == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final active = all
               .where((l) => l.status == ListingStatus.active)
               .toList();

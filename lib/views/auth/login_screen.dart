@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -16,14 +16,14 @@ import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 /// Login with email and password: black hero band up top, the form on a
 /// white rounded sheet below. Scrolls, so the keyboard never squeezes the
 /// layout.
-class LoginScreen extends ConsumerStatefulWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordFocus = FocusNode();
@@ -50,12 +50,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _loading = true;
       _error = null;
     });
-    final res = await ref
-        .read(authRepositoryProvider)
-        .signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+    final res = await context.read<AuthRepository>().signIn(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
     if (!mounted) return;
     switch (res) {
       case Ok():

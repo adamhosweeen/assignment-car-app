@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/malaysian_states.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -21,14 +21,14 @@ import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 /// its "Edit" action. Name, phone, location, and car interests are editable;
 /// email is the login identity and date of birth protects the 18+ gate, so
 /// both are shown read-only.
-class EditProfileScreen extends ConsumerStatefulWidget {
+class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
+class _EditProfileScreenState extends State<EditProfileScreen> {
   Profile? _profile;
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
@@ -40,7 +40,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final current = ref.read(authRepositoryProvider).currentUser;
+    final current = context.read<AuthRepository>().currentUser;
     _profile = current;
     _firstNameController = TextEditingController(
       text: current?.firstName ?? '',
@@ -110,15 +110,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return;
     }
     setState(() => _saving = true);
-    final result = await ref
-        .read(authRepositoryProvider)
-        .updateProfile(
-          firstName: firstName,
-          lastName: lastName,
-          phone: phoneE164,
-          state: _state,
-          interests: _interests,
-        );
+    final result = await context.read<AuthRepository>().updateProfile(
+      firstName: firstName,
+      lastName: lastName,
+      phone: phoneE164,
+      state: _state,
+      interests: _interests,
+    );
     if (!mounted) return;
     switch (result) {
       case Ok():

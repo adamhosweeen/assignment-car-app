@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/bid/bids_repository.dart';
+import 'package:assignment/control/chat/chat_repository.dart';
+import 'package:assignment/control/listings/draft_repository.dart';
+import 'package:assignment/control/listings/listings_repository.dart';
+import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/model/bid/bid.dart';
+import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
@@ -23,51 +30,86 @@ import 'package:assignment/widgets/profile/seller_row.dart';
 
 /// Standalone listing detail, reachable from the Buy feed and My Listings
 /// (V1_SPEC §4.7). Takes only a listing id.
-class ListingDetailScreen extends ConsumerWidget {
+class ListingDetailScreen extends StatefulWidget {
   const ListingDetailScreen({super.key, required this.id});
 
   final String id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(listingByIdProvider(id));
-    return async.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (_, _) => Scaffold(
-        appBar: AppBar(),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            child: Text(
-              'This listing is no longer available.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.body.copyWith(color: AppColors.secondaryLabel),
+  State<ListingDetailScreen> createState() => _ListingDetailScreenState();
+}
+
+class _ListingDetailScreenState extends State<ListingDetailScreen> {
+  /// One-shot fetches, held so a rebuild never re-issues them. The screen is
+  /// pushed fresh every time, so entering it is already the "refresh".
+  late final Future<Listing> _listing;
+  late final Future<Bid?> _pendingBid;
+
+  @override
+  void initState() {
+    super.initState();
+    _listing = fetchListingById(
+      context.read<ListingsRepository>(),
+      widget.id,
+    );
+    _pendingBid = fetchMyPendingBid(
+      context.read<AuthRepository>(),
+      context.read<BidsRepository>(),
+      widget.id,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Listing>(
+      future: _listing,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.screenPadding),
+                child: Text(
+                  'This listing is no longer available.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.body.copyWith(color: AppColors.secondaryLabel),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
-      data: (listing) => _DetailScaffold(listing: listing),
+          );
+        }
+        final listing = snapshot.data;
+        if (listing == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return _DetailScaffold(listing: listing, pendingBid: _pendingBid);
+      },
     );
   }
 }
 
-class _DetailScaffold extends ConsumerWidget {
-  const _DetailScaffold({required this.listing});
+class _DetailScaffold extends StatelessWidget {
+  const _DetailScaffold({required this.listing, required this.pendingBid});
 
   final Listing listing;
+  final Future<Bid?> pendingBid;
 
-  Future<void> _edit(BuildContext context, WidgetRef ref) async {
-    await ref.read(draftRepositoryProvider).save(draftFromListing(listing));
-    ref.invalidate(sellControllerProvider);
+  Future<void> _edit(BuildContext context) async {
+    await context.read<DraftRepository>().save(draftFromListing(listing));
     if (!context.mounted) return;
+    // The sell flow is about to open on this draft, so the app-scoped
+    // controller has to pick up what was just written.
+    context.read<SellController>().reload();
     context.push('/sell/new', extra: true);
   }
 
-  Future<void> _markSold(BuildContext context, WidgetRef ref) async {
-    final res = await ref.read(listingsRepositoryProvider).markSold(listing.id);
+  Future<void> _markSold(BuildContext context) async {
+    final res = await context.read<ListingsRepository>().markSold(listing.id);
     if (!context.mounted) return;
     if (res case Err(:final message)) {
       ScaffoldMessenger.of(context)
@@ -78,10 +120,10 @@ class _DetailScaffold extends ConsumerWidget {
     }
   }
 
-  Future<void> _openChat(BuildContext context, WidgetRef ref) async {
-    final res = await ref
-        .read(chatRepositoryProvider)
-        .openConversation(listing.id);
+  Future<void> _openChat(BuildContext context) async {
+    final res = await context.read<ChatRepository>().openConversation(
+      listing.id,
+    );
     if (!context.mounted) return;
     switch (res) {
       case Ok(:final value):
@@ -94,7 +136,7 @@ class _DetailScaffold extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final photos = listing.media
         .where((m) => m.mediaType == MediaType.photo)
@@ -198,20 +240,23 @@ class _DetailScaffold extends ConsumerWidget {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.screenPadding),
-          child: _Actions(
-            listing: listing,
-            isSeller:
-                ref.read(authRepositoryProvider).currentUser?.id ==
-                listing.sellerId,
-            onEdit: () => _edit(context, ref),
-            onMarkSold: () => _markSold(context, ref),
-            onChat: () => _openChat(context, ref),
-            onBuy: () => context.push('/listing/${listing.id}/buy'),
-            onBid: () => context.push('/listing/${listing.id}/bid'),
-            // Null while it loads, so the button reads "Place a bid" until we
-            // know otherwise rather than flickering between the two labels.
-            hasPendingBid:
-                ref.watch(myPendingBidProvider(listing.id)).value != null,
+          child: FutureBuilder<Bid?>(
+            future: pendingBid,
+            builder: (context, bid) => _Actions(
+              listing: listing,
+              isSeller:
+                  context.read<AuthRepository>().currentUser?.id ==
+                  listing.sellerId,
+              onEdit: () => _edit(context),
+              onMarkSold: () => _markSold(context),
+              onChat: () => _openChat(context),
+              onBuy: () => context.push('/listing/${listing.id}/buy'),
+              onBid: () => context.push('/listing/${listing.id}/bid'),
+              // Null while it loads, so the button reads "Place a bid" until
+              // we know otherwise rather than flickering between the two
+              // labels.
+              hasPendingBid: bid.data != null,
+            ),
           ),
         ),
       ),
@@ -221,39 +266,53 @@ class _DetailScaffold extends ConsumerWidget {
 
 /// Who is selling: a tappable row to the seller's public page. Hidden when
 /// the profile can't be loaded — the listing itself is what matters here.
-class _SellerSection extends ConsumerWidget {
+class _SellerSection extends StatefulWidget {
   const _SellerSection({required this.sellerId});
 
   final String sellerId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(publicProfileProvider(sellerId));
-    return async.when(
-      loading: () => const GroupedSection(
-        header: 'Seller',
-        children: [
-          Padding(
-            padding: EdgeInsets.all(AppSpacing.space16),
-            child: SizedBox(
-              height: AppSpacing.space12,
-              child: ColoredBox(color: AppColors.fill),
-            ),
-          ),
-        ],
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (profile) => profile == null
-          ? const SizedBox.shrink()
-          : GroupedSection(
-              header: 'Seller',
-              children: [
-                SellerRow(
-                  profile: profile,
-                  onTap: () => context.push('/seller/${profile.id}'),
+  State<_SellerSection> createState() => _SellerSectionState();
+}
+
+class _SellerSectionState extends State<_SellerSection> {
+  late final Future<PublicProfile?> _profile = fetchPublicProfile(
+    context.read<ProfilesRepository>(),
+    widget.sellerId,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PublicProfile?>(
+      future: _profile,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const SizedBox.shrink();
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const GroupedSection(
+            header: 'Seller',
+            children: [
+              Padding(
+                padding: EdgeInsets.all(AppSpacing.space16),
+                child: SizedBox(
+                  height: AppSpacing.space12,
+                  child: ColoredBox(color: AppColors.fill),
                 ),
-              ],
+              ),
+            ],
+          );
+        }
+        final profile = snapshot.data;
+        if (profile == null) return const SizedBox.shrink();
+        return GroupedSection(
+          header: 'Seller',
+          children: [
+            SellerRow(
+              profile: profile,
+              onTap: () => context.push('/seller/${profile.id}'),
             ),
+          ],
+        );
+      },
     );
   }
 }

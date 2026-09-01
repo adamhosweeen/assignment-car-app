@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:assignment/control/providers.dart';
+import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
 /// Logo on white. Restores the session, then routes to Home or Login. Hard
 /// capped well under the 2-second limit (V1_SPEC §4.1) — no network to wait on.
-class SplashScreen extends ConsumerStatefulWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -26,7 +26,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<void> _decide() async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-    final signedIn = ref.read(authRepositoryProvider).currentUser != null;
+    final signedIn = context.read<AuthRepository>().currentUser != null;
     context.go(signedIn ? '/home/buy' : '/welcome');
   }
 

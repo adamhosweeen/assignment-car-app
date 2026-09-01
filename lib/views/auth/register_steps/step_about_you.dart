@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/registration_controller.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -12,14 +12,14 @@ import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 /// Registration step 2 — name, date of birth (18+), phone number.
-class StepAboutYou extends ConsumerStatefulWidget {
+class StepAboutYou extends StatefulWidget {
   const StepAboutYou({super.key});
 
   @override
-  ConsumerState<StepAboutYou> createState() => _StepAboutYouState();
+  State<StepAboutYou> createState() => _StepAboutYouState();
 }
 
-class _StepAboutYouState extends ConsumerState<StepAboutYou> {
+class _StepAboutYouState extends State<StepAboutYou> {
   late final TextEditingController _firstName;
   late final TextEditingController _lastName;
   late final TextEditingController _phone;
@@ -29,7 +29,7 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
   @override
   void initState() {
     super.initState();
-    final s = ref.read(registrationControllerProvider);
+    final s = context.read<RegistrationController>().state;
     _firstName = TextEditingController(text: s.firstName);
     _lastName = TextEditingController(text: s.lastName);
     _phone = TextEditingController(text: s.phoneInput);
@@ -46,13 +46,13 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
   }
 
   RegistrationController get _notifier =>
-      ref.read(registrationControllerProvider.notifier);
+      context.read<RegistrationController>();
 
   Future<void> _pickDob() async {
     FocusScope.of(context).unfocus();
     final now = DateTime.now();
     final latest = DateTime(now.year - 18, now.month, now.day);
-    final current = ref.read(registrationControllerProvider).dob;
+    final current = context.read<RegistrationController>().state.dob;
     final picked = await showDatePicker(
       context: context,
       initialDate: current ?? DateTime(latest.year - 7),
@@ -65,7 +65,7 @@ class _StepAboutYouState extends ConsumerState<StepAboutYou> {
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(registrationControllerProvider);
+    final s = context.watch<RegistrationController>().state;
     final text = Theme.of(context).textTheme;
     final phoneInvalid =
         s.phoneInput.isNotEmpty && nationalToE164(s.phoneInput) == null;

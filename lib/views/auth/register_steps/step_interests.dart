@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/registration_controller.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -9,12 +9,12 @@ import 'package:assignment/widgets/profile/car_interest_fields.dart';
 
 /// Registration step 4 — the car-interest questionnaire. All optional; the
 /// answers power the "Recommended for you" row and inbox matches.
-class StepInterests extends ConsumerWidget {
+class StepInterests extends StatelessWidget {
   const StepInterests({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = ref.watch(registrationControllerProvider);
+  Widget build(BuildContext context) {
+    final s = context.watch<RegistrationController>().state;
     final min = s.interests.budgetMinMyr;
     final max = s.interests.budgetMaxMyr;
     final badBudget = min != null && max != null && (min <= 0 || min > max);
@@ -28,9 +28,7 @@ class StepInterests extends ConsumerWidget {
       children: [
         CarInterestFields(
           value: s.interests,
-          onChanged: ref
-              .read(registrationControllerProvider.notifier)
-              .setInterests,
+          onChanged: context.read<RegistrationController>().setInterests,
         ),
         const SizedBox(height: AppSpacing.space16),
         if (badBudget)

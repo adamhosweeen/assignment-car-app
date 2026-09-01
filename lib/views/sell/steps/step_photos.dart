@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:assignment/control/services/image_utils.dart';
@@ -11,14 +11,14 @@ import 'package:assignment/widgets/listing/media_image.dart';
 
 /// Step 1 — pick, compress, reorder, and delete photos. Min 3, max 12; the
 /// first photo is the cover (V1_SPEC §3, §4.5).
-class StepPhotos extends ConsumerStatefulWidget {
+class StepPhotos extends StatefulWidget {
   const StepPhotos({super.key});
 
   @override
-  ConsumerState<StepPhotos> createState() => _StepPhotosState();
+  State<StepPhotos> createState() => _StepPhotosState();
 }
 
-class _StepPhotosState extends ConsumerState<StepPhotos> {
+class _StepPhotosState extends State<StepPhotos> {
   final ImagePicker _picker = ImagePicker();
   bool _busy = false;
 
@@ -28,7 +28,7 @@ class _StepPhotosState extends ConsumerState<StepPhotos> {
   Future<void> _add(ImageSource source) async {
     setState(() => _busy = true);
     try {
-      final notifier = ref.read(sellControllerProvider.notifier);
+      final notifier = context.read<SellController>();
       if (source == ImageSource.gallery) {
         final picked = await _picker.pickMultiImage(limit: 12);
         final paths = <String>[];
@@ -47,8 +47,8 @@ class _StepPhotosState extends ConsumerState<StepPhotos> {
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(sellControllerProvider);
-    final notifier = ref.read(sellControllerProvider.notifier);
+    final draft = context.watch<SellController>().draft;
+    final notifier = context.read<SellController>();
     final photos = draft.photoPaths;
     final text = Theme.of(context).textTheme;
     final needed = 3 - photos.length;
