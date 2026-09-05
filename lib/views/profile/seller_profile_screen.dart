@@ -66,8 +66,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isSelf =
-        context.read<AuthRepository>().currentUser?.id == widget.id;
+    final isSelf = context.read<AuthRepository>().currentUser?.id == widget.id;
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(

@@ -41,52 +41,48 @@ class CarInterestsScreen extends StatelessWidget {
     }
     final interests = profile.interests;
     return ListView(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            children: [
-              GroupedSection(
-                header: 'PREFERENCES',
-                children: [
-                  GroupedRow(
-                    label: 'Brands',
-                    value: interests.makes.isEmpty
-                        ? 'Any'
-                        : interests.makes.join(', '),
-                  ),
-                  GroupedRow(
-                    label: 'Body types',
-                    value: interests.bodyTypes.isEmpty
-                        ? 'Any'
-                        : interests.bodyTypes.map((b) => b.label).join(', '),
-                  ),
-                  GroupedRow(
-                    label: 'Transmission',
-                    value: interests.transmission?.label ?? 'Any',
-                  ),
-                  GroupedRow(
-                    label: 'Fuel type',
-                    value: interests.fuelType?.label ?? 'Any',
-                  ),
-                  GroupedRow(label: 'Budget', value: _formatBudget(interests)),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space4,
-                ),
-                child: Text(
-                  interests.isEmpty
-                      ? 'Set some preferences to get a “Recommended for you” '
-                            'row on the Buy tab.'
-                      : 'These shape the “Recommended for you” row on the '
-                            'Buy tab.',
-                  style: text.footnote.copyWith(
-                    color: AppColors.secondaryLabel,
-                  ),
-                ),
-              ),
-            ],
-          );
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      children: [
+        GroupedSection(
+          header: 'PREFERENCES',
+          children: [
+            GroupedRow(
+              label: 'Brands',
+              value: interests.makes.isEmpty
+                  ? 'Any'
+                  : interests.makes.join(', '),
+            ),
+            GroupedRow(
+              label: 'Body types',
+              value: interests.bodyTypes.isEmpty
+                  ? 'Any'
+                  : interests.bodyTypes.map((b) => b.label).join(', '),
+            ),
+            GroupedRow(
+              label: 'Transmission',
+              value: interests.transmission?.label ?? 'Any',
+            ),
+            GroupedRow(
+              label: 'Fuel type',
+              value: interests.fuelType?.label ?? 'Any',
+            ),
+            GroupedRow(label: 'Budget', value: _formatBudget(interests)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+          child: Text(
+            interests.isEmpty
+                ? 'Set some preferences to get a “Recommended for you” '
+                      'row on the Buy tab.'
+                : 'These shape the “Recommended for you” row on the '
+                      'Buy tab.',
+            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+        ),
+      ],
+    );
   }
 
   String _formatBudget(CarInterests interests) {

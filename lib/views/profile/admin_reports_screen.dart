@@ -185,10 +185,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.space16),
-                  TextButton(
-                    onPressed: _refresh,
-                    child: const Text('Retry'),
-                  ),
+                  TextButton(onPressed: _refresh, child: const Text('Retry')),
                 ],
               ),
             ),

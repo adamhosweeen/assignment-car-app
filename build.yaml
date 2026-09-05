@@ -1,9 +1,0 @@
-targets:
-  $default:
-    builders:
-      json_serializable:
-        options:
-          # Postgres columns are snake_case; Dart fields are camelCase.
-          field_rename: snake
-          # Nested freezed objects (e.g. Listing.media) must call toJson().
-          explicit_to_json: true

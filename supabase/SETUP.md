@@ -195,13 +195,8 @@ You don't have to type that: the Android Studio run configuration
 (`.vscode/launch.json`) already pass `--dart-define-from-file=env.json`, so the
 IDE **Run ▶** button is enough. `env.json` itself stays gitignored.
 
-Code generation (`*.g.dart`, `*.freezed.dart`) is only needed after a fresh clone
-or when a `@freezed` / `@riverpod` file changes. Instead of re-running the build
-by hand, keep a watcher open in a terminal while developing:
-
-```
-dart run build_runner watch --delete-conflicting-outputs
-```
+There is no code-generation step — models are plain Dart with hand-written
+`fromJson`/`toJson`, so a fresh clone runs as-is.
 
 ## 5. Then I do (Step 2 app side)
 - Add `supabase_flutter`, initialise the client from the `--dart-define` values.

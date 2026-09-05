@@ -1,8 +1,8 @@
 /// Listing domain enums.
 ///
 /// Each enum constant name maps 1:1 to the Postgres text value (e.g.
-/// `FuelType.petrol` <-> `'petrol'`), so json_serializable round-trips them by
-/// name with no `@JsonValue` annotations.
+/// `FuelType.petrol` <-> `'petrol'`), so `asEnum` in `utils/json.dart`
+/// round-trips them by name.
 library;
 
 enum ListingStatus { draft, active, sold, deleted }

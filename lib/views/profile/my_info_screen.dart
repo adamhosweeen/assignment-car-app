@@ -36,50 +36,45 @@ class MyInfoScreen extends StatelessWidget {
       return const Center(child: Text('You’re signed out.'));
     }
     return ListView(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            children: [
-              GroupedSection(
-                header: 'NAME',
-                children: [
-                  GroupedRow(
-                    label: 'First name',
-                    value: profile.firstName ?? 'Not set',
-                  ),
-                  GroupedRow(
-                    label: 'Last name',
-                    value: profile.lastName ?? 'Not set',
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space24),
-              GroupedSection(
-                header: 'CONTACT',
-                children: [
-                  GroupedRow(label: 'Email', value: profile.email),
-                  GroupedRow(label: 'Phone', value: profile.phone ?? 'Not set'),
-                  GroupedRow(
-                    label: 'Location',
-                    value: profile.state ?? 'Not set',
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space24),
-              GroupedSection(
-                header: 'ACCOUNT',
-                children: [
-                  GroupedRow(
-                    label: 'Date of birth',
-                    value: profile.dob == null
-                        ? 'Not set'
-                        : formatDate(profile.dob!),
-                  ),
-                  GroupedRow(
-                    label: 'Member since',
-                    value: formatMonthYear(profile.createdAt),
-                  ),
-                ],
-              ),
-            ],
-          );
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      children: [
+        GroupedSection(
+          header: 'NAME',
+          children: [
+            GroupedRow(
+              label: 'First name',
+              value: profile.firstName ?? 'Not set',
+            ),
+            GroupedRow(
+              label: 'Last name',
+              value: profile.lastName ?? 'Not set',
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        GroupedSection(
+          header: 'CONTACT',
+          children: [
+            GroupedRow(label: 'Email', value: profile.email),
+            GroupedRow(label: 'Phone', value: profile.phone ?? 'Not set'),
+            GroupedRow(label: 'Location', value: profile.state ?? 'Not set'),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        GroupedSection(
+          header: 'ACCOUNT',
+          children: [
+            GroupedRow(
+              label: 'Date of birth',
+              value: profile.dob == null ? 'Not set' : formatDate(profile.dob!),
+            ),
+            GroupedRow(
+              label: 'Member since',
+              value: formatMonthYear(profile.createdAt),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

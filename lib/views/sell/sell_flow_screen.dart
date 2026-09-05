@@ -42,7 +42,10 @@ class _SellFlowScreenState extends State<SellFlowScreen> {
   @override
   void initState() {
     super.initState();
-    _step = context.read<SellController>().draft.currentStep.clamp(0, _lastStep);
+    _step = context.read<SellController>().draft.currentStep.clamp(
+      0,
+      _lastStep,
+    );
   }
 
   void _goTo(int step) {

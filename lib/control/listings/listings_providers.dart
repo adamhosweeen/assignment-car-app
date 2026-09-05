@@ -45,10 +45,7 @@ Future<List<Listing>> searchListings(
 }
 
 /// A single listing by id (Listing detail).
-Future<Listing> fetchListingById(
-  ListingsRepository listings,
-  String id,
-) async {
+Future<Listing> fetchListingById(ListingsRepository listings, String id) async {
   final res = await listings.getById(id);
   return switch (res) {
     Ok(:final value) => value,

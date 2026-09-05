@@ -26,8 +26,6 @@ the backend is required.
 
 ## Code generation
 
-This project uses `freezed` and `json_serializable`. After pulling changes that
-touch models, regenerate:
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
+None. This project has no `build_runner`, no `*.g.dart` files and no
+`build.yaml` — models are plain Dart with hand-written `fromJson`/`toJson`.
+Clone and `flutter run`; there is no generate step to remember.

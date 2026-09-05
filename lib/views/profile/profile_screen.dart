@@ -176,91 +176,91 @@ class ProfileScreen extends StatelessWidget {
     }
 
     return ListView(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      children: [
+        Center(
+          child: Column(
             children: [
-              Center(
-                child: Column(
-                  children: [
-                    ProfileAvatar.fromProfile(
-                      profile,
-                      onTap: () => _changePhoto(context, profile),
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                    Text(
-                      profile.displayName,
-                      style: Theme.of(context).textTheme.title1,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.space4),
-                    Text(
-                      profile.email,
-                      style: Theme.of(context).textTheme.subhead.copyWith(
-                        color: AppColors.secondaryLabel,
-                      ),
-                    ),
-                  ],
-                ),
+              ProfileAvatar.fromProfile(
+                profile,
+                onTap: () => _changePhoto(context, profile),
               ),
-              const SizedBox(height: AppSpacing.space32),
-              GroupedSection(
-                children: [
-                  GroupedRow(
-                    label: 'Inbox',
-                    value: unread == 0 ? null : '$unread new',
-                    valueColor: AppColors.primary,
-                    showChevron: true,
-                    onTap: () => context.push('/profile/inbox'),
-                  ),
-                  GroupedRow(
-                    label: 'My Info',
-                    showChevron: true,
-                    onTap: () => context.push('/profile/info'),
-                  ),
-                  GroupedRow(
-                    label: 'Car Interests',
-                    showChevron: true,
-                    onTap: () => context.push('/profile/interests'),
-                  ),
-                  GroupedRow(
-                    label: 'Market Insights',
-                    showChevron: true,
-                    onTap: () => context.push('/profile/insights'),
-                  ),
-                  GroupedRow(
-                    label: 'Find Sellers',
-                    showChevron: true,
-                    onTap: () => context.push('/sellers'),
-                  ),
-                  // Server-gated: the RPC refuses non-admins; this row is
-                  // only a shortcut for accounts the database says are admin.
-                  if (profile.isAdmin)
-                    GroupedRow(
-                      label: 'Admin',
-                      showChevron: true,
-                      onTap: () => context.push('/admin'),
-                    ),
-                ],
+              const SizedBox(height: AppSpacing.space16),
+              Text(
+                profile.displayName,
+                style: Theme.of(context).textTheme.title1,
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: AppSpacing.space24),
-              GroupedSection(
-                children: [
-                  _CentredActionRow(
-                    label: 'Log out',
-                    onTap: () => _confirmLogOut(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space24),
-              GroupedSection(
-                children: [
-                  _CentredActionRow(
-                    label: 'Delete account',
-                    onTap: () => _confirmDeleteAccount(context),
-                  ),
-                ],
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                profile.email,
+                style: Theme.of(
+                  context,
+                ).textTheme.subhead.copyWith(color: AppColors.secondaryLabel),
               ),
             ],
-          );
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space32),
+        GroupedSection(
+          children: [
+            GroupedRow(
+              label: 'Inbox',
+              value: unread == 0 ? null : '$unread new',
+              valueColor: AppColors.primary,
+              showChevron: true,
+              onTap: () => context.push('/profile/inbox'),
+            ),
+            GroupedRow(
+              label: 'My Info',
+              showChevron: true,
+              onTap: () => context.push('/profile/info'),
+            ),
+            GroupedRow(
+              label: 'Car Interests',
+              showChevron: true,
+              onTap: () => context.push('/profile/interests'),
+            ),
+            GroupedRow(
+              label: 'Market Insights',
+              showChevron: true,
+              onTap: () => context.push('/profile/insights'),
+            ),
+            GroupedRow(
+              label: 'Find Sellers',
+              showChevron: true,
+              onTap: () => context.push('/sellers'),
+            ),
+            // Server-gated: the RPC refuses non-admins; this row is
+            // only a shortcut for accounts the database says are admin.
+            if (profile.isAdmin)
+              GroupedRow(
+                label: 'Admin',
+                showChevron: true,
+                onTap: () => context.push('/admin'),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        GroupedSection(
+          children: [
+            _CentredActionRow(
+              label: 'Log out',
+              onTap: () => _confirmLogOut(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        GroupedSection(
+          children: [
+            _CentredActionRow(
+              label: 'Delete account',
+              onTap: () => _confirmDeleteAccount(context),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 

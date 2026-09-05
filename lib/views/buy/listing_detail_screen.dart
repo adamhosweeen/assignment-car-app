@@ -48,10 +48,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _listing = fetchListingById(
-      context.read<ListingsRepository>(),
-      widget.id,
-    );
+    _listing = fetchListingById(context.read<ListingsRepository>(), widget.id);
     _pendingBid = fetchMyPendingBid(
       context.read<AuthRepository>(),
       context.read<BidsRepository>(),

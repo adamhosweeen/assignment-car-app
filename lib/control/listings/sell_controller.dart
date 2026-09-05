@@ -110,8 +110,7 @@ class SellController extends ChangeNotifier {
 
   // ── Price ─────────────────────────────────────────────────────────────────
   Future<void> setPrice(int? p) => _commit(_draft.copyWith(priceMyr: p));
-  Future<void> setNegotiable(bool v) =>
-      _commit(_draft.copyWith(negotiable: v));
+  Future<void> setNegotiable(bool v) => _commit(_draft.copyWith(negotiable: v));
 
   // ── Shared ────────────────────────────────────────────────────────────────
   Future<void> setDescription(String? d) =>

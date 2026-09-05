@@ -34,9 +34,9 @@ Rules:
    your side.
 4. **Commit messages**: short imperative summary, e.g. `bid: add bids table + RLS`,
    `chat: thread screen with realtime messages`. Prefix with the module name.
-5. **Generated files stay ignored** (`*.g.dart`, `*.freezed.dart`). After checking
-   out any branch run `dart run build_runner build --delete-conflicting-outputs`
-   (or keep `build_runner watch` open).
+5. **No build step.** There is no code generation in this repo — check out a
+   branch and `flutter run`. If you see `*.g.dart` or `build.yaml`, they are
+   leftovers from an older revision; delete them.
 6. `env.json` is yours alone (gitignored). Never commit keys; the service-role key
    never exists in this repo or app.
 
@@ -83,7 +83,7 @@ stepping on each other.
 
 ### 3.1 Every module has the same four pieces
 ```
-lib/model/<module>/       freezed models (+ enums) mirroring the Postgres schema
+lib/model/<module>/       immutable models (+ enums) mirroring the Postgres schema
 lib/control/<module>/     <module>_repository.dart      — abstract interface
                           supabase_<module>_repository.dart — the only file that
                                                            talks to Supabase
@@ -115,8 +115,12 @@ their `State`, and render it through a `FutureBuilder` / `StreamBuilder`.
 - Every fallible call returns `Result<T>`; errors go through `mapError()` and are
   plain English with a next action. Never surface a raw exception.
 - Money is integer MYR; distances integer km; timestamps UTC `DateTime`.
-- Models are `freezed` + `json_serializable` with `field_rename: snake` (see
-  `build.yaml`) — column names *are* the JSON keys. No hand-written `fromJson`.
+- Models are plain immutable classes with hand-written `fromJson`/`toJson`;
+  column names *are* the JSON keys (snake_case on the wire, camelCase in Dart).
+  Parse through the helpers in `utils/json.dart`, not inline casts.
+- A model's `copyWith` takes `Object? field = _unset` for every **nullable**
+  field, so passing `null` clears it and omitting it keeps it. Keep that shape —
+  the sell flow depends on it (see `test/copy_with_test.dart`).
 
 ### 3.4 Backend rules — every Supabase change is a NEW numbered file
 
@@ -184,7 +188,7 @@ Design rules that still apply inside any migration:
    rejected, withdrawn), created_at)` + RLS (bidder reads/writes own; seller reads
    bids on own listings; only the seller updates `status` to accepted/rejected;
    only the bidder to withdrawn) + realtime. SETUP.md step. Reviewer pastes it.
-2. Replace the doc-only `model/bid/bid.dart` with freezed `Bid` (+ `BidStatus`).
+2. Replace the doc-only `model/bid/bid.dart` with a `Bid` model (+ `BidStatus`).
 3. Fill `control/bid/bids_repository.dart` (surface is sketched in its doc
    comment), add `supabase_bids_repository.dart`, `bids_providers.dart`, and a
    provider line in `providers.dart`.

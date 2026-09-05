@@ -1,30 +1,109 @@
 import 'package:flutter/foundation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'package:assignment/control/auth/location_service.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/utils/formatters.dart';
 
-part 'registration_controller.freezed.dart';
+/// Sentinel for [RegistrationState.copyWith], so an omitted argument is
+/// distinguishable from an explicit `null` — clearing the date of birth or
+/// the state has to actually clear it.
+const Object _unset = Object();
 
 /// Everything the registration flow has collected so far. Ephemeral — unlike
 /// the sell draft, a half-finished signup is not persisted across app kills.
-@freezed
-abstract class RegistrationState with _$RegistrationState {
-  const factory RegistrationState({
-    @Default('') String email,
-    @Default('') String password,
-    @Default('') String confirmPassword,
-    @Default('') String firstName,
-    @Default('') String lastName,
-    DateTime? dob,
-    @Default('') String phoneInput,
-    String? stateName,
-    @Default(false) bool detectingLocation,
-    @Default(false) bool locationFailed,
-    @Default(CarInterests()) CarInterests interests,
-  }) = _RegistrationState;
+class RegistrationState {
+  const RegistrationState({
+    this.email = '',
+    this.password = '',
+    this.confirmPassword = '',
+    this.firstName = '',
+    this.lastName = '',
+    this.dob,
+    this.phoneInput = '',
+    this.stateName,
+    this.detectingLocation = false,
+    this.locationFailed = false,
+    this.interests = const CarInterests(),
+  });
+
+  final String email;
+  final String password;
+  final String confirmPassword;
+  final String firstName;
+  final String lastName;
+  final DateTime? dob;
+  final String phoneInput;
+  final String? stateName;
+  final bool detectingLocation;
+  final bool locationFailed;
+  final CarInterests interests;
+
+  RegistrationState copyWith({
+    String? email,
+    String? password,
+    String? confirmPassword,
+    String? firstName,
+    String? lastName,
+    Object? dob = _unset,
+    String? phoneInput,
+    Object? stateName = _unset,
+    bool? detectingLocation,
+    bool? locationFailed,
+    CarInterests? interests,
+  }) => RegistrationState(
+    email: email ?? this.email,
+    password: password ?? this.password,
+    confirmPassword: confirmPassword ?? this.confirmPassword,
+    firstName: firstName ?? this.firstName,
+    lastName: lastName ?? this.lastName,
+    dob: identical(dob, _unset) ? this.dob : dob as DateTime?,
+    phoneInput: phoneInput ?? this.phoneInput,
+    stateName: identical(stateName, _unset)
+        ? this.stateName
+        : stateName as String?,
+    detectingLocation: detectingLocation ?? this.detectingLocation,
+    locationFailed: locationFailed ?? this.locationFailed,
+    interests: interests ?? this.interests,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RegistrationState &&
+          email == other.email &&
+          password == other.password &&
+          confirmPassword == other.confirmPassword &&
+          firstName == other.firstName &&
+          lastName == other.lastName &&
+          dob == other.dob &&
+          phoneInput == other.phoneInput &&
+          stateName == other.stateName &&
+          detectingLocation == other.detectingLocation &&
+          locationFailed == other.locationFailed &&
+          interests == other.interests;
+
+  @override
+  int get hashCode => Object.hash(
+    email,
+    password,
+    confirmPassword,
+    firstName,
+    lastName,
+    dob,
+    phoneInput,
+    stateName,
+    detectingLocation,
+    locationFailed,
+    interests,
+  );
+
+  @override
+  String toString() =>
+      'RegistrationState(email: $email, firstName: $firstName, '
+      'lastName: $lastName, dob: $dob, phoneInput: $phoneInput, '
+      'stateName: $stateName, detectingLocation: $detectingLocation, '
+      'locationFailed: $locationFailed, interests: $interests)';
 }
 
 /// Owns the in-progress registration form across its steps. Same shape as

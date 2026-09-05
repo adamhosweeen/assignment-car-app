@@ -51,8 +51,10 @@ class _ResultsState extends State<_Results> {
     if (widget.query != old.query) _search();
   }
 
-  void _search() =>
-      _results = searchListings(context.read<ListingsRepository>(), widget.query);
+  void _search() => _results = searchListings(
+    context.read<ListingsRepository>(),
+    widget.query,
+  );
 
   @override
   Widget build(BuildContext context) {

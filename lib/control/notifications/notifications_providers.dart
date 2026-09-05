@@ -16,17 +16,16 @@ import 'package:assignment/utils/restartable_stream.dart';
 /// be one shared subscription rather than a [StreamBuilder] in each.
 ///
 /// [restart] backs the Inbox screen's "Retry".
-class InboxFeed extends RestartableStream<AsyncSnapshot<List<AppNotification>>> {
+class InboxFeed
+    extends RestartableStream<AsyncSnapshot<List<AppNotification>>> {
   InboxFeed(AuthRepository auth, NotificationsRepository notifications)
     : super(() => _watchInbox(auth, notifications));
 }
 
 final notificationsProviders = <SingleChildWidget>[
   Provider<InboxFeed>(
-    create: (c) => InboxFeed(
-      c.read<AuthRepository>(),
-      c.read<NotificationsRepository>(),
-    ),
+    create: (c) =>
+        InboxFeed(c.read<AuthRepository>(), c.read<NotificationsRepository>()),
     dispose: (_, feed) => feed.dispose(),
   ),
   StreamProvider<AsyncSnapshot<List<AppNotification>>>(

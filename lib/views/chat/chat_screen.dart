@@ -156,7 +156,8 @@ class _ConversationRowState extends State<_ConversationRow> {
       future: _profile,
       builder: (context, profile) => FutureBuilder<Listing>(
         future: _listing,
-        builder: (context, listing) => _row(context, profile.data, listing.data),
+        builder: (context, listing) =>
+            _row(context, profile.data, listing.data),
       ),
     );
   }

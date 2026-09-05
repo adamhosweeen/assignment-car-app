@@ -65,8 +65,10 @@ int unreadChatCountOf(AsyncSnapshot<List<ConversationThread>> conversations) =>
     conversations.data?.fold<int>(0, (sum, t) => sum + t.unreadCount) ?? 0;
 
 /// Messages in one thread, oldest first, live over realtime.
-Stream<List<Message>> watchMessages(ChatRepository chat, String conversationId) =>
-    chat.watchMessages(conversationId);
+Stream<List<Message>> watchMessages(
+  ChatRepository chat,
+  String conversationId,
+) => chat.watchMessages(conversationId);
 
 /// One conversation by id — the thread screen falls back to this when it
 /// wasn't reached with the [Conversation] already in hand (route `extra`

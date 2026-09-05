@@ -1,19 +1,58 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
 import 'package:assignment/model/profile/car_interests.dart';
 
-part 'registration_data.freezed.dart';
-
 /// Everything the registration flow collects besides the email/password
-/// credentials. Passed to [AuthRepository.signUp] in one piece.
-@freezed
-abstract class RegistrationData with _$RegistrationData {
-  const factory RegistrationData({
-    required String firstName,
-    required String lastName,
-    required DateTime dob,
-    required String phoneE164,
-    required String state,
-    required CarInterests interests,
-  }) = _RegistrationData;
+/// credentials. Passed to `AuthRepository.signUp` in one piece.
+class RegistrationData {
+  const RegistrationData({
+    required this.firstName,
+    required this.lastName,
+    required this.dob,
+    required this.phoneE164,
+    required this.state,
+    required this.interests,
+  });
+
+  final String firstName;
+  final String lastName;
+  final DateTime dob;
+  final String phoneE164;
+  final String state;
+  final CarInterests interests;
+
+  RegistrationData copyWith({
+    String? firstName,
+    String? lastName,
+    DateTime? dob,
+    String? phoneE164,
+    String? state,
+    CarInterests? interests,
+  }) => RegistrationData(
+    firstName: firstName ?? this.firstName,
+    lastName: lastName ?? this.lastName,
+    dob: dob ?? this.dob,
+    phoneE164: phoneE164 ?? this.phoneE164,
+    state: state ?? this.state,
+    interests: interests ?? this.interests,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RegistrationData &&
+          firstName == other.firstName &&
+          lastName == other.lastName &&
+          dob == other.dob &&
+          phoneE164 == other.phoneE164 &&
+          state == other.state &&
+          interests == other.interests;
+
+  @override
+  int get hashCode =>
+      Object.hash(firstName, lastName, dob, phoneE164, state, interests);
+
+  @override
+  String toString() =>
+      'RegistrationData(firstName: $firstName, lastName: $lastName, '
+      'dob: $dob, phoneE164: $phoneE164, state: $state, '
+      'interests: $interests)';
 }
