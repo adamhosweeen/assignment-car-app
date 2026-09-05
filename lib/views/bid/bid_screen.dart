@@ -79,25 +79,28 @@ class _BidScreenState extends State<BidScreen> {
         icon: const Icon(Icons.gavel),
         label: const Text('Start an auction'),
       ),
-      body: switch (_segment) {
-        0 => _AuctionList(
-          stream: _live,
-          onRetry: _retry,
-          emptyTitle: 'No live auctions',
-          emptyMessage:
-              'When someone puts a car up for auction it shows here. '
-              'You can start one on a car you are selling.',
-        ),
-        1 => _MyBidsList(stream: _myBids, onRetry: _retry),
-        _ => _AuctionList(
-          stream: _myAuctions,
-          onRetry: _retry,
-          emptyTitle: 'You haven’t run an auction yet',
-          emptyMessage:
-              'Tap “Start an auction” and pick one of the cars you have '
-              'for sale.',
-        ),
-      },
+      body: IndexedStack(
+        index: _segment,
+        children: [
+          _AuctionList(
+            stream: _live,
+            onRetry: _retry,
+            emptyTitle: 'No live auctions',
+            emptyMessage:
+                'When someone puts a car up for auction it shows here. '
+                'You can start one on a car you are selling.',
+          ),
+          _MyBidsList(stream: _myBids, onRetry: _retry),
+          _AuctionList(
+            stream: _myAuctions,
+            onRetry: _retry,
+            emptyTitle: 'You haven’t run an auction yet',
+            emptyMessage:
+                'Tap “Start an auction” and pick one of the cars you have '
+                'for sale.',
+          ),
+        ],
+      ),
     );
   }
 }
