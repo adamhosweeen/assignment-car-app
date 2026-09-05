@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:assignment/control/auth/location_service.dart';
+import 'package:assignment/control/services/location_service.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/utils/formatters.dart';
