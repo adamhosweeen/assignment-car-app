@@ -5,11 +5,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
 
-/// A circular profile picture: the uploaded photo when [avatarUrl] is set
-/// (initials show underneath while it loads), otherwise the first letter of
-/// [name] on a tinted disc. With [onTap], a small camera badge signals that
-/// the photo can be changed. Works for the signed-in [Profile] and for other
-/// users' `PublicProfile`s alike.
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({
     super.key,
@@ -35,7 +30,6 @@ class ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    // Scale the letter with the disc: the large-title size suits avatarLg.
     final letterStyle = size >= AppSpacing.avatarLg
         ? Theme.of(context).textTheme.largeTitle
         : Theme.of(context).textTheme.headline;

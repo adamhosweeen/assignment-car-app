@@ -8,7 +8,6 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 4 — previous owners, accident-free, optional road-tax expiry.
 class StepCondition extends StatelessWidget {
   const StepCondition({super.key});
 

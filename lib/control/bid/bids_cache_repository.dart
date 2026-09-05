@@ -5,20 +5,8 @@ import 'package:assignment/control/listings/listings_cache_repository.dart'
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_listing.dart';
 
-/// Which of the two Bid-tab lists a cached row belongs to.
-enum BidSide {
-  /// Bids the signed-in user placed on other people's cars.
-  mine,
+enum BidSide { mine, received }
 
-  /// Bids other people placed on the signed-in user's cars.
-  received,
-}
-
-/// sqflite read-cache of the signed-in user's bids (`bid_cache`) and a
-/// snapshot of each bid's car (`bid_cache_listing` + `bid_cache_listing_media`).
-/// Written after every successful Supabase fetch so the Bid tab renders
-/// instantly on cold start and stays readable offline. Never authoritative —
-/// Supabase is the source of truth (CLAUDE.md §3).
 class BidsCacheRepository {
   BidsCacheRepository(
     this._db,
@@ -37,8 +25,6 @@ class BidsCacheRepository {
   final Database _db;
   final Map<BidSide, List<BidWithListing>> _cached;
 
-  /// The list for [side] cached on disk at launch (or saved since), in the
-  /// same newest-first order it was fetched in.
   List<BidWithListing> cached(BidSide side) => _cached[side] ?? const [];
 
   Future<void> save(BidSide side, List<BidWithListing> bids) async {
@@ -49,9 +35,6 @@ class BidsCacheRepository {
         await txn.insert('bid_cache', bidToRow(bids[i].bid, side, i));
       }
 
-      // The car snapshots are shared by both sides, so they can only be
-      // pruned to what *either* list still references — rewriting the whole
-      // table here would drop the other side's cars.
       final referenced = <String, BidWithListing>{
         for (final list in _cached.values)
           for (final entry in list) entry.listing.id: entry,
@@ -67,9 +50,6 @@ class BidsCacheRepository {
     });
   }
 
-  /// Wipes every cached bid and car snapshot — called on sign-out, since a
-  /// bid (its amount, and the seller's contact number on it) is private to
-  /// the account, unlike the public listings cache.
   Future<void> clear() async {
     for (final side in BidSide.values) {
       _cached[side] = const [];
@@ -80,9 +60,6 @@ class BidsCacheRepository {
   }
 }
 
-/// Flatten a [Bid] into a `bid_cache` row: its snake_case JSON plus which list
-/// it belongs to and where in that list, with the bool stored as 0/1 (SQLite
-/// has no bool).
 Map<String, Object?> bidToRow(Bid bid, BidSide side, int sortOrder) {
   final json = bid.toJson()
     ..['side'] = side.name
@@ -91,7 +68,6 @@ Map<String, Object?> bidToRow(Bid bid, BidSide side, int sortOrder) {
   return json;
 }
 
-/// Rebuild a [Bid] from a `bid_cache` row.
 Bid bidFromRow(Map<String, Object?> row) {
   final json = Map<String, dynamic>.from(row)
     ..remove('side')
@@ -100,9 +76,6 @@ Bid bidFromRow(Map<String, Object?> row) {
   return Bid.fromJson(json);
 }
 
-/// Decode `bid_cache` rows (already filtered to one side and ordered) into the
-/// list the Bid tab renders, joining each to its cached car. A bid whose car
-/// snapshot is missing is dropped — the row has nothing to show without it.
 List<BidWithListing> decodeCachedBids(
   List<Map<String, Object?>> bidRows,
   List<Map<String, Object?>> listingRows,
@@ -129,7 +102,6 @@ List<BidWithListing> decodeCachedBids(
     }
     return List.unmodifiable(out);
   } catch (_) {
-    // A corrupt cache is worth less than an empty one.
     return const [];
   }
 }

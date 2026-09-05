@@ -3,8 +3,6 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Map a backend exception to a plain-English, user-facing sentence with a next
-/// action (CLAUDE.md §6). Never surfaces a raw exception or stack trace.
 String mapError(Object error) {
   if (error is AuthException) {
     final m = error.message.toLowerCase();

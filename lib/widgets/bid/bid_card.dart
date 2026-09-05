@@ -7,12 +7,6 @@ import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/bid/bid_status_badge.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 
-/// One row in either Bid-tab list: the car, the amount, where the bid stands,
-/// and whichever actions the viewer is allowed to take.
-///
-/// The same card serves both sides — the caller passes the actions, so the
-/// bidder gets "Withdraw" and the seller gets "Reject"/"Accept". A card with
-/// no live actions (a resolved bid) simply omits the button row.
 class BidCard extends StatelessWidget {
   const BidCard({
     super.key,
@@ -25,10 +19,8 @@ class BidCard extends StatelessWidget {
   final BidWithListing entry;
   final VoidCallback onOpenListing;
 
-  /// Extra context line under the car title, e.g. who bid or when.
   final String? subtitle;
 
-  /// Buttons shown along the bottom, left to right.
   final List<Widget> actions;
 
   @override
@@ -138,8 +130,6 @@ class BidCard extends StatelessWidget {
     );
   }
 
-  /// "RM 48,800 asking · RM 3,800 below" — how this bid reads against the
-  /// car's price, which is the number both sides actually judge it on.
   String _askingLine() {
     final difference = entry.differenceMyr;
     final asking = '${formatPrice(entry.listing.priceMyr)} asking';

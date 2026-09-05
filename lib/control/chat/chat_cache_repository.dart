@@ -4,12 +4,6 @@ import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/conversation_thread.dart';
 import 'package:assignment/model/chat/message.dart';
 
-/// sqflite read-cache of the signed-in user's chat threads
-/// (`conversation_cache`) and, per thread, its message history
-/// (`message_cache`). Written after every successful Supabase fetch so the
-/// Chat tab and an already-opened thread render instantly on cold start and
-/// stay browsable offline. Never authoritative — Supabase is the source of
-/// truth (CLAUDE.md §3).
 class ChatCacheRepository {
   ChatCacheRepository(this._db, List<Map<String, Object?>> initialThreadRows)
     : _cachedConversations = initialThreadRows
@@ -19,8 +13,6 @@ class ChatCacheRepository {
   final Database _db;
   List<ConversationThread> _cachedConversations;
 
-  /// The thread list cached on disk at launch (or saved since), in the same
-  /// most-recent-activity-first order it was fetched in.
   List<ConversationThread> get cachedConversations => _cachedConversations;
 
   Future<void> saveConversations(List<ConversationThread> threads) async {
@@ -60,8 +52,6 @@ class ChatCacheRepository {
         }
       });
 
-  /// Wipes every cached thread and message — called on sign-out so a shared
-  /// device doesn't leave one user's chats readable to the next.
   Future<void> clear() async {
     _cachedConversations = const [];
     await _db.delete('conversation_cache');
@@ -69,9 +59,6 @@ class ChatCacheRepository {
   }
 }
 
-/// Flatten a [ConversationThread] into a `conversation_cache` row: the
-/// conversation's own snake_case JSON plus its last message's fields
-/// prefixed `last_msg_` (null when the thread has no messages yet).
 Map<String, Object?> conversationThreadToRow(
   ConversationThread thread,
   int sortOrder,
@@ -92,7 +79,6 @@ Map<String, Object?> conversationThreadToRow(
   };
 }
 
-/// Rebuild a [ConversationThread] from a `conversation_cache` row.
 ConversationThread conversationThreadFromRow(Map<String, Object?> row) {
   final conversation = Conversation.fromJson(
     Map<String, dynamic>.from(row)

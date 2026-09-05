@@ -10,8 +10,6 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 
-/// Seeds the draft and swallows persistence, so the real [SellController]
-/// runs in a widget test without sqflite.
 class _SeededDraftRepo implements DraftRepository {
   _SeededDraftRepo(this._draft);
 
@@ -99,7 +97,6 @@ void main() {
       'previous step', (tester) async {
     await _pumpEditFlow(tester);
 
-    // Jump into a section from the review screen (the first "Edit" → Car).
     await tester.tap(find.text('Edit').first);
     await tester.pumpAndSettle();
     expect(find.text('Review & publish'), findsNothing);
@@ -108,7 +105,6 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
 
-    // Back on review — did not walk to step 4/step 3/etc. and did not exit.
     expect(find.text('Review & publish'), findsOneWidget);
     expect(find.text('LISTING PAGE'), findsNothing);
   });

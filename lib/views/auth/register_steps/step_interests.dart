@@ -7,8 +7,6 @@ import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 import 'package:assignment/widgets/profile/car_interest_fields.dart';
 
-/// Registration step 4 — the car-interest questionnaire. All optional; the
-/// answers power the "Recommended for you" row and inbox matches.
 class StepInterests extends StatelessWidget {
   const StepInterests({super.key});
 

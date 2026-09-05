@@ -8,8 +8,6 @@ import 'package:assignment/utils/validators.dart';
 import 'package:assignment/widgets/auth/password_strength.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Registration step 1 — email and password, with a live strength meter and
-/// rule checklist instead of a single "too weak" line.
 class StepAccount extends StatefulWidget {
   const StepAccount({super.key});
 

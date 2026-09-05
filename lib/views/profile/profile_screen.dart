@@ -26,10 +26,6 @@ extension on _PhotoAction {
   };
 }
 
-/// The Profile tab (§4.8): identity header (tap the avatar to change the
-/// photo), then a hub of three rows that each push their own screen — My
-/// Info, Car Interests, Market Insights — followed by the destructive Log out
-/// / Delete account rows.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -80,12 +76,9 @@ class ProfileScreen extends StatelessWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
     }
-    // On success the auth stream re-emits the profile and the avatar rebuilds.
   }
 
   Future<void> _confirmDeleteAccount(BuildContext context) async {
-    // Read before awaiting the dialogs — the context can't be used across
-    // them.
     final auth = context.read<AuthRepository>();
     final drafts = context.read<DraftRepository>();
     final confirmed = await showDialog<bool>(
@@ -122,8 +115,6 @@ class ProfileScreen extends StatelessWidget {
     Navigator.of(context, rootNavigator: true).pop();
     switch (res) {
       case Ok():
-        // Also discard any local sell draft; the router redirect handles
-        // navigation back to the login screen.
         await drafts.clear();
       case Err(:final message):
         ScaffoldMessenger.of(context)
@@ -133,7 +124,6 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Future<void> _confirmLogOut(BuildContext context) async {
-    // Read before awaiting the dialog — the context can't be used across it.
     final auth = context.read<AuthRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -231,8 +221,6 @@ class ProfileScreen extends StatelessWidget {
               showChevron: true,
               onTap: () => context.push('/sellers'),
             ),
-            // Server-gated: the RPC refuses non-admins; this row is
-            // only a shortcut for accounts the database says are admin.
             if (profile.isAdmin)
               GroupedRow(
                 label: 'Admin',
@@ -264,7 +252,6 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-/// A full-width, centred destructive action inside a grouped card.
 class _CentredActionRow extends StatelessWidget {
   const _CentredActionRow({required this.label, required this.onTap});
 

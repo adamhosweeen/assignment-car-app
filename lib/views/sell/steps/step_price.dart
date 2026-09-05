@@ -10,7 +10,6 @@ import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 6 — asking price, negotiable toggle, and an optional description.
 class StepPrice extends StatefulWidget {
   const StepPrice({super.key});
 
@@ -51,9 +50,6 @@ class _StepPriceState extends State<StepPrice> {
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
-            // `prefixText` is hidden until the field is focused or has text,
-            // so "RM" would vanish on an empty, unfocused field. A prefixIcon
-            // is always shown.
             prefixIcon: Padding(
               padding: const EdgeInsets.only(
                 left: AppSpacing.space12,

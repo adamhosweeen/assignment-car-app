@@ -2,8 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:assignment/model/insights/car_popularity.dart';
 
-// The aggregator is dev tooling under tool/, outside lib/, so it can only be
-// reached with a relative import.
 import '../tool/car_popularity_aggregator.dart';
 
 const _header = 'date_reg,type,maker,model,colour,fuel,state';
@@ -86,12 +84,10 @@ void main() {
         s.topModels.first,
         const RankedModel(name: 'Myvi', maker: 'Perodua', count: 2),
       );
-      // Multi-word maker and model survive the maker/model split.
       expect(
         s.topModels.firstWhere((m) => m.maker == 'Great Wall').name,
         'Haval H6',
       );
-      // Rakan Niaga rows count nationally but never appear per state.
       expect(
         s.byState.keys,
         unorderedEquals(['Selangor', 'WP Kuala Lumpur', 'Johor']),
@@ -109,7 +105,6 @@ void main() {
 
     test('keeps only the last 12 months, ending at the latest month seen', () {
       final lines = <String>[];
-      // 14 consecutive months: Jun 2025 … Jul 2026, one row each.
       for (var i = 0; i < 14; i++) {
         final d = DateTime.utc(2025, 6 + i, 1);
         final mm = d.month.toString().padLeft(2, '0');

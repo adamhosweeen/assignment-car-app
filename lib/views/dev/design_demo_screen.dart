@@ -3,12 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// Temporary design-system demo.
-///
-/// Renders every colour, text style, spacing value, radius, button, text field,
-/// and a grouped spec section so the design system can be verified on a device.
-/// This lives in `dev/` on purpose — it is throwaway scaffolding to be deleted
-/// once real feature screens exist.
 class DesignDemoScreen extends StatelessWidget {
   const DesignDemoScreen({super.key});
 
@@ -42,8 +36,6 @@ class DesignDemoScreen extends StatelessWidget {
   }
 }
 
-// ─── Shared bits ─────────────────────────────────────────────────────────────
-
 class _SectionGap extends StatelessWidget {
   const _SectionGap();
 
@@ -66,7 +58,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// #RRGGBB, or #AARRGGBB when the token carries alpha.
 String _hex(Color color) {
   final argb = color.toARGB32();
   final opaque = (argb >> 24 & 0xFF) == 0xFF;
@@ -81,8 +72,6 @@ String _weightName(FontWeight? weight) {
   if (weight == FontWeight.w600) return 'semibold';
   return 'regular';
 }
-
-// ─── Colours ─────────────────────────────────────────────────────────────────
 
 class _ColoursSection extends StatelessWidget {
   const _ColoursSection();
@@ -139,8 +128,6 @@ class _ColoursSection extends StatelessWidget {
   }
 }
 
-// ─── Typography ──────────────────────────────────────────────────────────────
-
 class _TypographySection extends StatelessWidget {
   const _TypographySection();
 
@@ -182,8 +169,6 @@ class _TypographySection extends StatelessWidget {
   }
 }
 
-// ─── Spacing ─────────────────────────────────────────────────────────────────
-
 class _SpacingSection extends StatelessWidget {
   const _SpacingSection();
 
@@ -222,8 +207,6 @@ class _SpacingSection extends StatelessWidget {
     );
   }
 }
-
-// ─── Radius ──────────────────────────────────────────────────────────────────
 
 class _RadiusSection extends StatelessWidget {
   const _RadiusSection();
@@ -278,8 +261,6 @@ class _RadiusSection extends StatelessWidget {
   }
 }
 
-// ─── Buttons ─────────────────────────────────────────────────────────────────
-
 class _ButtonsSection extends StatelessWidget {
   const _ButtonsSection();
 
@@ -326,8 +307,6 @@ class _ButtonsSection extends StatelessWidget {
   }
 }
 
-// ─── Text fields ─────────────────────────────────────────────────────────────
-
 class _TextFieldsSection extends StatelessWidget {
   const _TextFieldsSection();
 
@@ -352,8 +331,6 @@ class _TextFieldsSection extends StatelessWidget {
     );
   }
 }
-
-// ─── Grouped spec section ────────────────────────────────────────────────────
 
 class _GroupedSpecSection extends StatelessWidget {
   const _GroupedSpecSection();

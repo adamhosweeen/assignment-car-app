@@ -12,10 +12,6 @@ import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/control/listings/listings_cache_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 
-/// Real [ListingsRepository] backed by Supabase Postgres + Storage + Realtime.
-///
-/// Reads join `listing_media`; `storage_path` is kept as the bucket path and
-/// resolved to a signed URL at display time (see `signedImageUrlProvider`).
 class SupabaseListingsRepository implements ListingsRepository {
   SupabaseListingsRepository(this._client, this._cache);
 
@@ -25,7 +21,6 @@ class SupabaseListingsRepository implements ListingsRepository {
   static const String _select = '*, listing_media(*)';
   static const Duration _fetchTimeout = Duration(seconds: 8);
 
-  // ── Reads ───────────────────────────────────────────────────────────────
   Future<List<Listing>> _fetchActive() async {
     final rows = await _client
         .from('listings')
@@ -99,12 +94,6 @@ class SupabaseListingsRepository implements ListingsRepository {
     }
   }
 
-  /// Emit the cached feed (if any) and an initial fetch, then re-fetch
-  /// whenever `listings` changes (realtime). Successful fetches are mirrored
-  /// into the cache via [onFetched]; a transient refresh failure keeps the
-  /// last good (or cached) value, but a failed first load with nothing to
-  /// show yet is surfaced as a real error — otherwise the stream never emits
-  /// anything at all and the screen spins forever.
   Stream<List<Listing>> _watch(
     Future<List<Listing>> Function() fetch,
     String channelName, {
@@ -124,9 +113,6 @@ class SupabaseListingsRepository implements ListingsRepository {
         }
         await onFetched?.call(data);
       } catch (e) {
-        // If nothing was ever emitted, surface the failure so the screen
-        // shows its error state instead of loading forever. Once we have a
-        // good (or cached) value, keep it through transient errors.
         if (!emitted && !controller.isClosed) controller.addError(e);
       }
     }
@@ -170,14 +156,12 @@ class SupabaseListingsRepository implements ListingsRepository {
       }
       return Ok(_fromRow(row));
     } catch (e) {
-      // Offline or timed out — a cached feed item can still be shown.
       final cached = _cache.getById(id);
       if (cached != null) return Ok(cached);
       return Err(mapError(e));
     }
   }
 
-  // ── Writes ────────────────────────────────────────────────────────────────
   @override
   Future<Result<Listing>> publish(ListingDraft draft, String sellerId) async {
     final missing = _firstMissingField(draft);
@@ -191,10 +175,8 @@ class SupabaseListingsRepository implements ListingsRepository {
     }
     final id = draft.id;
     try {
-      // 1. Insert (or update, when editing) as draft.
       await _client.from('listings').upsert(_payload(draft, sellerId, 'draft'));
 
-      // 2. Replace media: upload new local photos, reuse already-uploaded ones.
       await _client.from('listing_media').delete().eq('listing_id', id);
       for (var i = 0; i < draft.photoPaths.length; i++) {
         final path = draft.photoPaths[i];
@@ -210,7 +192,7 @@ class SupabaseListingsRepository implements ListingsRepository {
                 fileOptions: const FileOptions(contentType: 'image/jpeg'),
               );
         } else {
-          objectPath = path; // already a bucket path (edit)
+          objectPath = path;
         }
         await _client.from('listing_media').insert({
           'listing_id': id,
@@ -220,7 +202,6 @@ class SupabaseListingsRepository implements ListingsRepository {
         });
       }
 
-      // 3. Flip to active only after every upload succeeded.
       await _client.from('listings').update({'status': 'active'}).eq('id', id);
 
       return getById(id);
@@ -238,7 +219,6 @@ class SupabaseListingsRepository implements ListingsRepository {
       await _client.rpc('buy_listing', params: {'p_listing_id': id});
       return const Ok(null);
     } on PostgrestException catch (e) {
-      // buy_listing() raises this when the car is no longer active.
       if (e.message.contains('no longer available')) return Err(e.message);
       return Err(mapError(e));
     } catch (e) {

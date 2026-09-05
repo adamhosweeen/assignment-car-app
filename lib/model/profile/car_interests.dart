@@ -3,14 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [CarInterests.copyWith], so an omitted argument is
-/// distinguishable from an explicit `null` and a nullable field can be
-/// cleared (`copyWith(transmission: null)` really does clear it).
 const Object _unset = Object();
 
-/// A buyer's car preferences, collected during registration and editable from
-/// the Profile tab. Stored as jsonb in `profiles.interests`. Everything is
-/// optional — an empty value means "no preference".
 class CarInterests {
   const CarInterests({
     this.makes = const <String>[],

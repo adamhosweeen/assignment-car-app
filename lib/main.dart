@@ -12,7 +12,6 @@ import 'package:assignment/utils/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!SupabaseConfig.isConfigured) {
-    // The backend is required; fail loudly and legibly rather than crashing.
     runApp(const MissingConfigApp());
     return;
   }
@@ -29,8 +28,6 @@ Future<void> main() async {
   );
 }
 
-/// Shown when the app is launched without Supabase credentials. There is no
-/// offline backend — the keys are required (README "Getting started").
 class MissingConfigApp extends StatelessWidget {
   const MissingConfigApp({super.key});
 
@@ -81,8 +78,6 @@ class MissingConfigApp extends StatelessWidget {
   }
 }
 
-/// Root of the app. [MaterialApp.router] with Material widgets styled to feel
-/// iOS — never [CupertinoApp] (CLAUDE.md §5).
 class AssignmentApp extends StatelessWidget {
   const AssignmentApp({super.key});
 

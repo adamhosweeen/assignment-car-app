@@ -1,18 +1,12 @@
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/listing/listing.dart';
 
-/// A bid plus the car it is on — what every row in the Bid tab needs to
-/// render (title, cover photo, list price) without a second lookup per row.
-///
-/// Composed in Dart from an embedded `listings` select, not a table mirror,
-/// so there is no `fromJson`/`toJson` (same shape as `ConversationThread`).
 class BidWithListing {
   const BidWithListing({required this.bid, required this.listing});
 
   final Bid bid;
   final Listing listing;
 
-  /// How the bid compares to the asking price — negative means below asking.
   int get differenceMyr => bid.amountMyr - listing.priceMyr;
 
   BidWithListing copyWith({Bid? bid, Listing? listing}) =>

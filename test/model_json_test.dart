@@ -7,9 +7,6 @@ import 'package:assignment/model/listing/listing_media.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
 
-/// `fromJson`/`toJson` are hand-written now, so a mistyped key would compile
-/// cleanly and silently drop a column. These fill every field, round-trip it,
-/// and pin the snake_case wire names the Postgres schema uses.
 void main() {
   group('CarInterests JSON', () {
     const interests = CarInterests(
@@ -158,7 +155,6 @@ void main() {
     });
 
     test('an integer column arriving as a num still decodes', () {
-      // Postgres can hand back a double for a numeric column.
       final json = listing.toJson()..['price_myr'] = 42000.0;
       expect(Listing.fromJson(json).priceMyr, 42000);
     });

@@ -48,7 +48,6 @@ final _bidder = Profile(
 class _FakeBidsRepo implements BidsRepository {
   _FakeBidsRepo({this.existing});
 
-  /// The bidder's live bid on this car, if any.
   final Bid? existing;
 
   int placeCalls = 0;
@@ -127,9 +126,6 @@ Widget _app(_FakeBidsRepo repo, {Listing? listing}) {
   );
 }
 
-/// The bid form is longer than a default 800x600 test surface, and a ListView
-/// only builds what is near the viewport — so the amount and phone fields
-/// wouldn't exist to find. A tall surface builds the whole form at once.
 void _useTallSurface(WidgetTester tester) {
   tester.view.physicalSize = const Size(1000, 3000);
   tester.view.devicePixelRatio = 1;
@@ -145,7 +141,6 @@ void main() {
     await tester.pumpWidget(_app(_FakeBidsRepo()));
     await tester.pumpAndSettle();
 
-    // Every label from the reference design.
     for (final label in [
       'Car Brand',
       'Car Model',
@@ -159,7 +154,6 @@ void main() {
       expect(find.text(label), findsOneWidget, reason: 'missing $label');
     }
 
-    // Filled from the listing, not editable.
     expect(find.text('Perodua'), findsOneWidget);
     expect(find.text('Myvi'), findsOneWidget);
     expect(find.text('2020'), findsOneWidget);
@@ -169,7 +163,6 @@ void main() {
     expect(find.text('38,000 km'), findsOneWidget);
     expect(find.text('West Malaysia'), findsOneWidget);
 
-    // Eight locked fields — no dropdown affordance on any of them.
     expect(find.byIcon(Icons.lock_outline), findsNWidgets(8));
     expect(find.byIcon(Icons.expand_more), findsNothing);
 
@@ -207,7 +200,6 @@ void main() {
     await tester.pumpWidget(_app(repo));
     await tester.pumpAndSettle();
 
-    // RM 450 against a RM 45,000 car — a dropped digit.
     await tester.enterText(find.byKey(bidAmountFieldKey), '450');
     await tester.tap(find.text('Place Your Bid'));
     await tester.pumpAndSettle();
@@ -263,8 +255,7 @@ void main() {
     expect(repo.lastPhone, '0123456789');
     expect(repo.lastNotify, isTrue);
 
-    // Confirmation replaces the form.
-    expect(find.text('Bid placed'), findsNWidgets(2)); // app bar + body
+    expect(find.text('Bid placed'), findsNWidgets(2));
     expect(find.text('View my bids'), findsOneWidget);
     expect(find.text('Place Your Bid'), findsNothing);
   });
@@ -288,7 +279,6 @@ void main() {
     expect(find.text('Update Your Bid'), findsOneWidget);
     expect(find.text('Place Your Bid'), findsNothing);
     expect(find.textContaining('already have a RM 38,000 bid'), findsOneWidget);
-    // Prefilled from the existing bid, not the profile.
     expect(find.text('38000'), findsOneWidget);
     expect(find.text('0119998888'), findsOneWidget);
   });

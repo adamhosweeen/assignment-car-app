@@ -3,11 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// The app's search box: the themed filled field with a leading magnifier
-/// and a trailing clear button that appears once there is text.
-///
-/// With [onTap] it becomes a tappable, non-editable bar — the Buy tab uses
-/// that form to open the search screen.
 class SearchField extends StatelessWidget {
   const SearchField({
     super.key,

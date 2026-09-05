@@ -35,21 +35,7 @@ import 'package:assignment/control/reports/reports_repository.dart';
 import 'package:assignment/control/reports/supabase_reports_repository.dart';
 import 'package:assignment/model/profile/profile.dart';
 
-/// Composition root. These providers expose domain interfaces, so features
-/// depend only on abstractions.
-///
-/// Supabase credentials are required (`--dart-define-from-file=env.json`);
-/// `main()` shows a configuration-error screen and never calls this when the
-/// keys are missing.
-///
-/// The graph is wired up here rather than through nested `create` callbacks
-/// because two things need a repository *before* the widget tree exists: the
-/// router's redirect guard needs [AuthRepository], and the auth stream needs
-/// `currentUser` as its initial value. Every constructor below is a field
-/// assignment or a decode of rows [AppStorage] has already read, so building
-/// them up front costs nothing.
 List<SingleChildWidget> appProviders(AppStorage storage) {
-  // ── Local caches over the open sqflite database ─────────────────────────
   final profileCache = ProfileCacheRepository(
     storage.db,
     storage.initialProfileRow,
@@ -76,7 +62,6 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     storage.initialDraftPhotoPaths,
   );
 
-  // ── Backend repositories ────────────────────────────────────────────────
   final client = Supabase.instance.client;
   final auth = SupabaseAuthRepository(
     client,
@@ -101,55 +86,35 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     Provider<ListingsCacheRepository>.value(value: listingsCache),
     Provider<ProfilesCacheRepository>.value(value: profilesCache),
 
-    /// The in-progress listing draft, persisted to sqflite.
     Provider<DraftRepository>.value(value: draftRepository),
 
     Provider<AuthRepository>.value(value: auth),
     Provider<ListingsRepository>.value(value: listings),
 
-    /// Buyer ↔ seller chat threads (Chat tab, Listing Detail's "Chat with
-    /// seller").
     Provider<ChatRepository>.value(value: chat),
 
-    /// Bids on listings (Bid tab, Listing Detail's "Place a bid").
     Provider<BidsRepository>.value(value: bids),
 
-    /// The signed-in user's in-app inbox (Profile → Inbox).
     Provider<NotificationsRepository>.value(value: notifications),
 
-    /// Other users' public profiles (seller search, seller pages, the other
-    /// participant in a chat thread).
     Provider<ProfilesRepository>.value(value: profiles),
 
-    /// Read-only market snapshot (Profile → Market insights).
     Provider<InsightsRepository>.value(value: insights),
 
-    /// Admin-only reads (Profile → Admin); the server rejects non-admin
-    /// callers.
     Provider<AdminRepository>.value(value: admin),
 
-    /// Filing a report against another user (seller page).
     Provider<ReportsRepository>.value(value: reports),
 
     Provider<SignedUrlCache>(create: (_) => SignedUrlCache()),
 
-    // ── App-wide state ────────────────────────────────────────────────────
-    /// The signed-in profile, null when signed out. `currentUser` is available
-    /// synchronously from the cached session, so this stream has no loading
-    /// state to speak of — the initial value is already the right answer.
     StreamProvider<Profile?>.value(
       value: auth.authState(),
       initialData: auth.currentUser,
     ),
 
-    /// Both of these feed a tab badge in the shell *and* a screen, so they
-    /// have to be one shared subscription — the repository streams are
-    /// single-subscription and open a realtime channel per listen.
     ...notificationsProviders,
     ...chatProviders,
 
-    /// The in-progress sell draft. App-scoped rather than scoped to the sell
-    /// route because publishing a listing resets it from outside that flow.
     ChangeNotifierProvider<SellController>(
       create: (_) => SellController(draftRepository),
     ),

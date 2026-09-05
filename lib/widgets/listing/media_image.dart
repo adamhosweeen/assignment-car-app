@@ -8,11 +8,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/services/signed_url_cache.dart';
 
-/// Displays a listing photo from any source:
-/// - a local file path (a freshly-picked photo in the Sell flow) → [Image.file]
-/// - an `http(s)` URL → cached network image
-/// - a Supabase storage bucket path → resolved to a signed URL, then cached
-/// Falls back to a neutral placeholder while loading or on failure.
 class MediaImage extends StatelessWidget {
   const MediaImage({
     super.key,
@@ -28,8 +23,6 @@ class MediaImage extends StatelessWidget {
   final double? width;
   final double? height;
 
-  /// Shown while loading / on failure instead of the default car glyph
-  /// (e.g. initials behind a profile photo).
   final Widget? placeholder;
 
   @override
@@ -43,9 +36,6 @@ class MediaImage extends StatelessWidget {
       return Image.file(file, width: width, height: height, fit: fit);
     }
 
-    // A Supabase bucket path — resolve to a signed URL. The cache keeps the
-    // future alive across the rebuilds a scrolling list causes, so the same
-    // path is only signed once.
     return FutureBuilder<String?>(
       future: context.read<SignedUrlCache>().resolve(p),
       builder: (_, snapshot) {

@@ -7,8 +7,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 
-/// Profile → My Info: the user's identity and contact details, read-only.
-/// Editing happens on the shared Edit Profile screen (app bar action).
 class MyInfoScreen extends StatelessWidget {
   const MyInfoScreen({super.key});
 

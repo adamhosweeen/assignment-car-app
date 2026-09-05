@@ -4,8 +4,6 @@ import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// A small coloured pill showing where a bid stands. Mirrors [StatusBadge]
-/// for listings, so the two read as the same component in the Bid tab.
 class BidStatusBadge extends StatelessWidget {
   const BidStatusBadge({super.key, required this.status});
 

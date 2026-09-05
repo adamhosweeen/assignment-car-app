@@ -10,8 +10,6 @@ import 'package:assignment/widgets/common/search_scaffold.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
 
-/// Buy → search: active listings whose make, model, or variant contains the
-/// typed text (server-side, debounced). No filters or sort (V1_SPEC §4.10).
 class CarSearchScreen extends StatelessWidget {
   const CarSearchScreen({super.key});
 
@@ -35,8 +33,6 @@ class _Results extends StatefulWidget {
 }
 
 class _ResultsState extends State<_Results> {
-  /// Held so a rebuild doesn't re-issue the request; the search field is
-  /// already debounced, and a new query replaces this outright.
   late Future<List<Listing>> _results;
 
   @override

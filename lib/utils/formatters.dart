@@ -1,5 +1,3 @@
-// Small display formatters (no `intl` dependency).
-
 const List<String> _months = [
   'Jan',
   'Feb',
@@ -25,10 +23,8 @@ String _thousands(int n) {
   return '${n < 0 ? '-' : ''}$buf';
 }
 
-/// Plain integer with thousands separators → "12,345".
 String formatCount(int n) => _thousands(n);
 
-/// Month key "2026-03" → "Mar 2026"; anything unparsable is returned as-is.
 String formatMonthKey(String yyyyMm) {
   final parts = yyyyMm.split('-');
   if (parts.length < 2) return yyyyMm;
@@ -37,32 +33,25 @@ String formatMonthKey(String yyyyMm) {
   return '${_months[month - 1]} ${parts[0]}';
 }
 
-/// Month key "2026-03" → "M" (single-letter axis label).
 String monthInitial(String yyyyMm) {
   final label = formatMonthKey(yyyyMm);
   return label == yyyyMm ? '' : label[0];
 }
 
-/// Integer Ringgit → "RM 48,800".
 String formatPrice(int myr) => 'RM ${_thousands(myr)}';
 
-/// Integer kilometres → "38,000 km".
 String formatMileage(int km) => '${_thousands(km)} km';
 
-/// Local date → "12 Mar 2026".
 String formatDate(DateTime date) {
   final local = date.toLocal();
   return '${local.day} ${_months[local.month - 1]} ${local.year}';
 }
 
-/// Local date → "Mar 2026" (e.g. member since).
 String formatMonthYear(DateTime date) {
   final local = date.toLocal();
   return '${_months[local.month - 1]} ${local.year}';
 }
 
-/// Compact "how long ago" for inbox rows: "Just now", "5m", "3h", "2d", then
-/// the date once it's a week or more old. [now] is injectable for tests.
 String formatRelative(DateTime date, {DateTime? now}) {
   final diff = (now ?? DateTime.now()).toUtc().difference(date.toUtc());
   if (diff.inMinutes < 1) return 'Just now';
@@ -72,12 +61,8 @@ String formatRelative(DateTime date, {DateTime? now}) {
   return formatDate(date);
 }
 
-/// "Posted 12 Mar 2026".
 String formatPosted(DateTime date) => 'Posted ${formatDate(date)}';
 
-/// Convert user input to E.164, or null if it is not a valid Malaysian mobile
-/// number. Accepts an optional leading 0; the national part must start with 1
-/// and be 9–10 digits.
 String? nationalToE164(String input) {
   var d = input.replaceAll(RegExp('[^0-9]'), '');
   if (d.startsWith('0')) d = d.substring(1);

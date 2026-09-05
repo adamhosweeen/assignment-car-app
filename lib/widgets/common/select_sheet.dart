@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// Present a list of options in an iOS-style bottom sheet and return the chosen
-/// one (or null if dismissed). Used for make/model/year/enum pickers.
 Future<T?> showSelectSheet<T>({
   required BuildContext context,
   required String title,

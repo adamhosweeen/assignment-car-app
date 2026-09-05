@@ -1,10 +1,7 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [Conversation.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// A buyer ↔ seller thread about one listing — a row of `conversations`
-/// (unique on `listing_id + buyer_id`).
 class Conversation {
   const Conversation({
     required this.id,
@@ -40,8 +37,6 @@ class Conversation {
     'last_message_at': lastMessageAt?.toIso8601String(),
   };
 
-  /// The participant who isn't [currentUserId] — the person to show in the
-  /// thread list / thread header.
   String otherParticipantId(String currentUserId) =>
       currentUserId == buyerId ? sellerId : buyerId;
 

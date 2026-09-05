@@ -17,10 +17,6 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Standalone route for editing the profile, pushed from [ProfileScreen] via
-/// its "Edit" action. Name, phone, location, and car interests are editable;
-/// email is the login identity and date of birth protects the 18+ gate, so
-/// both are shown read-only.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -61,7 +57,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  /// "+60123456789" → "123456789" for the +60-prefixed field.
   static String _nationalDigits(String? e164) {
     if (e164 == null) return '';
     return e164.startsWith('+60') ? e164.substring(3) : e164;

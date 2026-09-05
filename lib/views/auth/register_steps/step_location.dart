@@ -10,13 +10,10 @@ import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Registration step 3 — where the user is, via GPS or the state picker.
-/// Confirms the result inline so the user knows what was detected.
 class StepPickLocation extends StatelessWidget {
   const StepPickLocation({super.key});
 
   Future<void> _pickState(BuildContext context) async {
-    // Read before the sheet: the context can't be used across the await.
     final registration = context.read<RegistrationController>();
     final picked = await showSelectSheet<String>(
       context: context,

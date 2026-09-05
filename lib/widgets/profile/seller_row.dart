@@ -5,8 +5,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
-/// A tappable row for another user: small avatar, name, state, chevron.
-/// Lives inside a [GroupedSection] (seller search results, Listing Detail).
 class SellerRow extends StatelessWidget {
   const SellerRow({super.key, required this.profile, this.onTap});
 

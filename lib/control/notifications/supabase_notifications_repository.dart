@@ -8,9 +8,6 @@ import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 
-/// [NotificationsRepository] over the `notifications` table with a realtime
-/// subscription filtered to the signed-in user. Same fetch-on-change shape as
-/// `SupabaseListingsRepository._watch`.
 class SupabaseNotificationsRepository implements NotificationsRepository {
   SupabaseNotificationsRepository(this._client);
 
@@ -42,8 +39,6 @@ class SupabaseNotificationsRepository implements NotificationsRepository {
         final data = await _fetch(userId).timeout(_fetchTimeout);
         if (!controller.isClosed) controller.add(data);
       } catch (e) {
-        // First load failing is a real error state; later ones keep the last
-        // good list.
         if (!controller.isClosed && !controller.hasListener) return;
         if (!controller.isClosed) controller.addError(e);
       }

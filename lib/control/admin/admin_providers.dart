@@ -3,8 +3,6 @@ import 'package:assignment/model/admin/admin_user_stats.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/result.dart';
 
-/// Carries the repository's user-facing message through a `FutureBuilder`'s
-/// error channel without exposing a raw backend exception to the UI.
 class AdminException implements Exception {
   const AdminException(this.message);
 
@@ -14,8 +12,6 @@ class AdminException implements Exception {
   String toString() => message;
 }
 
-/// All users with their listing counts (admin screen). Errors for non-admin
-/// callers — the server refuses the RPC.
 Future<List<AdminUserStats>> fetchAdminUsers(AdminRepository admin) async {
   final res = await admin.listUsers();
   return switch (res) {
@@ -24,7 +20,6 @@ Future<List<AdminUserStats>> fetchAdminUsers(AdminRepository admin) async {
   };
 }
 
-/// All user-filed reports, newest first (admin reports screen).
 Future<List<AdminReport>> fetchAdminReports(AdminRepository admin) async {
   final res = await admin.listReports();
   return switch (res) {
@@ -33,9 +28,6 @@ Future<List<AdminReport>> fetchAdminReports(AdminRepository admin) async {
   };
 }
 
-/// Case-insensitive filter over what an admin would search by: name, email,
-/// phone, and state. Client-side — the list is already fully fetched.
-/// A blank query returns the input unchanged.
 List<AdminUserStats> filterAdminUsers(
   List<AdminUserStats> users,
   String query,
@@ -53,13 +45,8 @@ List<AdminUserStats> filterAdminUsers(
   ];
 }
 
-/// How the admin list is ordered. Sorting is client-side — the dataset is a
-/// single small fetch, so no round-trip per sort.
 enum AdminSort { newest, listed, sold }
 
-/// Pure sort used by the admin screen: [AdminSort.newest] by joined date
-/// descending; [AdminSort.listed]/[AdminSort.sold] by that count descending
-/// with newest as the tiebreak, then id for stability. Returns a new list.
 List<AdminUserStats> sortAdminUsers(
   List<AdminUserStats> users,
   AdminSort sort,

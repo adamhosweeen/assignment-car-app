@@ -8,14 +8,6 @@ import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/async_snapshots.dart';
 import 'package:assignment/utils/restartable_stream.dart';
 
-/// The signed-in user's inbox, newest first, live over realtime.
-///
-/// App-scoped because two places read it: the Profile tab's badge in the
-/// shell and the Inbox screen itself. The repository stream is
-/// single-subscription and opens a realtime channel per listen, so it has to
-/// be one shared subscription rather than a [StreamBuilder] in each.
-///
-/// [restart] backs the Inbox screen's "Retry".
 class InboxFeed
     extends RestartableStream<AsyncSnapshot<List<AppNotification>>> {
   InboxFeed(AuthRepository auth, NotificationsRepository notifications)
@@ -35,8 +27,6 @@ final notificationsProviders = <SingleChildWidget>[
   ),
 ];
 
-/// Empty when signed out; torn down and re-subscribed when the user changes.
-/// Opens on `waiting` so a restart returns the screen to its loading state.
 Stream<AsyncSnapshot<List<AppNotification>>> _watchInbox(
   AuthRepository auth,
   NotificationsRepository notifications,
@@ -58,6 +48,5 @@ Stream<AsyncSnapshot<List<AppNotification>>> _watchInbox(
       );
 }
 
-/// Unread count for the hub row and the Profile tab badge (0 while loading).
 int unreadCountOf(AsyncSnapshot<List<AppNotification>> inbox) =>
     inbox.data?.where((n) => !n.isRead).length ?? 0;

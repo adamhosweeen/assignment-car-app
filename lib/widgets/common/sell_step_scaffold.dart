@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// Shared layout for a single sell step: a scrollable, padded column with a
-/// title and optional subtitle above the step's fields.
 class SellStepScaffold extends StatelessWidget {
   const SellStepScaffold({
     super.key,
@@ -17,7 +15,6 @@ class SellStepScaffold extends StatelessWidget {
   final String title;
   final String? subtitle;
 
-  /// Small uppercase caption above the title, e.g. "Step 2 of 4".
   final String? eyebrow;
   final List<Widget> children;
 
@@ -54,7 +51,6 @@ class SellStepScaffold extends StatelessWidget {
   }
 }
 
-/// A small left-aligned field label above a text input.
 class FieldLabel extends StatelessWidget {
   const FieldLabel(this.label, {super.key});
 

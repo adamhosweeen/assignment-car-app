@@ -13,8 +13,6 @@ import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 const String _noPreference = 'No preference';
 
-/// The car-interest questionnaire fields, shared between registration step 4
-/// and Edit Profile. Everything is optional; empty means "no preference".
 class CarInterestFields extends StatefulWidget {
   const CarInterestFields({
     super.key,

@@ -2,8 +2,6 @@ import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 
-/// Build an editable [ListingDraft] from an existing [Listing], for the Edit
-/// action. Starts at the review step so the seller can tweak and re-publish.
 ListingDraft draftFromListing(Listing l) {
   final videos = l.media.where((m) => m.mediaType == MediaType.video).toList();
   return ListingDraft(

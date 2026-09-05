@@ -10,7 +10,6 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 3 — mileage, transmission, fuel type, body type, colour.
 class StepSpecs extends StatefulWidget {
   const StepSpecs({super.key});
 

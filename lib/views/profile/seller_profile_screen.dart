@@ -23,9 +23,6 @@ import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
-/// Another user's public page: photo, name, state, member since, and the
-/// cars they currently have for sale. Never shows contact details
-/// (V1_SPEC §4.10). Reached from seller search and from Listing Detail.
 class SellerProfileScreen extends StatefulWidget {
   const SellerProfileScreen({super.key, required this.id});
 
@@ -36,7 +33,6 @@ class SellerProfileScreen extends StatefulWidget {
 }
 
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
-  /// A one-shot fetch, held so a rebuild never re-issues it.
   late Future<PublicProfile?> _profile;
 
   @override
@@ -202,7 +198,6 @@ class _BodyState extends State<_Body> {
   }
 }
 
-/// Bottom sheet for filing a report: a short title, what happened, submit.
 class _ReportSheet extends StatefulWidget {
   const _ReportSheet({required this.reportedId});
 
@@ -266,7 +261,6 @@ class _ReportSheetState extends State<_ReportSheet> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      // Rides above the keyboard.
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
         child: Padding(

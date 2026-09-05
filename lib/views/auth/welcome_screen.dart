@@ -6,8 +6,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/auth/auth_hero.dart';
 
-/// The signed-out landing page: black canvas with the brand mark, a one-line
-/// pitch, and the two ways in. Splash routes here when no session exists.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
@@ -80,7 +78,6 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-/// "── or ──" separator between the two actions, in on-hero colours.
 class _OrDivider extends StatelessWidget {
   const _OrDivider();
 

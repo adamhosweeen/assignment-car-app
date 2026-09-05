@@ -11,13 +11,6 @@ import 'package:assignment/utils/async_snapshots.dart';
 import 'package:assignment/utils/restartable_stream.dart';
 import 'package:assignment/utils/result.dart';
 
-/// The signed-in user's chat threads, most recent activity first, live over
-/// realtime.
-///
-/// App-scoped for the same reason as the inbox: the Chat tab's badge in the
-/// shell and the Chat screen both read it, and the repository stream is
-/// single-subscription. [restart] backs the Chat screen's retry and its
-/// pull-to-refresh.
 class ConversationsFeed
     extends RestartableStream<AsyncSnapshot<List<ConversationThread>>> {
   ConversationsFeed(AuthRepository auth, ChatRepository chat)
@@ -37,8 +30,6 @@ final chatProviders = <SingleChildWidget>[
   ),
 ];
 
-/// Empty when signed out; torn down and re-subscribed when the user changes.
-/// Opens on `waiting` so a restart returns the screen to its loading state.
 Stream<AsyncSnapshot<List<ConversationThread>>> _watchConversations(
   AuthRepository auth,
   ChatRepository chat,
@@ -60,19 +51,14 @@ Stream<AsyncSnapshot<List<ConversationThread>>> _watchConversations(
       );
 }
 
-/// Total unread messages across every thread, for the Chat tab badge.
 int unreadChatCountOf(AsyncSnapshot<List<ConversationThread>> conversations) =>
     conversations.data?.fold<int>(0, (sum, t) => sum + t.unreadCount) ?? 0;
 
-/// Messages in one thread, oldest first, live over realtime.
 Stream<List<Message>> watchMessages(
   ChatRepository chat,
   String conversationId,
 ) => chat.watchMessages(conversationId);
 
-/// One conversation by id — the thread screen falls back to this when it
-/// wasn't reached with the [Conversation] already in hand (route `extra`
-/// doesn't survive Android killing and restoring the app process).
 Future<Conversation> fetchConversationById(
   ChatRepository chat,
   String id,

@@ -4,7 +4,6 @@ import 'package:assignment/control/reports/reports_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/utils/result.dart';
 
-/// [ReportsRepository] over the `reports` table (insert-own RLS).
 class SupabaseReportsRepository implements ReportsRepository {
   SupabaseReportsRepository(this._client);
 

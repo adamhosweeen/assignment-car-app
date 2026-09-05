@@ -1,12 +1,9 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [Message.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// Kind of message; `offer` carries [Message.offerAmountMyr].
 enum MessageType { text, offer }
 
-/// One message in a `Conversation` — a row of `messages`.
 class Message {
   const Message({
     required this.id,
@@ -56,7 +53,6 @@ class Message {
     'offer_confirmed_at': offerConfirmedAt?.toIso8601String(),
   };
 
-  /// Whether [currentUserId] sent this message (right-aligned bubble).
   bool isMine(String currentUserId) => senderId == currentUserId;
 
   Message copyWith({

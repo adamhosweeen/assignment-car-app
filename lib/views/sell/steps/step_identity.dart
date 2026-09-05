@@ -10,7 +10,6 @@ import 'package:assignment/model/listing/car_catalog.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 2 — make → model → variant (optional) → year.
 class StepIdentity extends StatefulWidget {
   const StepIdentity({super.key});
 

@@ -4,9 +4,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 
-/// One ranked row inside a grouped section: rank number, label (with an
-/// optional sublabel), the count, and a proportional bar underneath.
-/// [fraction] is 0–1 relative to the top entry in the same list.
 class RankBarRow extends StatelessWidget {
   const RankBarRow({
     super.key,
@@ -113,9 +110,6 @@ class _Bar extends StatelessWidget {
   }
 }
 
-/// A row of vertical bars, one per month, scaled to the largest month, with a
-/// single-letter month label under each. [months] are `YYYY-MM` keys in
-/// chronological order.
 class MonthlyBars extends StatelessWidget {
   const MonthlyBars({super.key, required this.months, required this.counts})
     : assert(months.length == counts.length);

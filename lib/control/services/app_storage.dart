@@ -2,15 +2,6 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:assignment/control/services/app_database.dart';
 
-/// The open sqflite database plus whatever rows were already on disk at
-/// launch, so the repositories below can decode them synchronously.
-///
-/// sqflite has no synchronous read API, but two call sites
-/// (`DraftRepository.hasDraft`/`.load()`, read while building a widget) need a
-/// synchronous answer. Since [init] is already awaited once in
-/// `main()` before `runApp`, it does the one-time async row fetch here; the
-/// repositories decode and cache in memory, then read that cache from then on
-/// (CLAUDE.md §3: sqflite is a cache/draft store, never the source of truth).
 class AppStorage {
   const AppStorage._(
     this.db,
@@ -67,8 +58,6 @@ class AppStorage {
       orderBy: 'sort_order ASC',
     );
 
-    // Both Bid-tab lists in one read; `BidsCacheRepository` splits them on the
-    // `side` column, so the order-by must keep each side's own ordering.
     final bidRows = await db.query(
       'bid_cache',
       orderBy: 'side ASC, sort_order ASC',

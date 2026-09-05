@@ -11,7 +11,6 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Registration step 2 — name, date of birth (18+), phone number.
 class StepAboutYou extends StatefulWidget {
   const StepAboutYou({super.key});
 

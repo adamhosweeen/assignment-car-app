@@ -5,13 +5,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/model/listing/listing.dart';
 
-/// The single listing card reused by the Buy feed and My Listings. The only
-/// differences between the two screens are the optional [statusBadge] and
-/// [trailing] actions (§4.4, §4.6).
-///
-/// A white rounded surface meant to sit on [AppColors.groupedBackground]:
-/// cover photo flush on top, then price (the hero), title, and a meta line of
-/// mileage · location with the posted date at the right.
 class ListingCard extends StatelessWidget {
   const ListingCard({
     super.key,
@@ -25,8 +18,6 @@ class ListingCard extends StatelessWidget {
 
   final Listing listing;
 
-  /// The cover image widget (kept as a slot so this file has no dart:io/image
-  /// dependency and stays purely presentational).
   final Widget cover;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;

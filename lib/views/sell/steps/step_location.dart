@@ -10,8 +10,6 @@ import 'package:assignment/model/malaysian_states.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 5 — region (West / East Malaysia), state, city. The state list is
-/// filtered by the chosen region.
 class StepLocation extends StatefulWidget {
   const StepLocation({super.key});
 

@@ -14,14 +14,6 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 
-/// [BidsRepository] over the `bids` table (migration 0009), with the same
-/// fetch-on-realtime-change shape as `SupabaseListingsRepository._watch` and
-/// `SupabaseChatRepository`. Every successful fetch of the two Bid-tab lists
-/// is mirrored into [_cache] so they render instantly on cold start.
-///
-/// Status transitions go through the migration's SECURITY DEFINER functions:
-/// `bids` carries SELECT and INSERT policies only, so a client-side update
-/// would match zero rows and fail silently.
 class SupabaseBidsRepository implements BidsRepository {
   SupabaseBidsRepository(this._client, this._cache);
 
@@ -30,13 +22,8 @@ class SupabaseBidsRepository implements BidsRepository {
 
   static const Duration _fetchTimeout = Duration(seconds: 8);
 
-  /// A bid with the car it is on, and that car's photos, in one round trip.
   static const String _selectWithListing = '*, listings(*, listing_media(*))';
 
-  // ── Decoding ─────────────────────────────────────────────────────────────
-  /// Split an embedded `listings` row off a `bids` row into the two models.
-  /// Rows whose car failed to embed are dropped by the callers — a bid row
-  /// with no car has nothing to render.
   static BidWithListing? _fromJoinedRow(Map<String, dynamic> row) {
     final map = Map<String, dynamic>.from(row);
     final listingJson = map.remove('listings');
@@ -49,7 +36,6 @@ class SupabaseBidsRepository implements BidsRepository {
     );
   }
 
-  // ── Reads ────────────────────────────────────────────────────────────────
   Future<List<BidWithListing>> _fetchMyBids(String uid) async {
     final rows = await _client
         .from('bids')
@@ -59,9 +45,6 @@ class SupabaseBidsRepository implements BidsRepository {
     return rows.map(_fromJoinedRow).nonNulls.toList();
   }
 
-  /// Bids on cars *I* am selling. The `!inner` join makes `listings.seller_id`
-  /// filterable — without it PostgREST embeds the car but can't filter on it,
-  /// and RLS alone would still return the caller's own outgoing bids too.
   Future<List<BidWithListing>> _fetchReceived(String uid) async {
     final rows = await _client
         .from('bids')
@@ -93,14 +76,6 @@ class SupabaseBidsRepository implements BidsRepository {
     );
   }
 
-  /// Emit the cached list, then a fresh fetch, then re-fetch whenever `bids`
-  /// or `listings` changes. `listings` matters too: accepting a bid sells the
-  /// car, and a car marked sold elsewhere rejects its pending bids via the
-  /// migration's trigger — both change what these rows should say.
-  ///
-  /// A transient refresh failure keeps the last good (or cached) list; a
-  /// failed *first* load with nothing to show is surfaced so the screen shows
-  /// its error state instead of spinning forever.
   Stream<List<BidWithListing>> _watchList(
     Future<List<BidWithListing>> Function() fetch,
     String channelName, {
@@ -237,7 +212,6 @@ class SupabaseBidsRepository implements BidsRepository {
     }
   }
 
-  // ── Writes ───────────────────────────────────────────────────────────────
   @override
   Future<Result<Bid>> placeBid(
     String listingId,
@@ -252,8 +226,6 @@ class SupabaseBidsRepository implements BidsRepository {
     if (phoneError != null) return Err(phoneError);
 
     try {
-      // 1. Re-read the car. The form's copy can be minutes old — it may have
-      //    sold, or the asking price may have changed under the amount rules.
       final listingRow = await _client
           .from('listings')
           .select('seller_id, status, price_myr')
@@ -276,9 +248,6 @@ class SupabaseBidsRepository implements BidsRepository {
       );
       if (amountError != null) return Err(amountError);
 
-      // 2. Only one pending bid per person per car (enforced by a partial
-      //    unique index). Re-bidding replaces the old one, so withdraw it
-      //    first rather than letting the insert trip the constraint.
       final existing = await myPendingBidFor(listingId);
       if (existing case Ok(value: final previous?)) {
         final withdrawn = await withdrawBid(previous.id);
@@ -311,10 +280,6 @@ class SupabaseBidsRepository implements BidsRepository {
   Future<Result<void>> respondToBid(String bidId, {required bool accept}) =>
       _transition('respond_to_bid', {'p_bid_id': bidId, 'p_accept': accept});
 
-  /// Call one of the migration's status-transition functions. They raise
-  /// already-user-facing sentences for the cases below; anything else falls
-  /// through to the generic mapper so a raw Postgres error never reaches the
-  /// UI (CLAUDE.md §6).
   Future<Result<void>> _transition(
     String function,
     Map<String, dynamic> params,

@@ -56,8 +56,6 @@ void main() {
     });
 
     test('side and sort_order are stripped back off when decoding', () {
-      // They are cache bookkeeping, not part of the domain model — leaving
-      // them in would make `Bid.fromJson` choke on unknown keys.
       final decoded = bidFromRow(bidToRow(sampleBid(), BidSide.mine, 7));
       expect(decoded.id, 'b1');
     });
@@ -105,7 +103,7 @@ void main() {
 
   group('BidWithListing', () {
     test('differenceMyr is negative below asking and positive above', () {
-      final car = fullListing(id: 'l1'); // asking RM 62,000
+      final car = fullListing(id: 'l1');
       expect(
         BidWithListing(bid: sampleBid(), listing: car).differenceMyr,
         45000 - 62000,

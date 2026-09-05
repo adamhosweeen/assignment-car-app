@@ -1,10 +1,8 @@
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [Profile.copyWith] — see [CarInterests].
 const Object _unset = Object();
 
-/// A user profile. Mirrors the `profiles` table.
 class Profile {
   const Profile({
     required this.id,
@@ -62,12 +60,8 @@ class Profile {
     'created_at': createdAt.toIso8601String(),
   };
 
-  /// Role changes are blocked server-side (trigger); this only reflects what
-  /// the database says.
   bool get isAdmin => role == 'admin';
 
-  /// Full name, falling back to the email prefix so there is always something
-  /// to show.
   String get displayName {
     final name = [firstName, lastName]
         .whereType<String>()

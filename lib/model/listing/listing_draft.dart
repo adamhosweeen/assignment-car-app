@@ -3,21 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/json.dart';
 
-/// Maximum asking price (RM). Above this we reject in-app rather than let the
-/// Postgres `int` column (max ~2.15 billion) overflow when publishing.
-const int kMaxPriceMyr = 100000000; // RM 100,000,000
+const int kMaxPriceMyr = 100000000;
 
-/// Sentinel for [ListingDraft.copyWith] — see `CarInterests`. It matters most
-/// here: the sell flow clears fields on purpose (changing the make clears the
-/// model, changing the region can clear the state, deselecting a picker
-/// clears its value), so `copyWith(model: null)` has to mean "clear it".
 const Object _unset = Object();
 
-/// An in-progress sell form, persisted to sqflite after every step so a crash
-/// or app kill never loses input (CLAUDE.md §3, V1_SPEC §4.5).
-///
-/// Every field is nullable because the form is filled in incrementally. [id]
-/// doubles as the listing id when the draft is published.
 class ListingDraft {
   const ListingDraft({
     required this.id,
@@ -76,41 +65,33 @@ class ListingDraft {
 
   final String id;
 
-  /// Local file paths of picked/compressed photos; index 0 is the cover.
   final List<String> photoPaths;
   final String? videoPath;
 
-  // Step 2 — identity
   final String? make;
   final String? model;
   final String? variant;
   final int? year;
 
-  // Step 3 — specs
   final int? mileageKm;
   final Transmission? transmission;
   final FuelType? fuelType;
   final BodyType? bodyType;
   final String? colour;
 
-  // Step 4 — condition
   final int? ownersCount;
   final bool? accidentFree;
   final DateTime? roadTaxExpiry;
 
-  // Step 5 — registration & location
   final RegistrationRegion? registrationRegion;
   final String? state;
   final String? city;
 
-  // Step 6 — price
   final int? priceMyr;
   final bool negotiable;
 
-  // Shared
   final String? description;
 
-  /// Furthest step the user has reached (0-based), for resume.
   final int currentStep;
   final DateTime updatedAt;
 
@@ -140,7 +121,6 @@ class ListingDraft {
     'updated_at': updatedAt.toIso8601String(),
   };
 
-  /// Photo count satisfies the §3 minimum.
   bool get hasEnoughPhotos => photoPaths.length >= 3;
 
   ListingDraft copyWith({

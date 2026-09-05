@@ -5,9 +5,6 @@ import 'package:assignment/utils/app_theme.dart';
 
 enum NoticeKind { error, info, success }
 
-/// A tinted, rounded inline message with a leading icon — for form-level
-/// errors, confirmations, and hints. Replaces loose red text and snackbars
-/// where the message belongs next to the form it concerns.
 class InlineNotice extends StatelessWidget {
   const InlineNotice({
     super.key,

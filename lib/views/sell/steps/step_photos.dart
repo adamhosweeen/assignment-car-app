@@ -9,8 +9,6 @@ import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
 
-/// Step 1 — pick, compress, reorder, and delete photos. Min 3, max 12; the
-/// first photo is the cover (V1_SPEC §3, §4.5).
 class StepPhotos extends StatefulWidget {
   const StepPhotos({super.key});
 
@@ -22,7 +20,6 @@ class _StepPhotosState extends State<StepPhotos> {
   final ImagePicker _picker = ImagePicker();
   bool _busy = false;
 
-  /// Compress on-device: longest edge 1920, JPEG q80 (V1_SPEC §3).
   Future<String> _compress(String src) => compressImage(src);
 
   Future<void> _add(ImageSource source) async {
@@ -142,8 +139,6 @@ class _Thumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
-            // A local file for new picks, a bucket path when editing an
-            // existing listing — MediaImage resolves either.
             child: MediaImage(
               path: path,
               width: AppSpacing.thumbMd,

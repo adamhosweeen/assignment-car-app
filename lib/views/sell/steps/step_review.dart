@@ -10,7 +10,6 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Step 7 — full summary; tap a section's Edit to jump back (V1_SPEC §4.5).
 class StepReview extends StatelessWidget {
   const StepReview({super.key, required this.onEditStep});
 
@@ -33,9 +32,6 @@ class StepReview extends StatelessWidget {
                   const SizedBox(width: AppSpacing.space8),
               itemBuilder: (_, i) => ClipRRect(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
-                // Freshly picked photos are local files; when editing an
-                // existing listing they are bucket paths — MediaImage
-                // handles both.
                 child: MediaImage(
                   path: d.photoPaths[i],
                   width: AppSpacing.thumbMd,

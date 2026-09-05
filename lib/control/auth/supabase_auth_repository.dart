@@ -14,14 +14,6 @@ import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_cache_repository.dart';
 
-/// Real email+password auth via Supabase. Supabase persists its own session,
-/// so a returning user is not asked to log in again (V1_SPEC §5.2). The last
-/// fetched profile is mirrored into the sqflite [ProfileCacheRepository] so
-/// identity renders fully on cold start and offline. Signing out also wipes
-/// [_chatCache] and [_bidsCache] — chat messages and bids (their amounts, and
-/// the contact numbers on them) are private to the account, unlike the public
-/// listings cache, so a shared device must not leave them behind for the next
-/// person to sign in.
 class SupabaseAuthRepository implements AuthRepository {
   SupabaseAuthRepository(
     this._client,
@@ -38,22 +30,12 @@ class SupabaseAuthRepository implements AuthRepository {
   final ChatCacheRepository _chatCache;
   final BidsCacheRepository _bidsCache;
 
-  // The whole own row (RLS limits it to the caller's anyway) — resilient to
-  // columns added by later migrations, e.g. `role` from 0002.
   static const String _profileColumns = '*';
 
-  /// Public bucket for profile photos; `avatar_url` stores the object's
-  /// public URL so it renders straight through `MediaImage` with no signing.
   static const String _avatarBucket = 'avatars';
 
-  /// The `profiles` row, layered over what `auth.users` alone provides.
-  /// Registration extras (name, DOB, state, interests) live only there, so
-  /// without this an edited profile would never show up on the read side.
   Profile? _enriched;
 
-  /// Fires whenever [_enriched] is re-fetched — after sign-in/out *and* after
-  /// any profile write — so [authState] listeners (Profile tab, router)
-  /// re-render without waiting for the next Supabase auth event.
   final StreamController<Profile?> _profileChanges =
       StreamController<Profile?>.broadcast();
 
@@ -63,12 +45,8 @@ class SupabaseAuthRepository implements AuthRepository {
         ? _enriched
         : null;
     if (enriched != null) return enriched;
-    // No fresh row yet (cold start, offline) — the sqflite cache has the last
-    // successfully fetched profile.
     final cached = _cache.cached;
     if (cached != null && cached.id == user.id) return cached;
-    // Nothing cached either — build a minimal profile from the auth user and
-    // the metadata sent at sign-up.
     final meta = user.userMetadata ?? const <String, dynamic>{};
     return Profile(
       id: user.id,
@@ -123,11 +101,8 @@ class SupabaseAuthRepository implements AuthRepository {
             .eq('id', user.id)
             .single();
         _enriched = _rowToProfile(row);
-        // Mirror the fresh profile into sqflite for the next cold start.
         await _cache.save(_enriched!);
       } catch (_) {
-        // Fetch failed (offline, or row not there yet) — keep the cache as the
-        // fallback and fall through to it / metadata on the read side.
         _enriched = null;
       }
     }
@@ -137,9 +112,6 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Profile? get currentUser => _toProfile(_client.auth.currentUser);
 
-  /// Current profile now, then a new value on every auth event and every
-  /// profile write — both go through [_refreshEnriched] (the constructor
-  /// already subscribes to Supabase's auth events for that).
   @override
   Stream<Profile?> authState() async* {
     yield currentUser;
@@ -174,8 +146,6 @@ class SupabaseAuthRepository implements AuthRepository {
     required RegistrationData data,
   }) async {
     try {
-      // The security-definer `handle_new_user` trigger inserts the profiles
-      // row from this metadata — the client has no INSERT policy by design.
       final res = await _client.auth.signUp(
         email: email,
         password: password,
@@ -257,7 +227,6 @@ class SupabaseAuthRepository implements AuthRepository {
     }
     try {
       final previousUrl = _toProfile(user)?.avatarUrl;
-      // Unique object per upload so image caches never show a stale photo.
       final objectPath = '${user.id}/${newId()}.jpg';
       await _client.storage
           .from(_avatarBucket)
@@ -283,7 +252,6 @@ class SupabaseAuthRepository implements AuthRepository {
     }
     try {
       final previousUrl = _toProfile(user)?.avatarUrl;
-      // updateProfile treats null as "unchanged", so clear the column here.
       await _client
           .from('profiles')
           .update({'avatar_url': null})
@@ -300,8 +268,6 @@ class SupabaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Best-effort delete of a previous avatar object; an orphaned file is
-  /// harmless, so failures are swallowed.
   Future<void> _removeAvatarObject(String? publicUrl) async {
     final path = avatarObjectPath(publicUrl);
     if (path == null) return;
@@ -317,8 +283,6 @@ class SupabaseAuthRepository implements AuthRepository {
       return const Err('You need to be signed in to delete your account.');
     }
     try {
-      // 1. Best-effort: delete uploaded photos via the Storage API (SQL
-      //    cannot touch storage rows; orphans are harmless if this fails).
       await _removeAvatarObject(_toProfile(user)?.avatarUrl);
       try {
         final listingRows = await _client
@@ -338,17 +302,10 @@ class SupabaseAuthRepository implements AuthRepository {
             await _client.storage.from('listing-media').remove(paths);
           }
         }
-      } catch (_) {
-        // Continue — row cleanup below is what matters.
-      }
+      } catch (_) {}
 
-      // 2. Server-side cascade: messages, conversations, listings (+media
-      //    rows), then the auth user (+profile). SECURITY DEFINER function;
-      //    it only ever deletes auth.uid()'s own data.
       await _client.rpc<void>('delete_account');
 
-      // 3. Local cleanup. The session token now points at a deleted user, so
-      //    the server may reject sign-out — clear what we can regardless.
       await _cache.clear();
       await _chatCache.clear();
       await _bidsCache.clear();
@@ -369,10 +326,6 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 }
 
-/// Extract the bucket object path from an `avatars` public URL, e.g.
-/// `https://x.supabase.co/storage/v1/object/public/avatars/<uid>/<id>.jpg`
-/// → `<uid>/<id>.jpg`. Null for anything else (including null input).
-/// Top-level so it can be unit-tested without a client.
 String? avatarObjectPath(String? publicUrl) {
   if (publicUrl == null) return null;
   const marker = '/object/public/avatars/';

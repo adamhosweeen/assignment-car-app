@@ -1,12 +1,8 @@
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/message.dart';
 
-/// Sentinel for [ConversationThread.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// A conversation plus what the thread-list row needs to render: the last
-/// message (for the preview line) and how many are unread. Composed in Dart
-/// from two queries — not a table mirror, so no `fromJson`/`toJson`.
 class ConversationThread {
   const ConversationThread({
     required this.conversation,

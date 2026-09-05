@@ -1,17 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 
-/// Persists the single in-progress sell draft to sqflite's `listing_draft` /
-/// `listing_draft_photo` tables, so a crash or force-quit never loses input
-/// (V1_SPEC §4.5).
-///
-/// Reads are served from an in-memory cache seeded at construction (from rows
-/// [AppStorage] already fetched during startup) — sqflite has no synchronous
-/// API, but callers like `SellController.build()` need a synchronous answer.
-/// Writes update the cache immediately and persist to sqflite underneath.
 class DraftRepository {
   DraftRepository(
     this._db,

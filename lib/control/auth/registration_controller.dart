@@ -5,13 +5,8 @@ import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/utils/formatters.dart';
 
-/// Sentinel for [RegistrationState.copyWith], so an omitted argument is
-/// distinguishable from an explicit `null` — clearing the date of birth or
-/// the state has to actually clear it.
 const Object _unset = Object();
 
-/// Everything the registration flow has collected so far. Ephemeral — unlike
-/// the sell draft, a half-finished signup is not persisted across app kills.
 class RegistrationState {
   const RegistrationState({
     this.email = '',
@@ -106,13 +101,9 @@ class RegistrationState {
       'locationFailed: $locationFailed, interests: $interests)';
 }
 
-/// Owns the in-progress registration form across its steps. Same shape as
-/// `SellController`, minus the sqflite persistence — it is scoped to the
-/// `/register` route, so leaving the flow throws the half-filled form away.
 class RegistrationController extends ChangeNotifier {
   RegistrationState _state = const RegistrationState();
 
-  /// Everything collected so far. Watch this to rebuild a step on every edit.
   RegistrationState get state => _state;
 
   void _set(RegistrationState next) {
@@ -132,11 +123,8 @@ class RegistrationController extends ChangeNotifier {
       _set(_state.copyWith(stateName: v, locationFailed: false));
   void setInterests(CarInterests v) => _set(_state.copyWith(interests: v));
 
-  /// Back to an empty form, after a successful signup.
   void reset() => _set(const RegistrationState());
 
-  /// Try GPS; on success fill in the state, on failure flag it so the step
-  /// can point at the manual picker.
   Future<void> detectLocation() async {
     if (_state.detectingLocation) return;
     _set(_state.copyWith(detectingLocation: true, locationFailed: false));
@@ -150,8 +138,6 @@ class RegistrationController extends ChangeNotifier {
     );
   }
 
-  /// The completed payload. Only valid once every step's `_canAdvance` has
-  /// passed — the bangs mirror those guarantees.
   RegistrationData buildData() => RegistrationData(
     firstName: state.firstName.trim(),
     lastName: state.lastName.trim(),

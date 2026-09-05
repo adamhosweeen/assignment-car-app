@@ -10,9 +10,6 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 
-/// The Reports tab of the Admin screen: user-filed reports, split Open /
-/// Resolved. From a report the admin can ban (or unban) the reported user
-/// and mark the report resolved.
 class AdminReportsTab extends StatefulWidget {
   const AdminReportsTab({
     super.key,
@@ -22,7 +19,6 @@ class AdminReportsTab extends StatefulWidget {
 
   final Future<List<AdminReport>> reports;
 
-  /// Re-runs both admin fetches — banning a user changes the Users tab too.
   final VoidCallback onChanged;
 
   @override
@@ -54,7 +50,6 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
   }
 
   Future<void> _confirmSetBanned(AdminReport report, bool ban) async {
-    // Read before awaiting the dialog — the context can't be used across it.
     final admin = context.read<AdminRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -243,7 +238,6 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
   }
 }
 
-/// One report: title, a preview of the description, who reported whom.
 class _ReportCard extends StatelessWidget {
   const _ReportCard({required this.report, required this.onTap});
 
@@ -309,7 +303,6 @@ class _ReportCard extends StatelessWidget {
   }
 }
 
-/// Small tinted status tag (also used for "Banned" on the users screen).
 class _Tag extends StatelessWidget {
   const _Tag({
     required this.label,

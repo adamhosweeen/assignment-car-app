@@ -10,8 +10,6 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/search_scaffold.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
-/// Profile → Find Sellers: look up other users by name and open their public
-/// seller page (V1_SPEC §4.10).
 class SellerSearchScreen extends StatelessWidget {
   const SellerSearchScreen({super.key});
 
@@ -35,8 +33,6 @@ class _Results extends StatefulWidget {
 }
 
 class _ResultsState extends State<_Results> {
-  /// Held so a rebuild doesn't re-issue the request; the search field is
-  /// already debounced, and a new query replaces this outright.
   late Future<List<PublicProfile>> _results;
 
   @override

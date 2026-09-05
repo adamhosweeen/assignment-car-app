@@ -5,9 +5,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 
-/// A fixed-width listing card for horizontal rows (the Buy feed's
-/// "Recommended for you" strip). Same surface and cover-as-slot pattern as
-/// [ListingCard], with price above a one-line title.
 class ListingCardCompact extends StatelessWidget {
   const ListingCardCompact({
     super.key,

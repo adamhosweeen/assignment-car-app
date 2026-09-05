@@ -20,15 +20,9 @@ import 'package:assignment/views/sell/steps/step_specs.dart';
 
 const int _lastStep = 6;
 
-/// The 7-step create-listing flow. One step per screen, a thin progress bar,
-/// back preserves data, and the draft is written to sqflite after every step.
 class SellFlowScreen extends StatefulWidget {
   const SellFlowScreen({super.key, this.editing = false});
 
-  /// True when the flow was opened to edit an existing listing (it starts on
-  /// the review step). Changes how Back behaves: instead of walking the whole
-  /// wizard backwards, Back returns to review, and Back from review leaves the
-  /// flow entirely — so editing then hitting Back lands on the listing again.
   final bool editing;
 
   @override
@@ -56,9 +50,6 @@ class _SellFlowScreenState extends State<SellFlowScreen> {
 
   void _back() {
     if (widget.editing) {
-      // Edit mode enters on review; the only route to an earlier step is the
-      // review screen's per-section jump, so Back returns there — and Back
-      // from review leaves the flow (back to the listing).
       if (_step == _lastStep) {
         context.pop();
       } else {

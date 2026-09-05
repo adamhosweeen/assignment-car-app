@@ -13,9 +13,6 @@ import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
-/// Login with email and password: black hero band up top, the form on a
-/// white rounded sheet below. Scrolls, so the keyboard never squeezes the
-/// layout.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -57,7 +54,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     switch (res) {
       case Ok():
-        // The router's refreshListenable redirects to /home/buy.
         setState(() => _loading = false);
       case Err(:final message):
         setState(() {
@@ -200,7 +196,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// "── New here? ──" separator between the two actions.
 class _OrDivider extends StatelessWidget {
   const _OrDivider();
 

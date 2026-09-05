@@ -4,11 +4,8 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/listing/listing_media.dart';
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [Listing.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// A car listing. Mirrors the `listings` table (plus its `listing_media`,
-/// embedded here as [media] for convenience).
 class Listing {
   const Listing({
     required this.id,
@@ -121,13 +118,11 @@ class Listing {
     'media': [for (final m in media) m.toJson()],
   };
 
-  /// Cover photo (position 0), or the first media, or null.
   ListingMedia? get cover {
     if (media.isEmpty) return null;
     return media.firstWhere((m) => m.position == 0, orElse: () => media.first);
   }
 
-  /// e.g. "2020 Perodua Myvi 1.5 AV".
   String get title => [
     year.toString(),
     make,

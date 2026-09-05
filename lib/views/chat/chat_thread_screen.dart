@@ -24,13 +24,6 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
-/// One conversation thread, reached from the Chat tab or "Chat with seller"
-/// on Listing Detail. Takes only [conversationId] — [seed], the
-/// [Conversation] the caller already has in hand (route `extra`), is just a
-/// same-session fast path so the first frame doesn't have to wait on a
-/// fetch. `extra` doesn't survive Android killing and restoring the app
-/// process, so [seed] is never required: when absent (or stale), the
-/// [Conversation] is fetched by id instead.
 class ChatThreadScreen extends StatefulWidget {
   const ChatThreadScreen({super.key, required this.conversationId, this.seed});
 
@@ -47,33 +40,22 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   bool _sending = false;
   String? _actingOnMessageId;
 
-  /// The thread itself: [ChatThreadScreen.seed] when the caller had it in
-  /// hand, otherwise fetched by id.
   Conversation? _conversation;
   bool _conversationFailed = false;
 
   late final Stream<List<Message>> _messages;
 
-  /// Both are one-shot fetches keyed off the conversation, so they are held
-  /// here rather than rebuilt — see [_loadConversationDetails].
   Future<Listing>? _listing;
   Future<PublicProfile?>? _otherProfile;
 
-  /// The message list the loaded [_listing] was fetched against.
   List<Message>? _seenMessages;
 
-  /// Offers the seller has countered with a "New price" — disables that
-  /// original offer's Confirm/New price row so it can't also be accepted or
-  /// countered again. Session-local only: it resets if the thread is
-  /// reopened, which just means the seller can change their mind later and
-  /// confirm the original after all.
   final Set<String> _counteredOfferIds = {};
 
   @override
   void initState() {
     super.initState();
     final chat = context.read<ChatRepository>();
-    // Fire and forget — a failure here is cosmetic, the badge just won't clear.
     chat.markRead(widget.conversationId);
     _messages = watchMessages(chat, widget.conversationId);
 
@@ -96,8 +78,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         });
   }
 
-  /// (Re-)fetch the car and the other participant. Call inside `setState`
-  /// unless you are still in [initState].
   void _loadConversationDetails() {
     final conversation = _conversation;
     if (conversation == null) return;
@@ -114,11 +94,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     );
   }
 
-  /// The car is a one-shot fetch, not realtime, so a status or price change
-  /// made by the other participant (they just completed a purchase via
-  /// `buy_at_offer`, say) never reaches this screen on its own. Messages
-  /// *are* realtime, and an offer's confirm/buy always touches a message row
-  /// — so piggyback on that to re-check the listing.
   void _onMessages(List<Message> messages) {
     if (listEquals(_seenMessages, messages)) return;
     _seenMessages = messages;
@@ -141,10 +116,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     });
   }
 
-  /// Sends whatever's typed as a plain text message, or — when [offerAmountMyr]
-  /// is given (the "Negotiate" flow, including a seller's counter-offer) — as
-  /// an offer, using the typed text as the offer's note (falling back to a
-  /// plain "Offer: RM X" body when the composer was left empty).
   Future<bool> _send({int? offerAmountMyr}) async {
     if (_sending) return false;
     final text = _controller.text.trim();
@@ -174,10 +145,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     await _send(offerAmountMyr: amount);
   }
 
-  /// The seller counters a buyer's offer with a new price of their own —
-  /// same send flow as the composer's "Negotiate" button, just triggered
-  /// from that offer's bubble. Marks the original as countered so its
-  /// Confirm/New price row won't stay active once this succeeds.
   Future<void> _counterOffer(Message original) async {
     final amount = await _promptForOfferAmount(context);
     if (amount == null) return;
@@ -186,7 +153,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     setState(() => _counteredOfferIds.add(original.id));
   }
 
-  /// The recipient of a buyer's offer (the seller) accepts its price.
   Future<void> _confirmOffer(Message offer) async {
     setState(() => _actingOnMessageId = offer.id);
     final res = await context.read<ChatRepository>().confirmOffer(offer.id);
@@ -199,10 +165,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
   }
 
-  /// The buyer heads to checkout to complete the sale at an offer's price —
-  /// either accepting the seller's offer, or completing their own, already
-  /// seller-confirmed, offer. The actual `buy_at_offer` call happens on the
-  /// checkout screen's "Confirm purchase" tap, not here — this only opens it.
   void _goToOfferCheckout(Message offer, String listingId) {
     context.push(
       '/listing/$listingId/buy',
@@ -401,8 +363,6 @@ class _MessageBubble extends StatelessWidget {
     final isOffer =
         message.messageType == MessageType.offer &&
         message.offerAmountMyr != null;
-    // Suppress the auto-generated "Offer: RM X" body (composer left empty
-    // when the offer was sent) — the header line above already says it.
     final showBody =
         !isOffer ||
         message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}';
@@ -466,16 +426,6 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-/// The action (if any) available on an offer bubble, from the viewer's own
-/// side of the conversation:
-/// - Someone else's offer, and I'm the buyer (so a seller sent it) → I can
-///   confirm and buy in one tap (heads to checkout first).
-/// - Someone else's offer, and I'm the seller (so a buyer sent it) → I can
-///   confirm it (I can't buy my own listing; the buyer completes the sale
-///   once I have), or counter with a new price of my own instead.
-/// - My own offer, and I'm the buyer → once the seller has confirmed it, I
-///   can complete the purchase (heads to checkout).
-/// - My own offer, and I'm the seller → nothing left for me to do.
 class _OfferActionRow extends StatelessWidget {
   const _OfferActionRow({
     required this.isMine,
@@ -648,8 +598,6 @@ class _Composer extends StatelessWidget {
   }
 }
 
-/// Prompts for an integer MYR amount ("Negotiate" / counter with a new
-/// price). Returns null if cancelled.
 Future<int?> _promptForOfferAmount(BuildContext context) {
   return showDialog<int>(
     context: context,

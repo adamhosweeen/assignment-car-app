@@ -33,8 +33,6 @@ import 'package:assignment/views/profile/profile_screen.dart';
 import 'package:assignment/views/profile/seller_profile_screen.dart';
 import 'package:assignment/views/profile/seller_search_screen.dart';
 
-/// Re-runs the redirect guard whenever auth state flips. Lives as long as the
-/// router does, which is the life of the app.
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(AuthRepository auth) {
     _sub = auth.authState().listen((_) => notifyListeners());
@@ -49,8 +47,6 @@ class _AuthRefresh extends ChangeNotifier {
   }
 }
 
-/// The app router. Splash decides the first destination; the redirect guard
-/// keeps signed-out users in the login flow and signed-in users out of it.
 GoRouter createRouter(AuthRepository auth) {
   final refresh = _AuthRefresh(auth);
 
@@ -60,7 +56,7 @@ GoRouter createRouter(AuthRepository auth) {
     redirect: (context, state) {
       final signedIn = auth.currentUser != null;
       final loc = state.matchedLocation;
-      if (loc == '/splash') return null; // splash routes itself
+      if (loc == '/splash') return null;
       final inAuthFlow =
           loc.startsWith('/welcome') ||
           loc.startsWith('/login') ||
@@ -73,8 +69,6 @@ GoRouter createRouter(AuthRepository auth) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      // The half-filled signup form is scoped to this route, so leaving the
-      // flow throws it away.
       GoRoute(
         path: '/register',
         builder: (_, _) => ChangeNotifierProvider(
@@ -94,9 +88,6 @@ GoRouter createRouter(AuthRepository auth) {
       GoRoute(
         path: '/listing/:id/buy',
         builder: (_, state) {
-          // Reached from a chat offer's "Confirm and buy" / "Buy now" with
-          // the offer to buy at — never trust its type, `extra` doesn't
-          // survive Android killing and restoring the app process.
           final extra = state.extra;
           final offer = extra is ({String messageId, int amountMyr})
               ? extra
@@ -118,10 +109,6 @@ GoRouter createRouter(AuthRepository auth) {
         path: '/chat/:id',
         builder: (_, state) => ChatThreadScreen(
           conversationId: state.pathParameters['id']!,
-          // `extra` is only a same-session fast path (avoids the initial
-          // fetch when we already have it in hand, e.g. tapping a thread
-          // row). It doesn't survive Android killing and restoring the app
-          // process, so never trust its type — fall back to fetching by id.
           seed: state.extra is Conversation
               ? state.extra as Conversation
               : null,

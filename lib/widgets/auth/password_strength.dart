@@ -4,9 +4,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/validators.dart';
 
-/// Three-segment strength meter plus the rule checklist, shown under the
-/// password field during registration. Reads [passwordStrength] so the
-/// meter and the rules can never disagree with the validator.
 class PasswordStrength extends StatelessWidget {
   const PasswordStrength({super.key, required this.password});
 

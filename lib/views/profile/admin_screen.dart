@@ -11,9 +11,6 @@ import 'package:assignment/views/profile/admin_reports_screen.dart';
 import 'package:assignment/views/profile/admin_users_screen.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 
-/// The admin area (Profile → Admin): one screen with a Users | Reports
-/// switch. Both tabs read admin-guarded RPCs, so a non-admin who reaches
-/// this route only ever sees error states.
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
 
@@ -24,8 +21,6 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   int _tab = 0;
 
-  /// Both fetches live here rather than in the tabs: banning a user from
-  /// either tab changes what the other one shows, so they refresh together.
   late Future<List<AdminUserStats>> _users;
   late Future<List<AdminReport>> _reports;
 
@@ -64,8 +59,6 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
           ),
           Expanded(
-            // IndexedStack keeps both tabs alive, so search text, sort, and
-            // the Open/Resolved toggle survive switching back and forth.
             child: IndexedStack(
               index: _tab,
               children: [

@@ -1,14 +1,3 @@
-/// Dev-only: build the `car_popularity` snapshot from data.gov.my.
-///
-///     dart run tool/build_car_popularity.dart [--years 2025,2026] [--out supabase/seed/car_popularity.sql]
-///
-/// Downloads each year's JPJ "Car Registration Transactions" CSV (cached under
-/// `build/data_gov_my/`), streams it line by line, keeps the rolling 12 months
-/// ending at the latest month in the data, and writes a single SQL upsert.
-/// Paste that file into the Supabase SQL editor to publish/refresh the
-/// Market insights screen — no app release needed.
-///
-/// The app never calls data.gov.my; only this script does.
 library;
 
 import 'dart:convert';
@@ -59,8 +48,6 @@ Future<void> main(List<String> args) async {
             .transform(const LineSplitter())) {
       if (line.trim().isEmpty) continue;
       if (first) {
-        // Each yearly file carries its own header; only the first one seeds
-        // the column map.
         first = false;
         if (rows > 0) continue;
       }
@@ -129,8 +116,6 @@ Future<void> main(List<String> args) async {
     ..writeln('Wrote ${outFile.path} (${sql.length} bytes)');
 }
 
-/// Fetch `cars_<year>.csv` into the cache directory unless already present.
-/// Returns null (with a warning) when the year does not exist upstream.
 Future<File?> _download(int year) async {
   final file = File('$_cacheDir/cars_$year.csv');
   if (await file.exists() && await file.length() > 0) {

@@ -10,8 +10,6 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/views/sell/steps/step_location.dart';
 
-/// Seeds the draft and swallows persistence, so the real [SellController]
-/// mutation logic can run in a widget test without sqflite.
 class _SeededDraftRepo implements DraftRepository {
   _SeededDraftRepo(this._draft);
 
@@ -65,7 +63,7 @@ void main() {
     await tester.pumpWidget(_app(_draft(region: RegistrationRegion.east)));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Select')); // the State row
+    await tester.tap(find.text('Select'));
     await tester.pumpAndSettle();
 
     expect(find.text('Sabah'), findsOneWidget);
@@ -79,14 +77,13 @@ void main() {
       _app(_draft(region: RegistrationRegion.west, state: 'Selangor')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Selangor'), findsOneWidget); // shown as the State value
+    expect(find.text('Selangor'), findsOneWidget);
 
-    await tester.tap(find.text('West Malaysia')); // open the Region sheet
+    await tester.tap(find.text('West Malaysia'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('East Malaysia'));
     await tester.pumpAndSettle();
 
-    // Region updated, incompatible state cleared back to the placeholder.
     expect(find.text('East Malaysia'), findsOneWidget);
     expect(find.text('Selangor'), findsNothing);
     expect(_row(tester, 'State').value, 'Select');

@@ -20,9 +20,6 @@ import 'package:assignment/widgets/common/inline_notice.dart';
 
 const int _lastStep = 3;
 
-/// The 4-step registration flow: account → about you → location → interests.
-/// Mirrors [SellFlowScreen]'s mechanics; on success the router's auth
-/// redirect lands the new user on the Buy feed.
 class RegisterFlowScreen extends StatefulWidget {
   const RegisterFlowScreen({super.key});
 
@@ -72,7 +69,6 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
     if (!mounted) return;
     switch (res) {
       case Ok():
-        // The router's refreshListenable redirects to /home/buy.
         registration.reset();
         setState(() => _submitting = false);
       case Err(:final message):
@@ -193,7 +189,6 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
   }
 }
 
-/// Four thin segments showing how far through the flow the user is.
 class _StepProgress extends StatelessWidget {
   const _StepProgress({required this.step, required this.total});
 

@@ -1,30 +1,19 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [AppNotification.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// What produced a notification. Unlike the listing and bid enums, the
-/// constant names are camelCase while the `notifications.kind` column is
-/// snake_case, so the wire values are spelled out in [kindValues] rather than
-/// derived from `.name`.
 enum NotificationKind {
   welcome,
   listingMatch,
   insightsUpdated,
 
-  /// A new bid landed on one of your cars (seller).
   bidPlaced,
 
-  /// The seller accepted your bid (bidder).
   bidAccepted,
 
-  /// Your bid was rejected, or lost to another bid (bidder).
   bidRejected,
 }
 
-/// The `notifications.kind` text value for each constant. Written out so a
-/// renamed Dart constant can never silently change what is read from the
-/// database (migrations 0006 and 0009 fixed these strings).
 const Map<NotificationKind, String> kindValues = {
   NotificationKind.welcome: 'welcome',
   NotificationKind.listingMatch: 'listing_match',
@@ -35,12 +24,9 @@ const Map<NotificationKind, String> kindValues = {
 };
 
 extension NotificationKindValue on NotificationKind {
-  /// This kind's `notifications.kind` text value.
   String get value => kindValues[this]!;
 }
 
-/// Decode a `notifications.kind` text value. Throws on an unknown kind rather
-/// than guessing — a row the app cannot render is a bug, not a default.
 NotificationKind notificationKindFromValue(Object? raw) {
   for (final entry in kindValues.entries) {
     if (entry.value == raw) return entry.key;
@@ -48,8 +34,6 @@ NotificationKind notificationKindFromValue(Object? raw) {
   throw ArgumentError.value(raw, 'kind', 'Unknown notification kind');
 }
 
-/// One row of the user's in-app inbox (`notifications` table). Rows are
-/// created only by Postgres triggers; the app reads, marks read, and deletes.
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -82,10 +66,8 @@ class AppNotification {
   final String title;
   final String body;
 
-  /// Listing this is about, if any (deep link + cascade-deleted with it).
   final String? listingId;
 
-  /// In-app route to open on tap, e.g. `/listing/<id>` or `/profile/insights`.
   final String? route;
   final DateTime? readAt;
   final DateTime createdAt;

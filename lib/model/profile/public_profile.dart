@@ -1,11 +1,7 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [PublicProfile.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// The part of a user's profile any signed-in user may see — a row of the
-/// `public_profiles` view. Deliberately has no email, phone, DOB, or
-/// interests; those never leave the owner's own `profiles` row.
 class PublicProfile {
   const PublicProfile({
     required this.id,
@@ -37,7 +33,6 @@ class PublicProfile {
     'created_at': createdAt.toIso8601String(),
   };
 
-  /// Display name, or a neutral fallback for accounts without one.
   String get name {
     final n = displayName?.trim() ?? '';
     return n.isEmpty ? 'Seller' : n;

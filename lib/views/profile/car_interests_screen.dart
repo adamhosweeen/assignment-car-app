@@ -10,8 +10,6 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 
-/// Profile → Car Interests: the saved questionnaire answers that drive the
-/// "Recommended for you" row. Read-only here; edited on Edit Profile.
 class CarInterestsScreen extends StatelessWidget {
   const CarInterestsScreen({super.key});
 

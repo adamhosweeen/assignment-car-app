@@ -5,8 +5,6 @@ import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/insights/car_popularity.dart';
 import 'package:assignment/utils/result.dart';
 
-/// [InsightsRepository] backed by the single-row `car_popularity` table.
-/// Online-only: there is no local cache for this screen.
 class SupabaseInsightsRepository implements InsightsRepository {
   SupabaseInsightsRepository(this._client);
 
@@ -30,8 +28,6 @@ class SupabaseInsightsRepository implements InsightsRepository {
     }
   }
 
-  /// The jsonb `data` column holds the full snapshot; the scalar columns are
-  /// authoritative for the metadata and override anything inside it.
   CarPopularity _fromRow(Map<String, dynamic> row) {
     final data = Map<String, dynamic>.from(
       (row['data'] as Map?)?.cast<String, dynamic>() ?? const {},

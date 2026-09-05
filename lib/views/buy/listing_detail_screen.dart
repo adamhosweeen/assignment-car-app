@@ -28,8 +28,6 @@ import 'package:assignment/widgets/listing/media_image.dart';
 import 'package:assignment/widgets/listing/status_badge.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
-/// Standalone listing detail, reachable from the Buy feed and My Listings
-/// (V1_SPEC §4.7). Takes only a listing id.
 class ListingDetailScreen extends StatefulWidget {
   const ListingDetailScreen({super.key, required this.id});
 
@@ -40,8 +38,6 @@ class ListingDetailScreen extends StatefulWidget {
 }
 
 class _ListingDetailScreenState extends State<ListingDetailScreen> {
-  /// One-shot fetches, held so a rebuild never re-issues them. The screen is
-  /// pushed fresh every time, so entering it is already the "refresh".
   late final Future<Listing> _listing;
   late final Future<Bid?> _pendingBid;
 
@@ -99,8 +95,6 @@ class _DetailScaffold extends StatelessWidget {
   Future<void> _edit(BuildContext context) async {
     await context.read<DraftRepository>().save(draftFromListing(listing));
     if (!context.mounted) return;
-    // The sell flow is about to open on this draft, so the app-scoped
-    // controller has to pick up what was just written.
     context.read<SellController>().reload();
     context.push('/sell/new', extra: true);
   }
@@ -249,9 +243,6 @@ class _DetailScaffold extends StatelessWidget {
               onChat: () => _openChat(context),
               onBuy: () => context.push('/listing/${listing.id}/buy'),
               onBid: () => context.push('/listing/${listing.id}/bid'),
-              // Null while it loads, so the button reads "Place a bid" until
-              // we know otherwise rather than flickering between the two
-              // labels.
               hasPendingBid: bid.data != null,
             ),
           ),
@@ -261,8 +252,6 @@ class _DetailScaffold extends StatelessWidget {
   }
 }
 
-/// Who is selling: a tappable row to the seller's public page. Hidden when
-/// the profile can't be loaded — the listing itself is what matters here.
 class _SellerSection extends StatefulWidget {
   const _SellerSection({required this.sellerId});
 
@@ -334,8 +323,6 @@ class _Actions extends StatelessWidget {
   final VoidCallback onBuy;
   final VoidCallback onBid;
 
-  /// Whether the viewer already has a live bid on this car — the bid button
-  /// then offers to change it rather than to place a second one.
   final bool hasPendingBid;
 
   @override
@@ -361,8 +348,6 @@ class _Actions extends StatelessWidget {
                     backgroundColor: AppColors.groupedBackground,
                     foregroundColor: AppColors.primary,
                   ),
-                  // Bidding on a sold car is pointless, and the server would
-                  // reject it anyway — so the button goes with the price.
                   onPressed: available ? onBid : null,
                   child: Text(hasPendingBid ? 'Change bid' : 'Place a bid'),
                 ),
@@ -383,7 +368,6 @@ class _Actions extends StatelessWidget {
         ],
       );
     }
-    // A sold (or deleted) listing is frozen — no edit, no re-marking sold.
     if (listing.status != ListingStatus.active) {
       return const SizedBox.shrink();
     }
@@ -504,7 +488,6 @@ class _VDivider extends StatelessWidget {
   }
 }
 
-/// Swipeable photo gallery with page dots; tap opens the fullscreen viewer.
 class _Gallery extends StatefulWidget {
   const _Gallery({required this.photos});
 

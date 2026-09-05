@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:assignment/model/bid/bid_validation.dart';
 
 void main() {
-  // A representative car: RM 48,800 asking. Floor is 10% (RM 4,880), ceiling
-  // is 3x (RM 146,400).
   const asking = 48800;
 
   group('parseBidAmount', () {
@@ -45,12 +43,10 @@ void main() {
     });
 
     test('rejects a dropped digit as far below asking', () {
-      // 4500 on a 48,800 car is under the 10% floor.
       expect(validateBidAmount('4500', askingPriceMyr: asking), isNotNull);
     });
 
     test('rejects an added digit as far above asking', () {
-      // 450,000 on a 48,800 car is over the 3x ceiling.
       expect(validateBidAmount('450000', askingPriceMyr: asking), isNotNull);
     });
 

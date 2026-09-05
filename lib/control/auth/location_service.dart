@@ -2,9 +2,6 @@ import 'package:geolocator/geolocator.dart';
 
 import 'package:assignment/model/malaysian_states.dart';
 
-/// Detect which Malaysian state the device is in, or null if location
-/// services are off, permission is denied, or the fix times out. Callers fall
-/// back to the manual state picker — this never throws.
 Future<String?> detectStateName() async {
   try {
     if (!await Geolocator.isLocationServiceEnabled()) return null;

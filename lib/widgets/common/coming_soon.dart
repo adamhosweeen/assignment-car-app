@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// Placeholder for a tab whose feature is planned but not built yet
-/// (Chat, Bid). Keeps the tab present in the shell so navigation and layout
-/// are final before the feature lands.
 class ComingSoonScreen extends StatelessWidget {
   const ComingSoonScreen({
     super.key,

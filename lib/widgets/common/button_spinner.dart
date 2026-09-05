@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// A small white spinner sized to sit inside a primary [FilledButton] while a
-/// request is in flight.
 class ButtonSpinner extends StatelessWidget {
   const ButtonSpinner({super.key});
 

@@ -7,11 +7,6 @@ import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/search.dart';
 
-/// [ProfilesRepository] over the `public_profiles` view, which exposes only
-/// safe columns (id, display_name, avatar_url, state, created_at). Every
-/// successful [getById] is mirrored into [_cache] so a previously-seen
-/// profile (a chat participant, a seller) still renders — name, avatar —
-/// when offline.
 class SupabaseProfilesRepository implements ProfilesRepository {
   SupabaseProfilesRepository(this._client, this._cache);
 
@@ -34,8 +29,6 @@ class SupabaseProfilesRepository implements ProfilesRepository {
       await _cache.save(profile);
       return Ok(profile);
     } catch (e) {
-      // Offline or timed out — a previously cached profile can still be
-      // shown.
       final cached = await _cache.getById(id);
       if (cached != null) return Ok(cached);
       return Err(mapError(e));

@@ -3,16 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// One labelled, boxed field in the bid form's car-spec grid — the layout in
-/// the reference design: a small grey label with a bordered box under it, a
-/// trailing chevron, and a muted fill when the value can't be changed.
-///
-/// On the bid form every spec field *is* locked: the car's brand, model,
-/// year, variant, engine, transmission, mileage and region come from the
-/// listing the bid is on, so a bidder can read them but never edit them.
-/// [onTap] exists so the same field can be made interactive if a later screen
-/// needs it; while it is null the box renders in its disabled styling and
-/// swallows no taps.
 class BidSpecField extends StatelessWidget {
   const BidSpecField({
     super.key,
@@ -25,13 +15,10 @@ class BidSpecField extends StatelessWidget {
 
   final String label;
 
-  /// The chosen value, or null to show [hint] in placeholder styling.
   final String? value;
   final String? hint;
   final VoidCallback? onTap;
 
-  /// Optional explanatory text behind an ⓘ next to the label (the reference
-  /// design puts one on "Car Region").
   final String? info;
 
   @override
@@ -75,9 +62,6 @@ class BidSpecField extends StatelessWidget {
             height: AppSpacing.controlHeight,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
             decoration: BoxDecoration(
-              // An editable field sits on white with a hairline border; a
-              // locked one takes the grouped fill, the same "not yours to
-              // change" cue the disabled button style uses.
               color: enabled ? AppColors.surface : AppColors.groupedBackground,
               borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
               border: Border.all(
@@ -113,9 +97,6 @@ class BidSpecField extends StatelessWidget {
   }
 }
 
-/// Lays [children] out two-per-row with even gutters, the way the reference
-/// design pairs Brand/Model, Year/Variant and so on. An odd final field takes
-/// the left column and leaves the right empty rather than stretching.
 class BidSpecGrid extends StatelessWidget {
   const BidSpecGrid({super.key, required this.children});
 

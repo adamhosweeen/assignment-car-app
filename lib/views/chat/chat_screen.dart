@@ -18,8 +18,6 @@ import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
-/// Chat tab: every thread the signed-in user is part of, most recent
-/// activity first, live over realtime.
 class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
 
@@ -109,8 +107,6 @@ class _ConversationRow extends StatefulWidget {
 }
 
 class _ConversationRowState extends State<_ConversationRow> {
-  /// The other participant and the car are decoration on the row — both are
-  /// cache-backed, and a failure just leaves the generic label in place.
   late Future<PublicProfile?> _profile;
   late Future<Listing> _listing;
 

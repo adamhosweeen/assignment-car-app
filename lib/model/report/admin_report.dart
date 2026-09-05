@@ -1,10 +1,7 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [AdminReport.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// One user-filed report as the admin sees it — the shape returned by the
-/// `admin_reports()` RPC (report fields joined to both users' names).
 class AdminReport {
   const AdminReport({
     required this.id,
@@ -58,7 +55,6 @@ class AdminReport {
 
   bool get isOpen => status == 'open';
 
-  /// Names with fallbacks so rows always render.
   String get reporter => _name(reporterName);
   String get reported => _name(reportedName);
 

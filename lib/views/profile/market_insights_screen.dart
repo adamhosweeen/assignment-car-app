@@ -13,7 +13,6 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/insights/rank_bar_row.dart';
 
-/// How many entries a list shows before "Show all".
 const int _previewCount = 5;
 
 enum _Segment { brands, models, nearYou, trends }
@@ -27,12 +26,6 @@ extension on _Segment {
   };
 }
 
-/// Profile → Market insights: what Malaysians actually registered over the
-/// last 12 months (JPJ data via data.gov.my), from the precomputed
-/// `car_popularity` snapshot. Read-only; the app never calls data.gov.my.
-///
-/// Laid out as a compact summary plus a segmented control so each view fits
-/// on one screen: lists show their top 5 with a "Show all" toggle.
 class MarketInsightsScreen extends StatefulWidget {
   const MarketInsightsScreen({super.key});
 
@@ -44,8 +37,6 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
   _Segment _segment = _Segment.brands;
   bool _showAll = false;
 
-  /// A one-shot fetch, held so a rebuild (a segment change, say) doesn't
-  /// re-issue it. Retry and pull-to-refresh replace it outright.
   late Future<CarPopularity?> _popularity;
 
   @override
@@ -220,8 +211,6 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
     }
   }
 
-  /// Ranked rows scaled to the top entry; when [expandable], only the first
-  /// [_previewCount] show until "Show all" is tapped.
   List<Widget> _rankedRows(List<RankedCount> items, {bool expandable = false}) {
     if (items.isEmpty) return const [_EmptyRow()];
     final top = items.first.count;
@@ -249,7 +238,6 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
   static double _fraction(int count, int top) => top == 0 ? 0 : count / top;
 }
 
-/// Compact headline: the 12-month total and the window it covers.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.snapshot});
 
@@ -317,8 +305,6 @@ class _Footnote extends StatelessWidget {
   }
 }
 
-/// An in-card message for a segment with nothing to rank, optionally with a
-/// single link-style action.
 class _Notice extends StatelessWidget {
   const _Notice({required this.text, this.actionLabel, this.onAction});
 
@@ -378,7 +364,6 @@ class _EmptyRow extends StatelessWidget {
   }
 }
 
-/// Centred message for the empty and error states, with an optional retry.
 class _Message extends StatelessWidget {
   const _Message({required this.text, this.onRetry});
 

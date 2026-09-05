@@ -14,13 +14,6 @@ import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
 
-/// The Buy feed. Two tabs at the top of the screen toggle between the
-/// interest-matched **Recommended for you** list and the newest-first
-/// **Newest listings** feed (V1_SPEC §4.4). Reuses the same [ListingCard] as
-/// My Listings, without the status badge or row actions.
-///
-/// Grouped layout: grey background, white cards. The outer list pads
-/// vertically only — each row insets itself.
 class BuyFeedScreen extends StatefulWidget {
   const BuyFeedScreen({super.key});
 
@@ -29,11 +22,8 @@ class BuyFeedScreen extends StatefulWidget {
 }
 
 class _BuyFeedScreenState extends State<BuyFeedScreen> {
-  /// 0 = Recommended for you, 1 = Newest listings.
   int _tab = 0;
 
-  /// One subscription feeds both tabs — "Recommended for you" is this same
-  /// list ranked against the signed-in profile, not a second query.
   late Stream<List<Listing>> _listings;
 
   @override
@@ -56,8 +46,6 @@ class _BuyFeedScreenState extends State<BuyFeedScreen> {
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
         title: const Text('Buy'),
-        // The tab switch sits above a fixed search bar; tapping the bar opens
-        // the search screen (the bar itself never takes input).
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(
             AppSpacing.segmentHeight +
@@ -134,7 +122,6 @@ class _BuyFeedScreenState extends State<BuyFeedScreen> {
   }
 }
 
-/// A newest-first vertical feed of [ListingCard]s with pull-to-refresh.
 class _RefreshableFeed extends StatelessWidget {
   const _RefreshableFeed({
     required this.listings,
@@ -173,7 +160,6 @@ class _RefreshableFeed extends StatelessWidget {
   }
 }
 
-/// Standard horizontal screen inset for a vertical feed row.
 class _Inset extends StatelessWidget {
   const _Inset({required this.child});
 
@@ -262,8 +248,6 @@ class _FeedMessage extends StatelessWidget {
   }
 }
 
-/// Skeleton placeholders while the first fetch resolves (§4.4): the same
-/// white card shape as [ListingCard] with tinted blocks where content goes.
 class _FeedSkeleton extends StatelessWidget {
   const _FeedSkeleton();
 

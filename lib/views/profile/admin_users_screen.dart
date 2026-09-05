@@ -14,10 +14,6 @@ import 'package:assignment/widgets/common/search_field.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/profile/profile_avatar.dart';
 
-/// The Users tab of the Admin screen: every user with how many cars they have
-/// listed and sold, searchable and sortable, with ban/unban in the detail
-/// sheet. Reads the guarded `admin_user_stats()` RPC — a non-admin reaching
-/// this just sees the error state.
 class AdminUsersTab extends StatefulWidget {
   const AdminUsersTab({
     super.key,
@@ -27,7 +23,6 @@ class AdminUsersTab extends StatefulWidget {
 
   final Future<List<AdminUserStats>> users;
 
-  /// Re-runs both admin fetches — banning a user changes the Reports tab too.
   final VoidCallback onChanged;
 
   @override
@@ -46,7 +41,6 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
   }
 
   Future<void> _confirmSetBanned(AdminUserStats user, bool ban) async {
-    // Read before awaiting the dialog — the context can't be used across it.
     final admin = context.read<AdminRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -279,7 +273,6 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
   }
 }
 
-/// One user: avatar, name (+ Admin tag), state · joined, counts on the right.
 class _UserRow extends StatelessWidget {
   const _UserRow({required this.user, required this.onTap});
 

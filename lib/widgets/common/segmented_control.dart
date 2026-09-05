@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// An iOS-style segmented control built from Material primitives: a tinted
-/// track with the selected segment raised as a white pill (no shadow — the
-/// contrast comes from colour alone, per §5).
 class SegmentedControl extends StatelessWidget {
   const SegmentedControl({
     super.key,

@@ -22,12 +22,6 @@ import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/profile/seller_row.dart';
 
-/// A dummy checkout for a car. Shows a fake order summary; confirming flips the
-/// listing to `sold` via [ListingsRepository.buy] (list price) or, when
-/// reached from a chat offer's "Confirm and buy" / "Buy now" ([offerMessageId]
-/// set), [ChatRepository.buyAtOffer] (the negotiated price) — so it leaves the
-/// Buy feed, then shows a receipt with an order reference. No payment and no
-/// real fulfilment — enough to demo the buy path.
 class PurchaseScreen extends StatefulWidget {
   const PurchaseScreen({
     super.key,
@@ -38,8 +32,6 @@ class PurchaseScreen extends StatefulWidget {
 
   final String id;
 
-  /// Set together: the chat offer message to buy at, and its amount — the
-  /// checkout shows and confirms at this price instead of the listing's own.
   final String? offerMessageId;
   final int? offerAmountMyr;
 
@@ -50,23 +42,16 @@ class PurchaseScreen extends StatefulWidget {
 class _PurchaseScreenState extends State<PurchaseScreen> {
   bool _submitting = false;
 
-  /// A one-shot fetch, held so a rebuild never re-issues it.
   late final Future<Listing> _listing = fetchListingById(
     context.read<ListingsRepository>(),
     widget.id,
   );
 
-  /// Set once the sale goes through; the success screen reads the car from
-  /// here so it no longer depends on re-fetching the (now sold) listing.
   Listing? _purchased;
 
-  /// Generated once per screen visit — used whether the sale completes here
-  /// (a fresh "Confirm purchase" tap) or the listing was already sold on
-  /// arrival (e.g. a chat offer just bought via `buy_at_offer`).
   late final String _orderRef = _newOrderRef();
   late final DateTime _placedAt = DateTime.now();
 
-  /// A short, human-quotable reference, e.g. "GRJ-A1B2-C3D4".
   static String _newOrderRef() {
     final raw = newId().replaceAll('-', '').toUpperCase();
     return 'GRJ-${raw.substring(0, 4)}-${raw.substring(4, 8)}';
@@ -86,13 +71,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         ..showSnackBar(SnackBar(content: Text(message)));
       return;
     }
-    // The Buy feed is realtime-backed and this write is exactly the change it
-    // is listening for, so it drops the car on its own.
     setState(() {
       _submitting = false;
-      // buy_at_offer records the offer's amount as the listing's final
-      // price server-side; reflect that on the receipt without waiting on a
-      // re-fetch.
       _purchased = widget.offerAmountMyr == null
           ? listing
           : listing.copyWith(
@@ -122,10 +102,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
           if (listing == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          // Already sold on arrival — e.g. a chat offer just completed the
-          // purchase via `buy_at_offer` before this screen was even reached.
-          // Show the same receipt instead of a stale "confirm purchase" form
-          // that would only fail if tapped.
           if (listing.status != ListingStatus.active) {
             return _successScaffold(listing);
           }
@@ -169,9 +145,6 @@ class _Checkout extends StatelessWidget {
 
   final Listing listing;
 
-  /// What this checkout actually charges — the listing's own price, unless
-  /// [negotiated] (reached from a confirmed chat offer), in which case it's
-  /// that offer's amount instead.
   final int priceMyr;
   final bool negotiated;
   final Profile? buyer;
@@ -258,9 +231,6 @@ class _Checkout extends StatelessWidget {
   }
 }
 
-/// Who you're buying from. Mirrors the seller row on the listing detail
-/// screen; tapping opens the seller's public page. Hidden if the profile
-/// can't be loaded — the checkout still works without it.
 class _SellerCard extends StatefulWidget {
   const _SellerCard({required this.sellerId});
 

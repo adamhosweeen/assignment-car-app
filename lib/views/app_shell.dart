@@ -9,10 +9,6 @@ import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// The signed-in shell: five tabs (Buy / Sell / Bid / Chat / Profile) over a
-/// flat, iOS-style bottom bar. Each tab keeps its own navigation stack via
-/// [StatefulNavigationShell]. The Chat tab shows a dot while any thread has
-/// unread messages; the Profile tab shows one while the inbox does.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});
 
@@ -52,10 +48,8 @@ const List<_NavDef> _tabs = [
   _NavDef(Icons.person_outline, Icons.person, 'Profile'),
 ];
 
-/// Index of the Chat tab (unread-messages badge).
 const int _chatIndex = 3;
 
-/// Index of the Profile tab (the one that carries the inbox badge).
 const int _profileIndex = 4;
 
 class _BottomNav extends StatelessWidget {

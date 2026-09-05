@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import 'package:assignment/utils/json.dart';
 
-/// A name with a registration count (a brand, a fuel type, a vehicle type).
 class RankedCount {
   const RankedCount({required this.name, required this.count});
 
@@ -29,7 +28,6 @@ class RankedCount {
   String toString() => 'RankedCount(name: $name, count: $count)';
 }
 
-/// A car model with its maker and registration count.
 class RankedModel {
   const RankedModel({
     required this.name,
@@ -75,7 +73,6 @@ class RankedModel {
   String toString() => 'RankedModel(name: $name, maker: $maker, count: $count)';
 }
 
-/// Registrations in one calendar month; [month] is `YYYY-MM`.
 class MonthCount {
   const MonthCount({required this.month, required this.count});
 
@@ -102,12 +99,6 @@ class MonthCount {
   String toString() => 'MonthCount(month: $month, count: $count)';
 }
 
-/// A precomputed snapshot of Malaysian new-car registrations (JPJ data via
-/// data.gov.my, CC BY 4.0), covering a rolling 12-month window.
-///
-/// Built offline by `tool/build_car_popularity.dart` and stored as one row in
-/// the Supabase `car_popularity` table. The app only ever reads it; nothing in
-/// the app talks to data.gov.my directly.
 class CarPopularity {
   const CarPopularity({
     required this.periodLabel,
@@ -144,7 +135,6 @@ class CarPopularity {
     monthly: asModelList(json['monthly'], MonthCount.fromJson),
   );
 
-  /// Human-readable window, e.g. "Aug 2025 – Jul 2026".
   final String periodLabel;
   final DateTime periodStart;
   final DateTime periodEnd;
@@ -154,8 +144,6 @@ class CarPopularity {
   final List<RankedCount> topMakers;
   final List<RankedModel> topModels;
 
-  /// Top makers per Malaysian state (dealer-portal registrations carry no
-  /// state and are excluded here, though they count nationally).
   final Map<String, List<RankedCount>> byState;
   final List<RankedCount> fuelSplit;
   final List<RankedCount> typeSplit;
@@ -178,7 +166,6 @@ class CarPopularity {
     'monthly': [for (final m in monthly) m.toJson()],
   };
 
-  /// Top makers in [state], or an empty list when the snapshot has none.
   List<RankedCount> topMakersIn(String state) =>
       byState[state] ?? const <RankedCount>[];
 
@@ -253,8 +240,6 @@ class CarPopularity {
       'generatedAt: $generatedAt)';
 }
 
-/// `mapEquals` compares values with `==`, which for a `List` is identity — so
-/// the nested per-state lists need comparing element by element.
 bool _byStateEquals(
   Map<String, List<RankedCount>> a,
   Map<String, List<RankedCount>> b,

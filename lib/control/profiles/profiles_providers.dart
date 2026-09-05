@@ -2,8 +2,6 @@ import 'package:assignment/control/profiles/profiles_repository.dart';
 import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/result.dart';
 
-/// Carries a repository's user-facing message through a `FutureBuilder`'s
-/// error channel without exposing a raw backend exception to the UI.
 class ProfilesException implements Exception {
   const ProfilesException(this.message);
 
@@ -13,8 +11,6 @@ class ProfilesException implements Exception {
   String toString() => message;
 }
 
-/// One user's public profile (seller page, seller row on Listing Detail).
-/// Null when the account no longer exists.
 Future<PublicProfile?> fetchPublicProfile(
   ProfilesRepository profiles,
   String id,
@@ -26,7 +22,6 @@ Future<PublicProfile?> fetchPublicProfile(
   };
 }
 
-/// Seller-name search. Empty query → empty list, no request.
 Future<List<PublicProfile>> searchSellers(
   ProfilesRepository profiles,
   String query,

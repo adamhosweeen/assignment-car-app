@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// The black header band used across the auth flow (welcome, login,
-/// register): an optional back button and the caller's content pinned
-/// bottom-left. Pair with [AuthSheet] for the white rounded form area
-/// below it.
 class AuthHero extends StatelessWidget {
   const AuthHero({
     super.key,
@@ -62,9 +58,6 @@ class AuthHero extends StatelessWidget {
   }
 }
 
-/// The white rounded sheet that sits under an [AuthHero]. A black layer is
-/// painted behind it so the top corner notches show the hero colour, giving
-/// the "sheet riding over the hero" look from the reference design.
 class AuthSheet extends StatelessWidget {
   const AuthSheet({
     super.key,
@@ -98,10 +91,7 @@ class AuthSheet extends StatelessWidget {
   }
 }
 
-/// Button styles for the monochrome auth screens. Local to the auth flow —
-/// the rest of the app keeps the themed blue buttons.
 abstract final class AuthButtons {
-  /// Black filled CTA on the white sheet.
   static ButtonStyle dark(BuildContext context) => FilledButton.styleFrom(
     backgroundColor: AppColors.hero,
     foregroundColor: AppColors.onHero,
@@ -109,13 +99,11 @@ abstract final class AuthButtons {
     disabledForegroundColor: AppColors.tertiaryLabel,
   );
 
-  /// White filled CTA on the black hero.
   static ButtonStyle light(BuildContext context) => FilledButton.styleFrom(
     backgroundColor: AppColors.onHero,
     foregroundColor: AppColors.hero,
   );
 
-  /// White outlined secondary on the black hero.
   static ButtonStyle lightOutlined(BuildContext context) =>
       OutlinedButton.styleFrom(
         foregroundColor: AppColors.onHero,
@@ -128,7 +116,6 @@ abstract final class AuthButtons {
         splashFactory: NoSplash.splashFactory,
       );
 
-  /// Black outlined secondary on the white sheet.
   static ButtonStyle darkOutlined(BuildContext context) =>
       OutlinedButton.styleFrom(
         foregroundColor: AppColors.hero,

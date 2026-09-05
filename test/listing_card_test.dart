@@ -31,7 +31,6 @@ final _listing = Listing(
   updatedAt: DateTime.utc(2026, 3, 12),
 );
 
-/// A stand-in cover with the real cover height so layout matches the app.
 Widget _cover(double height) => SizedBox(
   width: double.infinity,
   height: height,
@@ -92,7 +91,6 @@ void main() {
 
     expect(find.text('RM 45,000'), findsOneWidget);
     expect(find.text('2020 Perodua Myvi 1.5 AV'), findsOneWidget);
-    // A RenderFlex overflow would surface here as a FlutterError.
     expect(tester.takeException(), isNull);
 
     final card = tester.getSize(find.byType(ListingCardCompact));

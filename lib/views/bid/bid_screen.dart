@@ -14,12 +14,6 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/bid/bid_card.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 
-/// The Bid tab: what I've bid on other people's cars, and what other people
-/// have bid on mine.
-///
-/// Both lists are realtime-backed and cached, so they render instantly on
-/// cold start and keep working offline; each handles loading, empty and error
-/// explicitly.
 class BidScreen extends StatefulWidget {
   const BidScreen({super.key});
 
@@ -30,10 +24,6 @@ class BidScreen extends StatefulWidget {
 class _BidScreenState extends State<BidScreen> {
   int _segment = 0;
 
-  /// Both streams live here rather than in the two list widgets, because the
-  /// segment label needs the received count while the "My bids" segment is
-  /// showing — and each `listen` opens its own realtime channel, so they must
-  /// be subscribed to exactly once.
   late Stream<List<BidWithListing>> _myBids;
   late Stream<List<BidWithListing>> _received;
 
@@ -50,7 +40,6 @@ class _BidScreenState extends State<BidScreen> {
     _received = watchBidsReceived(auth, bids);
   }
 
-  /// Backs both lists' "Try again": drop the subscriptions and start over.
   void _retry() => setState(_subscribe);
 
   @override
@@ -92,7 +81,6 @@ class _BidScreenState extends State<BidScreen> {
   }
 }
 
-/// Bids I placed. Live ones can be withdrawn; resolved ones stay as history.
 class _MyBidsList extends StatelessWidget {
   const _MyBidsList({required this.stream, required this.onRetry});
 
@@ -148,8 +136,6 @@ class _MyBidsList extends StatelessWidget {
   }
 }
 
-/// Bids on my cars. Accepting one sells the car at that price and rejects the
-/// rest, so it asks first.
 class _ReceivedList extends StatelessWidget {
   const _ReceivedList({required this.snapshot, required this.onRetry});
 
@@ -222,8 +208,6 @@ class _ReceivedList extends StatelessWidget {
     );
   }
 
-  /// An accepted bid is the one the seller has to act on next, so its row
-  /// carries the bidder's number rather than a timestamp.
   String _receivedSubtitle(Bid bid) {
     if (bid.status == BidStatus.accepted && bid.contactPhone != null) {
       return 'Contact the bidder on ${bid.contactPhone}';
@@ -232,9 +216,6 @@ class _ReceivedList extends StatelessWidget {
   }
 }
 
-/// Shared list body: loading, empty, error, and the populated case. Takes
-/// either a stream to subscribe to, or a snapshot the caller is already
-/// watching.
 class _BidList extends StatelessWidget {
   const _BidList({
     this.stream,
@@ -336,7 +317,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Ask before anything irreversible. Returns false when dismissed.
 Future<bool> _confirm(
   BuildContext context, {
   required String title,

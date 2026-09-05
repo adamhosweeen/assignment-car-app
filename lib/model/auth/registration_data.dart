@@ -1,7 +1,5 @@
 import 'package:assignment/model/profile/car_interests.dart';
 
-/// Everything the registration flow collects besides the email/password
-/// credentials. Passed to `AuthRepository.signUp` in one piece.
 class RegistrationData {
   const RegistrationData({
     required this.firstName,

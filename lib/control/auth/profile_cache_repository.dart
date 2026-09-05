@@ -5,11 +5,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
 
-/// sqflite read-cache of the signed-in user's profile (`profile_cache`, one
-/// row at most). Written after every successful Supabase profile fetch and
-/// cleared on sign-out, so the Profile tab renders instantly on cold start
-/// and stays complete offline. Never authoritative — Supabase is the source
-/// of truth (CLAUDE.md §3).
 class ProfileCacheRepository {
   ProfileCacheRepository(this._db, Map<String, Object?>? initialRow)
     : _cached = initialRow == null ? null : profileFromRow(initialRow);
@@ -17,7 +12,6 @@ class ProfileCacheRepository {
   final Database _db;
   Profile? _cached;
 
-  /// The profile cached on disk at launch (or saved since), if any.
   Profile? get cached => _cached;
 
   Future<void> save(Profile profile) async {

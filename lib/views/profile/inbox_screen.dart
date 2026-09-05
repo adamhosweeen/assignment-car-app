@@ -11,16 +11,11 @@ import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 
-/// Profile → Inbox: server-generated notifications (welcome, listings that
-/// match your interests, market-insights refreshes). Live over realtime;
-/// tap opens the linked screen and marks the row read; swipe left deletes.
 class InboxScreen extends StatelessWidget {
   const InboxScreen({super.key});
 
   Future<void> _open(BuildContext context, AppNotification n) async {
     if (!n.isRead) {
-      // Fire and forget — realtime refreshes the list; an error here is
-      // cosmetic and shouldn't block navigation.
       context.read<NotificationsRepository>().markRead(n.id);
     }
     final route = n.route;

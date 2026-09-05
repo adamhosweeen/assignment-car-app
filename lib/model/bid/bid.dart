@@ -1,15 +1,7 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [Bid.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// Where a bid stands. Constant names map 1:1 to the `bids.status` text
-/// values, so `asEnum` round-trips them by name (same convention as the
-/// listing enums).
-///
-/// Only [pending] is live. The other three are terminal: the seller sets
-/// [accepted] / [rejected] via `respond_to_bid`, the bidder sets [withdrawn]
-/// via `withdraw_bid` (migration 0009).
 enum BidStatus { pending, accepted, rejected, withdrawn }
 
 extension BidStatusLabel on BidStatus {
@@ -20,14 +12,9 @@ extension BidStatusLabel on BidStatus {
     BidStatus.withdrawn => 'Withdrawn',
   };
 
-  /// Whether this bid can still be acted on — the only state in which the
-  /// seller may accept/reject and the bidder may withdraw.
   bool get isLive => this == BidStatus.pending;
 }
 
-/// One bid on a listing — a row of `bids` (migration 0009).
-///
-/// Money is integer MYR and timestamps are UTC, per the repo convention.
 class Bid {
   const Bid({
     required this.id,
@@ -59,8 +46,6 @@ class Bid {
   final int amountMyr;
   final BidStatus status;
 
-  /// Contact number captured on the bid form, so the seller can reach the
-  /// bidder without seeing their (RLS-protected) profile row.
   final String? contactPhone;
   final bool notifyWhatsapp;
   final DateTime createdAt;
@@ -78,7 +63,6 @@ class Bid {
     'updated_at': updatedAt.toIso8601String(),
   };
 
-  /// Whether [currentUserId] placed this bid (as opposed to receiving it).
   bool isMine(String currentUserId) => bidderId == currentUserId;
 
   Bid copyWith({

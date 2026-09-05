@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:assignment/utils/app_theme.dart';
 
-/// A single-field text prompt dialog, e.g. for the "Other" free-text make/model.
-/// Returns the trimmed value, or null if cancelled/empty.
 Future<String?> promptForText(
   BuildContext context, {
   required String title,
@@ -18,10 +16,6 @@ Future<String?> promptForText(
   return (result == null || result.isEmpty) ? null : result;
 }
 
-/// Owns the [TextEditingController] so its lifetime is tied to the dialog route,
-/// not to the `await showDialog` call site. Disposing the controller right after
-/// `showDialog` returns crashes: the route is still playing its close animation
-/// and rebuilds the [TextField] against a disposed controller.
 class _TextPromptDialog extends StatefulWidget {
   const _TextPromptDialog({required this.title, this.initial, this.hint});
 

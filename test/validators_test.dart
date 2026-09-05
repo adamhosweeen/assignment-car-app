@@ -24,18 +24,18 @@ void main() {
   group('isValidPassword', () {
     test('requires 8+ chars with a letter and a digit', () {
       expect(isValidPassword('abcd1234'), isTrue);
-      expect(isValidPassword('abc123'), isFalse); // too short
-      expect(isValidPassword('abcdefgh'), isFalse); // no digit
-      expect(isValidPassword('12345678'), isFalse); // no letter
+      expect(isValidPassword('abc123'), isFalse);
+      expect(isValidPassword('abcdefgh'), isFalse);
+      expect(isValidPassword('12345678'), isFalse);
     });
 
     test('passwordStrength tiers agree with isValidPassword', () {
       expect(passwordStrength(''), 0);
-      expect(passwordStrength('abc'), 1); // some rules → weak
-      expect(passwordStrength('abcd1234'), 2); // all rules → okay
-      expect(passwordStrength('abcdefgh1234'), 2); // long but plain
-      expect(passwordStrength('abcdefgh123!'), 3); // long + symbol
-      expect(passwordStrength('Abcdefgh1234'), 3); // long + mixed case
+      expect(passwordStrength('abc'), 1);
+      expect(passwordStrength('abcd1234'), 2);
+      expect(passwordStrength('abcdefgh1234'), 2);
+      expect(passwordStrength('abcdefgh123!'), 3);
+      expect(passwordStrength('Abcdefgh1234'), 3);
       for (final p in ['abc', 'abcd1234', 'Abcdefgh1234']) {
         expect(passwordStrength(p) >= 2, isValidPassword(p));
       }
@@ -76,9 +76,9 @@ void main() {
     });
 
     test('rejects non-mobile or wrong-length input', () {
-      expect(nationalToE164('987654321'), isNull); // not starting with 1
-      expect(nationalToE164('12345'), isNull); // too short
-      expect(nationalToE164('12345678901'), isNull); // too long
+      expect(nationalToE164('987654321'), isNull);
+      expect(nationalToE164('12345'), isNull);
+      expect(nationalToE164('12345678901'), isNull);
     });
   });
 }

@@ -18,8 +18,6 @@ import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
 import 'package:assignment/widgets/listing/status_badge.dart';
 
-/// The Sell tab: an entry point to create a listing plus the user's own
-/// listings, split into Active and Sold (V1_SPEC §4.3, §4.6).
 class SellHomeScreen extends StatefulWidget {
   const SellHomeScreen({super.key});
 
@@ -28,7 +26,6 @@ class SellHomeScreen extends StatefulWidget {
 }
 
 class _SellHomeScreenState extends State<SellHomeScreen> {
-  /// Bottom padding so the last list row can scroll clear of the FAB.
   static const double _fabClearance = 88;
 
   late Stream<List<Listing>> _myListings;
@@ -65,14 +62,11 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
   Future<void> _edit(Listing l) async {
     await context.read<DraftRepository>().save(draftFromListing(l));
     if (!mounted) return;
-    // The sell flow is about to open on this draft, so the app-scoped
-    // controller has to pick up what was just written.
     setState(context.read<SellController>().reload);
     _startSelling(editing: true);
   }
 
   Future<void> _delete(Listing l) async {
-    // Read before awaiting the dialog — the context can't be used across it.
     final listings = context.read<ListingsRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -115,7 +109,6 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // A sold listing is frozen — no re-marking sold, no editing.
             if (l.status == ListingStatus.active) ...[
               ListTile(
                 leading: const Icon(Icons.check_circle_outline),

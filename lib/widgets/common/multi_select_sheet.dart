@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// Present a list of options in an iOS-style bottom sheet where several can be
-/// toggled, and return the final selection when "Done" is tapped (or null if
-/// the sheet is dismissed). Multi-select counterpart of [showSelectSheet].
 Future<List<T>?> showMultiSelectSheet<T>({
   required BuildContext context,
   required String title,

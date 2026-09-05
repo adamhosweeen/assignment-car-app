@@ -34,7 +34,6 @@ void main() {
       final u = AdminUserStats.fromJson(json);
       expect(u.name, 'Aiman Rahman');
       expect(u.isAdmin, isTrue);
-      // A date-only string parses as local midnight.
       expect(u.dob, DateTime(1999, 4, 12));
       expect(u.activeCount, 3);
       expect(u.soldCount, 5);

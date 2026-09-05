@@ -1,14 +1,8 @@
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [ListingMedia.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// A single photo or video attached to a listing.
-///
-/// In the Supabase build [storagePath] is a path in the private `listing-media`
-/// bucket served via signed URL. In the current fake backend it holds a local
-/// file path (displayed with `Image.file`).
 class ListingMedia {
   const ListingMedia({
     required this.id,
@@ -34,7 +28,6 @@ class ListingMedia {
   final String storagePath;
   final MediaType mediaType;
 
-  /// 0 = cover.
   final int position;
   final DateTime? createdAt;
 

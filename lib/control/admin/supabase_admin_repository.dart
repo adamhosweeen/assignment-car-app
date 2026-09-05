@@ -6,8 +6,6 @@ import 'package:assignment/model/admin/admin_user_stats.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/result.dart';
 
-/// [AdminRepository] over the `admin_user_stats()` RPC (SECURITY DEFINER,
-/// rejects non-admin callers server-side).
 class SupabaseAdminRepository implements AdminRepository {
   SupabaseAdminRepository(this._client);
 

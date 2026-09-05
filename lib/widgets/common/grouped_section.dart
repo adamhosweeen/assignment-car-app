@@ -4,8 +4,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/common/section_header.dart';
 
-/// An iOS-style grouped card: a rounded-12 white surface with inset hairline
-/// dividers between rows. Sits on the grouped background (§5).
 class GroupedSection extends StatelessWidget {
   const GroupedSection({super.key, required this.children, this.header});
 
@@ -42,8 +40,6 @@ class GroupedSection extends StatelessWidget {
   }
 }
 
-/// A single row inside a [GroupedSection]: a label with an optional right-hand
-/// value, trailing widget (e.g. a switch), and chevron. Tappable when [onTap].
 class GroupedRow extends StatelessWidget {
   const GroupedRow({
     super.key,

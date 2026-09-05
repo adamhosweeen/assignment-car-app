@@ -6,9 +6,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/common/search_field.dart';
 
-/// Shared shell for the two search screens: a search box in the app bar,
-/// a debounce, and an idle message until the user has typed something.
-/// [resultsBuilder] receives the debounced, non-empty query.
 class SearchScaffold extends StatefulWidget {
   const SearchScaffold({
     super.key,
@@ -43,7 +40,6 @@ class _SearchScaffoldState extends State<SearchScaffold> {
     _timer?.cancel();
     final next = value.trim();
     if (next.isEmpty) {
-      // Clearing should feel instant.
       setState(() => _query = '');
       return;
     }
@@ -108,7 +104,6 @@ class _Idle extends StatelessWidget {
   }
 }
 
-/// Centred message for empty / error results, with an optional retry.
 class SearchMessage extends StatelessWidget {
   const SearchMessage({
     super.key,

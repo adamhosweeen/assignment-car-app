@@ -117,13 +117,11 @@ void main() {
     expect(find.text('RM 45,000'), findsWidgets);
     expect(find.text('Confirm purchase · RM 45,000'), findsOneWidget);
 
-    // Car details section.
     expect(find.text('CAR DETAILS'), findsOneWidget);
     expect(find.text('38,000 km'), findsOneWidget);
     expect(find.text('Automatic'), findsOneWidget);
     expect(find.text('Petrol'), findsOneWidget);
 
-    // Seller section, further down the form.
     await tester.scrollUntilVisible(
       find.text('Sally Seller'),
       200,
@@ -132,7 +130,6 @@ void main() {
     expect(find.text('SELLER'), findsOneWidget);
     expect(find.text('Sally Seller'), findsOneWidget);
 
-    // Buyer section, at the bottom.
     await tester.scrollUntilVisible(
       find.text('Bob Tan'),
       200,
@@ -151,11 +148,9 @@ void main() {
 
     expect(repo.buyCalls, 1);
     expect(repo.lastBoughtId, 'l1');
-    // Title in the app bar + heading in the body.
     expect(find.text('Purchase confirmed'), findsNWidgets(2));
     expect(find.text('Done'), findsOneWidget);
     expect(find.text('Confirm purchase · RM 45,000'), findsNothing);
-    // A receipt with an order reference.
     expect(find.text('Order reference'), findsOneWidget);
     expect(find.textContaining(RegExp(r'^GRJ-\w{4}-\w{4}$')), findsOneWidget);
   });

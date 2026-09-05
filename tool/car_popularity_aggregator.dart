@@ -1,10 +1,3 @@
-/// Pure aggregation for `build_car_popularity.dart`, kept separate so it can
-/// be unit-tested without network access.
-///
-/// Input rows come from the data.gov.my "Car Registration Transactions" CSV
-/// (`date_reg,type,maker,model,colour,fuel,state`). The output is a
-/// [CarPopularity] covering the rolling 12 months ending at the latest month
-/// present in the data.
 library;
 
 import 'package:assignment/model/insights/car_popularity.dart';
@@ -30,12 +23,8 @@ const List<String> _monthNames = [
   'Dec',
 ];
 
-/// Joins maker and model into one map key. A control character, because
-/// spaces occur inside real names ("Great Wall" / "Haval H6").
-final String _sep = String.fromCharCode(1); // U+0001
+final String _sep = String.fromCharCode(1);
 
-/// Split one CSV line. Handles the (currently unused) RFC 4180 quoting so a
-/// future model name with a comma does not corrupt the counts.
 List<String> parseCsvLine(String line) {
   final fields = <String>[];
   final buf = StringBuffer();
@@ -66,8 +55,6 @@ List<String> parseCsvLine(String line) {
   return fields;
 }
 
-/// JPJ fuel codes → display buckets. Every `hybrid_*` variant folds into
-/// Hybrid; the rare alternative fuels (NG, LNG, hydrogen) become Other.
 String fuelBucket(String raw) {
   final f = raw.trim().toLowerCase();
   if (f.startsWith('hybrid')) return 'Hybrid';
@@ -79,7 +66,6 @@ String fuelBucket(String raw) {
   };
 }
 
-/// JPJ vehicle-type codes → display buckets.
 String typeBucket(String raw) => switch (raw.trim().toLowerCase()) {
   'motokar' => 'Car',
   'jip' => 'SUV & 4WD',
@@ -89,8 +75,6 @@ String typeBucket(String raw) => switch (raw.trim().toLowerCase()) {
   _ => 'Other',
 };
 
-/// JPJ state spelling → the app's `MalaysianStates.all` spelling, or null for
-/// rows with no state (the "Rakan Niaga" dealer portal) or an unknown value.
 String? normaliseState(String raw) {
   var s = raw.trim();
   if (s.isEmpty) return null;
@@ -98,25 +82,20 @@ String? normaliseState(String raw) {
   return MalaysianStates.all.contains(s) ? s : null;
 }
 
-/// Per-month partial counts. Kept per month so the 12-month window can be
-/// chosen after a single streaming pass over multiple yearly files.
 class _MonthBucket {
   int total = 0;
   final makers = <String, int>{};
-  final models = <String, int>{}; // key: maker + _sep + model
+  final models = <String, int>{};
   final byState = <String, Map<String, int>>{};
   final fuel = <String, int>{};
   final type = <String, int>{};
 }
 
-/// Accumulates rows; call [build] once every file has been fed in.
 class CarPopularityAggregator {
   final Map<String, _MonthBucket> _months = {};
   Map<String, int>? _columns;
   int skipped = 0;
 
-  /// Feed one parsed line. The first line fed must be the CSV header (it is
-  /// used to locate columns, so column order does not matter).
   void add(List<String> fields) {
     final cols = _columns;
     if (cols == null) {
@@ -145,7 +124,7 @@ class CarPopularityAggregator {
       skipped++;
       return;
     }
-    final month = date.substring(0, 7); // YYYY-MM
+    final month = date.substring(0, 7);
     final maker = fields[cols['maker']!].trim();
     final model = fields[cols['model']!].trim();
     if (maker.isEmpty) {
@@ -175,8 +154,6 @@ class CarPopularityAggregator {
     }
   }
 
-  /// Fold the last [windowMonths] months (ending at the latest month seen)
-  /// into a snapshot.
   CarPopularity build({
     required DateTime generatedAt,
     required String sourceUrl,

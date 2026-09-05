@@ -12,11 +12,6 @@ import 'package:assignment/model/chat/message.dart';
 import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 
-/// [ChatRepository] over `conversations`/`messages`, with the same
-/// fetch-on-realtime-change shape as `SupabaseListingsRepository._watch` /
-/// `SupabaseNotificationsRepository.watchInbox`. Every successful fetch is
-/// mirrored into [_cache] so the thread list and an open thread render
-/// instantly next time, offline or on cold start.
 class SupabaseChatRepository implements ChatRepository {
   SupabaseChatRepository(this._client, this._cache);
 
@@ -25,7 +20,6 @@ class SupabaseChatRepository implements ChatRepository {
   static const Duration _fetchTimeout = Duration(seconds: 8);
   static const int _messageLimit = 200;
 
-  // ── Conversations (thread list) ──────────────────────────────────────────
   Future<List<ConversationThread>> _fetchConversations(String uid) async {
     final rows = await _client
         .from('conversations')
@@ -35,8 +29,6 @@ class SupabaseChatRepository implements ChatRepository {
         .order('created_at', referencedTable: 'messages', ascending: false)
         .limit(1, referencedTable: 'messages');
 
-    // Unread counts per conversation: RLS already scopes `messages` to rows
-    // the caller can see, so this only ever returns their own threads.
     final unreadRows = await _client
         .from('messages')
         .select('conversation_id')
@@ -80,9 +72,6 @@ class SupabaseChatRepository implements ChatRepository {
         await _cache.saveConversations(data);
       } catch (e) {
         debugPrint('[chat] threads push FAILED: $e');
-        // A transient refresh failure keeps the last good list; a failed
-        // first load (with nothing cached to fall back on) is a real error
-        // state.
         if (!loadedOnce && !controller.isClosed) controller.addError(e);
       }
     }
@@ -95,9 +84,6 @@ class SupabaseChatRepository implements ChatRepository {
           controller.add(cached);
         }
         push();
-        // A new message bumps `conversations.last_message_at` (caught by the
-        // first listener); `markRead` only touches `messages.read_at`
-        // (needs the second) to keep unread counts live.
         channel = _client.channel('chat-threads-$uid-${newId()}')
           ..onPostgresChanges(
             event: PostgresChangeEvent.all,
@@ -132,7 +118,6 @@ class SupabaseChatRepository implements ChatRepository {
     return controller.stream;
   }
 
-  // ── Messages (one thread) ────────────────────────────────────────────────
   Future<List<Message>> _fetchMessages(String conversationId) async {
     final rows = await _client
         .from('messages')
@@ -162,9 +147,6 @@ class SupabaseChatRepository implements ChatRepository {
         await _cache.saveMessages(conversationId, data);
       } catch (e) {
         debugPrint('[chat] messages push FAILED ($conversationId): $e');
-        // A transient refresh failure keeps the last good list; a failed
-        // first load (with nothing cached to fall back on) is a real error
-        // state.
         if (!loadedOnce && !controller.isClosed) controller.addError(e);
       }
     }
@@ -210,7 +192,6 @@ class SupabaseChatRepository implements ChatRepository {
     return controller.stream;
   }
 
-  // ── Writes ────────────────────────────────────────────────────────────────
   @override
   Future<Result<Conversation>> openConversation(String listingId) async {
     final uid = _client.auth.currentUser?.id;
@@ -226,8 +207,6 @@ class SupabaseChatRepository implements ChatRepository {
       if (sellerId == uid) {
         return const Err("You can't message yourself about your own listing.");
       }
-      // Atomic find-or-create on the (listing_id, buyer_id) unique constraint
-      // — no race between two taps opening the same thread twice.
       final row = await _client
           .from('conversations')
           .upsert({
@@ -258,8 +237,6 @@ class SupabaseChatRepository implements ChatRepository {
       }
       return Ok(Conversation.fromJson(row));
     } catch (e) {
-      // Offline or timed out — a cached thread's conversation can still be
-      // shown.
       final cached = _cache.cachedConversations
           .map((t) => t.conversation)
           .where((c) => c.id == id)
@@ -290,8 +267,6 @@ class SupabaseChatRepository implements ChatRepository {
           .select()
           .single()
           .timeout(_fetchTimeout);
-      // No DB trigger keeps this in sync (chat is schema-only in 0001) — the
-      // sender bumps it themselves so thread ordering and previews update.
       await _client
           .from('conversations')
           .update({'last_message_at': DateTime.now().toUtc().toIso8601String()})
@@ -326,8 +301,6 @@ class SupabaseChatRepository implements ChatRepository {
           .timeout(_fetchTimeout);
       return const Ok(null);
     } on PostgrestException catch (e) {
-      // confirm_offer() raises these for the specific cases below; anything
-      // else falls through to the generic mapper.
       if (e.message.contains('cannot confirm your own offer') ||
           e.message.contains('not a participant') ||
           e.message.contains('not an offer')) {
@@ -347,8 +320,6 @@ class SupabaseChatRepository implements ChatRepository {
           .timeout(_fetchTimeout);
       return const Ok(null);
     } on PostgrestException catch (e) {
-      // buy_at_offer() raises these for the specific cases below; anything
-      // else falls through to the generic mapper.
       if (e.message.contains('no longer available') ||
           e.message.contains('Only the buyer') ||
           e.message.contains('Waiting for the seller') ||

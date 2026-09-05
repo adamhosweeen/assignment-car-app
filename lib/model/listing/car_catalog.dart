@@ -1,9 +1,4 @@
-/// Hardcoded make/model catalogue for v1 (CLAUDE.md §4.5).
-///
-/// Common Malaysian makes with their common models, plus an "Other" free-text
-/// escape hatch on both make and model. No database-backed catalogue in v1.
 abstract final class CarCatalog {
-  /// Sentinel for the free-text option, used on both make and model.
   static const String other = 'Other';
 
   static const Map<String, List<String>> _byMake = {
@@ -110,9 +105,7 @@ abstract final class CarCatalog {
     other: [other],
   };
 
-  /// All makes, in catalogue order, with "Other" last.
   static List<String> get makes => _byMake.keys.toList();
 
-  /// Models for [make], or just "Other" for an unknown/free-text make.
   static List<String> modelsFor(String make) => _byMake[make] ?? const [other];
 }

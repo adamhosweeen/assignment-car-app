@@ -1,8 +1,3 @@
-/// Listing domain enums.
-///
-/// Each enum constant name maps 1:1 to the Postgres text value (e.g.
-/// `FuelType.petrol` <-> `'petrol'`), so `asEnum` in `utils/json.dart`
-/// round-trips them by name.
 library;
 
 enum ListingStatus { draft, active, sold, deleted }
@@ -16,9 +11,6 @@ enum BodyType { sedan, hatchback, suv, mpv, pickup, coupe, other }
 enum RegistrationRegion { west, east }
 
 enum MediaType { photo, video }
-
-// ── Display labels ───────────────────────────────────────────────────────────
-// User-facing English for each enum, kept beside the source of truth.
 
 extension TransmissionLabel on Transmission {
   String get label => switch (this) {

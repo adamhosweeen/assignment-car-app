@@ -6,12 +6,6 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
 
-/// The hand-written `copyWith`s replaced freezed's generated ones. Freezed
-/// could tell "argument omitted" from an explicit `null`, and the app relies
-/// on that: changing the make clears the model, changing the region can clear
-/// the state, and emptying the budget box clears the budget. A naive
-/// `value ?? this.value` would silently keep the old value instead, so the
-/// sentinel behaviour is pinned here.
 void main() {
   final now = DateTime.utc(2026, 9, 5);
 
@@ -39,7 +33,6 @@ void main() {
     });
 
     test('changing the make clears the dependent model', () {
-      // Mirrors SellController.setMake.
       final draft = ListingDraft(
         id: 'd1',
         make: 'Perodua',
@@ -52,7 +45,6 @@ void main() {
     });
 
     test('changing the region can clear the state', () {
-      // Mirrors SellController.setRegion when the state no longer fits.
       final draft = ListingDraft(
         id: 'd1',
         registrationRegion: RegistrationRegion.east,
@@ -68,7 +60,6 @@ void main() {
     });
 
     test('clearing the budget box clears the budget', () {
-      // Mirrors CarInterestFields' onChanged: int.tryParse('') is null.
       const interests = CarInterests(budgetMinMyr: 20000, budgetMaxMyr: 80000);
       final cleared = interests.copyWith(budgetMinMyr: null);
       expect(cleared.budgetMinMyr, isNull);

@@ -1,12 +1,7 @@
 import 'package:assignment/utils/json.dart';
 
-/// Sentinel for [AdminUserStats.copyWith] — see `CarInterests`.
 const Object _unset = Object();
 
-/// One row of the admin users screen — the shape returned by the
-/// `admin_user_stats()` RPC: a profile plus its computed listing counts.
-/// Deliberately its own model: `Profile` is the caller's own row and carries
-/// no counts, and `PublicProfile` has no email/phone/DOB by design.
 class AdminUserStats {
   const AdminUserStats({
     required this.id,
@@ -66,7 +61,6 @@ class AdminUserStats {
     'sold_count': soldCount,
   };
 
-  /// Always something to render in a row.
   String get name {
     final n = displayName?.trim() ?? '';
     return n.isEmpty ? 'User' : n;

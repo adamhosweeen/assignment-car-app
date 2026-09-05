@@ -7,8 +7,6 @@ import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 
-/// Logo on white. Restores the session, then routes to Home or Login. Hard
-/// capped well under the 2-second limit (V1_SPEC §4.1) — no network to wait on.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -32,8 +30,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Black like the Welcome screen it hands over to, so the signed-out
-    // cold start reads as one continuous surface.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(

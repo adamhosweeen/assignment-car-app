@@ -8,8 +8,6 @@ import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/sell/steps/step_price.dart';
 
-/// Seeds the draft and swallows persistence, so the real [SellController]
-/// mutation logic can run in a widget test without sqflite.
 class _SeededDraftRepo implements DraftRepository {
   _SeededDraftRepo(this._draft);
 

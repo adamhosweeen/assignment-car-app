@@ -4,7 +4,6 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 
-/// A small coloured pill showing a listing's status (My Listings, detail).
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status});
 
