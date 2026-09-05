@@ -9,7 +9,7 @@ const String _baseUrl = 'https://storage.data.gov.my/transportation';
 const String _catalogueUrl =
     'https://data.gov.my/data-catalogue/registration_transactions_car';
 const String _cacheDir = 'build/data_gov_my';
-const String _defaultOut = 'supabase/seed/car_popularity.sql';
+const String _defaultOut = 'supabase/migrations/0002_seed.sql';
 
 Future<void> main(List<String> args) async {
   final now = DateTime.now().toUtc();

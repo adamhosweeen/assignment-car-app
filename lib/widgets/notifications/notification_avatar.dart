@@ -16,6 +16,9 @@ class NotificationAvatar extends StatelessWidget {
     NotificationKind.bidPlaced => Icons.gavel_outlined,
     NotificationKind.bidAccepted => Icons.check_circle_outline,
     NotificationKind.bidRejected => Icons.cancel_outlined,
+    NotificationKind.bidOutbid => Icons.trending_up,
+    NotificationKind.auctionWon => Icons.emoji_events_outlined,
+    NotificationKind.auctionEnded => Icons.timer_off_outlined,
   };
 
   @override

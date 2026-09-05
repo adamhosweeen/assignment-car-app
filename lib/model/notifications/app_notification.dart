@@ -12,6 +12,12 @@ enum NotificationKind {
   bidAccepted,
 
   bidRejected,
+
+  bidOutbid,
+
+  auctionWon,
+
+  auctionEnded,
 }
 
 const Map<NotificationKind, String> kindValues = {
@@ -21,6 +27,9 @@ const Map<NotificationKind, String> kindValues = {
   NotificationKind.bidPlaced: 'bid_placed',
   NotificationKind.bidAccepted: 'bid_accepted',
   NotificationKind.bidRejected: 'bid_rejected',
+  NotificationKind.bidOutbid: 'bid_outbid',
+  NotificationKind.auctionWon: 'auction_won',
+  NotificationKind.auctionEnded: 'auction_ended',
 };
 
 extension NotificationKindValue on NotificationKind {
