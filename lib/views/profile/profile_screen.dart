@@ -11,6 +11,7 @@ import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
@@ -164,6 +165,11 @@ class ProfileScreen extends StatelessWidget {
     if (profile == null) {
       return const Center(child: Text('You’re signed out.'));
     }
+    final text = Theme.of(context).textTheme;
+    final meta = [
+      if (profile.state != null) profile.state!,
+      'Member since ${formatMonthYear(profile.createdAt)}',
+    ].join(' · ');
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -178,23 +184,33 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.space16),
               Text(
                 profile.displayName,
-                style: Theme.of(context).textTheme.title1,
+                style: text.title1,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.space4),
               Text(
                 profile.email,
-                style: Theme.of(
-                  context,
-                ).textTheme.subhead.copyWith(color: AppColors.secondaryLabel),
+                style: text.subhead.copyWith(color: AppColors.secondaryLabel),
               ),
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                meta,
+                style: text.footnote.copyWith(color: AppColors.tertiaryLabel),
+                textAlign: TextAlign.center,
+              ),
+              if (profile.isAdmin) ...[
+                const SizedBox(height: AppSpacing.space8),
+                const _Tag('Admin'),
+              ],
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.space32),
         GroupedSection(
+          header: 'Account',
           children: [
             GroupedRow(
+              leading: Icons.mail_outline,
               label: 'Inbox',
               value: unread == 0 ? null : '$unread new',
               valueColor: AppColors.primary,
@@ -202,38 +218,57 @@ class ProfileScreen extends StatelessWidget {
               onTap: () => context.push('/profile/inbox'),
             ),
             GroupedRow(
+              leading: Icons.person_outline,
               label: 'My Info',
               showChevron: true,
               onTap: () => context.push('/profile/info'),
             ),
             GroupedRow(
+              leading: Icons.favorite_outline,
               label: 'Car Interests',
               showChevron: true,
               onTap: () => context.push('/profile/interests'),
             ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        GroupedSection(
+          header: 'Marketplace',
+          children: [
             GroupedRow(
+              leading: Icons.receipt_long_outlined,
               label: 'Purchases',
               showChevron: true,
               onTap: () => context.push('/profile/purchases'),
             ),
             GroupedRow(
-              label: 'Market Insights',
-              showChevron: true,
-              onTap: () => context.push('/profile/insights'),
-            ),
-            GroupedRow(
+              leading: Icons.search,
               label: 'Find Sellers',
               showChevron: true,
               onTap: () => context.push('/sellers'),
             ),
-            if (profile.isAdmin)
+            GroupedRow(
+              leading: Icons.bar_chart,
+              label: 'Market Insights',
+              showChevron: true,
+              onTap: () => context.push('/profile/insights'),
+            ),
+          ],
+        ),
+        if (profile.isAdmin) ...[
+          const SizedBox(height: AppSpacing.space24),
+          GroupedSection(
+            header: 'Moderation',
+            children: [
               GroupedRow(
+                leading: Icons.admin_panel_settings_outlined,
                 label: 'Admin',
                 showChevron: true,
                 onTap: () => context.push('/admin'),
               ),
-          ],
-        ),
+            ],
+          ),
+        ],
         const SizedBox(height: AppSpacing.space24),
         GroupedSection(
           children: [
@@ -241,18 +276,40 @@ class ProfileScreen extends StatelessWidget {
               label: 'Log out',
               onTap: () => _confirmLogOut(context),
             ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space24),
-        GroupedSection(
-          children: [
             _CentredActionRow(
               label: 'Delete account',
               onTap: () => _confirmDeleteAccount(context),
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.space16),
       ],
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space8,
+        vertical: AppSpacing.space4 / 2,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.primaryMuted,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusBar),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.caption.copyWith(color: AppColors.primary),
+      ),
     );
   }
 }

@@ -44,6 +44,7 @@ class GroupedRow extends StatelessWidget {
   const GroupedRow({
     super.key,
     required this.label,
+    this.leading,
     this.labelColor,
     this.value,
     this.valueColor,
@@ -53,6 +54,7 @@ class GroupedRow extends StatelessWidget {
   });
 
   final String label;
+  final IconData? leading;
   final Color? labelColor;
   final String? value;
   final Color? valueColor;
@@ -70,6 +72,15 @@ class GroupedRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (leading != null)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.space12),
+              child: Icon(
+                leading,
+                size: AppSpacing.iconMd,
+                color: labelColor ?? AppColors.secondaryLabel,
+              ),
+            ),
           Text(
             label,
             style: labelColor == null
