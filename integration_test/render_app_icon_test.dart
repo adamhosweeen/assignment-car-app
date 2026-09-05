@@ -1,18 +1,17 @@
-import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:path_provider/path_provider.dart';
 
 const int _size = 1024;
 const Color _black = Color(0xFF000000);
 const Color _white = Color(0xFFFFFFFF);
 const Color _clear = Color(0x00000000);
 
-Future<void> _render(String dir, String name, Color background) async {
+Future<void> _render(String name, Color background) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final s = _size.toDouble();
@@ -53,7 +52,13 @@ Future<void> _render(String dir, String name, Color background) async {
 
   final image = await recorder.endRecording().toImage(_size, _size);
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  File('$dir/$name').writeAsBytesSync(bytes!.buffer.asUint8List());
+  final b64 = base64Encode(bytes!.buffer.asUint8List());
+  for (var i = 0; i < b64.length; i += 4000) {
+    // ignore: avoid_print
+    print('PNG64 $name ${b64.substring(i, (i + 4000).clamp(0, b64.length))}');
+  }
+  // ignore: avoid_print
+  print('PNG64END $name');
 }
 
 void main() {
@@ -62,20 +67,14 @@ void main() {
   testWidgets('renders the CarSell launcher icon sources', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: Text('CarSell', style: GoogleFonts.inter()),
-        ),
+        home: Scaffold(body: Text('CarSell', style: GoogleFonts.inter())),
       ),
     );
     await tester.runAsync(() async {
       await GoogleFonts.pendingFonts();
       await Future<void>.delayed(const Duration(seconds: 2));
-      final dir = (await getExternalStorageDirectory())!.path;
-      await _render(dir, 'icon.png', _black);
-      await _render(dir, 'icon_foreground.png', _clear);
-      // ignore: avoid_print
-      print('ICON_DIR=$dir');
-      expect(File('$dir/icon.png').lengthSync(), greaterThan(20000));
+      await _render('icon.png', _black);
+      await _render('icon_foreground.png', _clear);
     });
   });
 }
