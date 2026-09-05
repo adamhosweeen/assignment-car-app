@@ -172,7 +172,8 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
                   'while bidding is open.',
                 ),
               ),
-            if (l.status != ListingStatus.sold)
+            if (l.status != ListingStatus.sold &&
+                l.status != ListingStatus.bidding)
               ListTile(
                 leading: const Icon(
                   Icons.delete_outline,
@@ -203,6 +204,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('My Listings')),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'sell-new-listing-fab',
         onPressed: _startSelling,
         elevation: 0,
         focusElevation: 0,

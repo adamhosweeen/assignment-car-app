@@ -98,11 +98,11 @@ void main() {
   });
 
   group('canCancel', () {
-    test('the seller may cancel only before the first bid', () {
+    test('the seller may cancel while it is live, bids or not', () {
       expect(auction().canCancel('s1', now: _now), isTrue);
       expect(
         auction(bidCount: 1, highestBidMyr: 30000).canCancel('s1', now: _now),
-        isFalse,
+        isTrue,
       );
     });
 
@@ -113,6 +113,15 @@ void main() {
     test('an ended auction cannot be cancelled', () {
       final a = auction(endsAt: _now.subtract(const Duration(minutes: 1)));
       expect(a.canCancel('s1', now: _now), isFalse);
+    });
+  });
+
+  group('canDelete', () {
+    test('only the seller, and only once it is no longer running', () {
+      expect(auction().canDelete('s1'), isFalse);
+      expect(auction(status: AuctionStatus.settled).canDelete('s1'), isTrue);
+      expect(auction(status: AuctionStatus.cancelled).canDelete('s1'), isTrue);
+      expect(auction(status: AuctionStatus.settled).canDelete('x'), isFalse);
     });
   });
 

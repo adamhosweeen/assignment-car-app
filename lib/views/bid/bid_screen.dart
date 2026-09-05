@@ -5,12 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_providers.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
+import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_auction.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
+import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/bid/auction_card.dart';
 import 'package:assignment/widgets/bid/bid_status_badge.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
@@ -45,6 +47,22 @@ class _BidScreenState extends State<BidScreen> {
 
   void _retry() => setState(_subscribe);
 
+  Future<bool> _deleteAuction(AuctionWithListing entry) async {
+    final res = await context.read<BidsRepository>().deleteAuction(
+      entry.auction.id,
+    );
+    if (!mounted) return false;
+    switch (res) {
+      case Ok():
+        return true;
+      case Err(:final message):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+        return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,6 +87,7 @@ class _BidScreenState extends State<BidScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'bid-start-auction-fab',
         onPressed: () => context.push('/auction/new'),
         elevation: 0,
         focusElevation: 0,
@@ -98,6 +117,8 @@ class _BidScreenState extends State<BidScreen> {
             emptyMessage:
                 'Tap “Start an auction” and pick one of the cars you have '
                 'for sale.',
+            canDismiss: (e) => e.auction.status != AuctionStatus.running,
+            onDismiss: _deleteAuction,
           ),
         ],
       ),
@@ -111,15 +132,20 @@ class _AuctionList extends StatelessWidget {
     required this.onRetry,
     required this.emptyTitle,
     required this.emptyMessage,
+    this.canDismiss,
+    this.onDismiss,
   });
 
   final Stream<List<AuctionWithListing>> stream;
   final VoidCallback onRetry;
   final String emptyTitle;
   final String emptyMessage;
+  final bool Function(AuctionWithListing entry)? canDismiss;
+  final Future<bool> Function(AuctionWithListing entry)? onDismiss;
 
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
     return StreamBuilder<List<AuctionWithListing>>(
       stream: stream,
       builder: (context, snapshot) {
@@ -142,22 +168,61 @@ class _AuctionList extends StatelessWidget {
             message: emptyMessage,
           );
         }
-        return ListView.separated(
+        return ListView(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenPadding,
             AppSpacing.screenPadding,
             AppSpacing.screenPadding,
             AppSpacing.space32 * 2,
           ),
-          itemCount: items.length,
-          separatorBuilder: (_, _) =>
+          children: [
+            for (final entry in items) ...[
+              _tile(context, entry),
               const SizedBox(height: AppSpacing.space12),
-          itemBuilder: (_, i) => AuctionCard(
-            entry: items[i],
-            onTap: () => context.push('/auction/${items[i].auction.id}'),
-          ),
+            ],
+            if (onDismiss != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space4,
+                ),
+                child: Text(
+                  'Swipe left to delete a finished auction.',
+                  style: text.footnote.copyWith(
+                    color: AppColors.secondaryLabel,
+                  ),
+                ),
+              ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _tile(BuildContext context, AuctionWithListing entry) {
+    final card = AuctionCard(
+      entry: entry,
+      onTap: () => context.push('/auction/${entry.auction.id}'),
+    );
+    final dismiss = onDismiss;
+    if (dismiss == null || !(canDismiss?.call(entry) ?? false)) return card;
+    return Dismissible(
+      key: ValueKey(entry.auction.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => dismiss(entry),
+      background: ClipRRect(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        child: const ColoredBox(
+          color: AppColors.destructive,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: EdgeInsets.only(right: AppSpacing.space16),
+              child: Icon(Icons.delete_outline, color: AppColors.onPrimary),
+            ),
+          ),
+        ),
+      ),
+      child: card,
     );
   }
 }

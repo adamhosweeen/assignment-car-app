@@ -9,6 +9,7 @@ import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
+import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_validation.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -21,6 +22,9 @@ import 'package:assignment/widgets/common/section_header.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 
 const Key bidAmountFieldKey = Key('auction-bid-amount');
+const Key placeBidButtonKey = Key('auction-place-bid');
+const Key raiseBidButtonKey = Key('auction-raise-bid');
+const Key deleteAuctionButtonKey = Key('auction-delete');
 
 class AuctionScreen extends StatefulWidget {
   const AuctionScreen({super.key, required this.id});
@@ -33,33 +37,41 @@ class AuctionScreen extends StatefulWidget {
 
 class _AuctionScreenState extends State<AuctionScreen> {
   late Stream<AuctionWithListing> _auction;
+  late Stream<List<Bid>> _bids;
   final _amount = TextEditingController();
-  Timer? _tick;
 
+  bool _touched = false;
+  bool _raising = false;
   bool _submitting = false;
   bool _submitted = false;
   String? _amountError;
   String? _serverError;
-  int? _prefilledFor;
 
   @override
   void initState() {
     super.initState();
     _subscribe();
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
   }
 
   void _subscribe() {
-    _auction = context.read<BidsRepository>().watchAuction(widget.id);
+    final bids = context.read<BidsRepository>();
+    _auction = bids.watchAuction(widget.id);
+    _bids = bids.watchBidsForAuction(widget.id);
   }
 
   @override
   void dispose() {
-    _tick?.cancel();
     _amount.dispose();
     super.dispose();
+  }
+
+  void _setAmount(int value) {
+    _amount.text = '$value';
+    _amount.selection = TextSelection.collapsed(offset: _amount.text.length);
+    setState(() {
+      _touched = true;
+      _amountError = null;
+    });
   }
 
   Future<void> _placeBid(Auction auction) async {
@@ -74,10 +86,11 @@ class _AuctionScreenState extends State<AuctionScreen> {
     setState(() => _amountError = error);
     if (error != null) return;
 
+    final amount = parseBidAmount(_amount.text)!;
     setState(() => _submitting = true);
     final res = await context.read<BidsRepository>().placeBid(
       auction.id,
-      parseBidAmount(_amount.text)!,
+      amount,
     );
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -85,12 +98,21 @@ class _AuctionScreenState extends State<AuctionScreen> {
       case Ok():
         _amount.clear();
         setState(() {
+          _touched = false;
+          _raising = false;
           _submitted = false;
-          _prefilledFor = null;
         });
+        FocusScope.of(context).unfocus();
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Bid placed.')));
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'Bid placed — you’re the highest bidder at '
+                '${formatPrice(amount)}.',
+              ),
+            ),
+          );
       case Err(:final message):
         setState(() => _serverError = message);
     }
@@ -102,9 +124,13 @@ class _AuctionScreenState extends State<AuctionScreen> {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Cancel this auction?'),
-        content: const Text(
-          'The car goes back on sale at its asking price. You can start '
-          'another auction later.',
+        content: Text(
+          auction.bidCount == 0
+              ? 'The car goes back on sale at its asking price. You can '
+                    'start another auction later.'
+              : 'Every bid on it will be marked as lost and the bidders '
+                    'will be told. The car goes back on sale at its asking '
+                    'price.',
         ),
         actions: [
           TextButton(
@@ -124,6 +150,40 @@ class _AuctionScreenState extends State<AuctionScreen> {
     if (!mounted) return;
     if (res case Err(:final message)) {
       setState(() => _serverError = message);
+    }
+  }
+
+  Future<void> _delete(Auction auction) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete this auction?'),
+        content: const Text(
+          'This removes it from your auctions list. A purchase it produced '
+          'stays in the buyer’s history.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final res = await context.read<BidsRepository>().deleteAuction(auction.id);
+    if (!mounted) return;
+    switch (res) {
+      case Ok():
+        Navigator.of(context).maybePop();
+      case Err(:final message):
+        setState(() => _serverError = message);
     }
   }
 
@@ -149,13 +209,17 @@ class _AuctionScreenState extends State<AuctionScreen> {
           if (entry == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          return _body(context, entry);
+          return StreamBuilder<List<Bid>>(
+            stream: _bids,
+            builder: (context, bids) =>
+                _body(context, entry, bids.data ?? const []),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, AuctionWithListing entry) {
+  Widget _body(BuildContext context, AuctionWithListing entry, List<Bid> bids) {
     final text = Theme.of(context).textTheme;
     final auction = entry.auction;
     final uid = context.read<AuthRepository>().currentUser?.id;
@@ -163,11 +227,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
     final live = auction.isLive();
     final finalising =
         auction.status == AuctionStatus.running && auction.hasEnded();
-
-    if (live && !isSeller && _prefilledFor != auction.minimumNextBidMyr) {
-      _amount.text = '${auction.minimumNextBidMyr}';
-      _prefilledFor = auction.minimumNextBidMyr;
-    }
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -195,15 +254,16 @@ class _AuctionScreenState extends State<AuctionScreen> {
               label: 'Minimum next bid',
               value: formatPrice(auction.minimumNextBidMyr),
             ),
-            GroupedRow(
-              label: finalising ? 'Status' : 'Time left',
-              value: finalising
-                  ? 'Finalising…'
-                  : live
-                  ? formatCountdown(auction.remaining())
-                  : auction.status.label,
-              valueColor: live ? AppColors.warning : null,
-            ),
+            if (finalising)
+              const GroupedRow(
+                label: 'Status',
+                value: 'Finalising…',
+                valueColor: AppColors.warning,
+              )
+            else if (live)
+              _Countdown(auction: auction)
+            else
+              GroupedRow(label: 'Status', value: auction.status.label),
           ],
         ),
         if (finalising) ...[
@@ -216,15 +276,15 @@ class _AuctionScreenState extends State<AuctionScreen> {
         ],
         if (_serverError != null) ...[
           const SizedBox(height: AppSpacing.space16),
-          InlineNotice(text: _serverError!),
+          InlineNotice(text: _serverError!, kind: NoticeKind.error),
         ],
         const SizedBox(height: AppSpacing.space20),
         if (isSeller)
-          _sellerActions(context, auction)
+          _sellerSection(context, auction, bids)
         else if (live)
-          _bidForm(context, auction)
+          _buyerSection(context, auction, bids)
         else
-          _outcome(context, auction),
+          _outcome(context, auction, bids),
         const SizedBox(height: AppSpacing.space24),
         const SectionHeader('Car'),
         GroupedSection(
@@ -250,101 +310,311 @@ class _AuctionScreenState extends State<AuctionScreen> {
     );
   }
 
-  Widget _bidForm(BuildContext context, Auction auction) {
+  Widget _buyerSection(BuildContext context, Auction auction, List<Bid> bids) {
     final text = Theme.of(context).textTheme;
+    final mine = bids.isEmpty ? null : bids.first;
+    final leading =
+        mine != null &&
+        auction.highestBidMyr != null &&
+        mine.amountMyr >= auction.highestBidMyr!;
+    final outbid = mine != null && !leading;
+
+    if (leading && !_raising) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InlineNotice(
+            kind: NoticeKind.success,
+            text:
+                'You’re the highest bidder at ${formatPrice(mine.amountMyr)}.',
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            'If someone outbids you we’ll let you know. You can also raise '
+            'your bid now to stay ahead.',
+            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: raiseBidButtonKey,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: AppColors.primary,
+              ),
+              onPressed: () => setState(() => _raising = true),
+              child: const Text('Raise my bid'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final minimum = auction.minimumNextBidMyr;
+    if (!_touched && _amount.text != '$minimum') {
+      _amount.text = '$minimum';
+    }
+    final typed = parseBidAmount(_amount.text);
+    final belowMinimum = typed != null && typed < minimum;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Your bid', style: text.headline),
+        if (outbid) ...[
+          InlineNotice(
+            kind: NoticeKind.error,
+            text:
+                'You’ve been outbid. Your ${formatPrice(mine.amountMyr)} is '
+                'below the current ${formatPrice(auction.highestBidMyr!)}.',
+          ),
+          const SizedBox(height: AppSpacing.space12),
+        ],
+        Text(
+          mine == null ? 'Place your bid' : 'Raise your bid',
+          style: text.headline,
+        ),
         const SizedBox(height: AppSpacing.space8),
         TextField(
           key: bidAmountFieldKey,
           controller: _amount,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: (_) => setState(() {
+            _touched = true;
+            _amountError = null;
+          }),
           decoration: InputDecoration(
             prefixText: 'RM ',
-            hintText: '${auction.minimumNextBidMyr}',
+            hintText: '$minimum',
             errorText: _submitted ? _amountError : null,
           ),
         ),
         const SizedBox(height: AppSpacing.space8),
+        Wrap(
+          spacing: AppSpacing.space8,
+          runSpacing: AppSpacing.space8,
+          children: [
+            _AmountChip(
+              label: 'Minimum ${formatPrice(minimum)}',
+              onTap: () => _setAmount(minimum),
+            ),
+            for (final steps in const [1, 2, 5])
+              _AmountChip(
+                label: '+${formatPrice(auction.minIncrementMyr * steps)}',
+                onTap: () =>
+                    _setAmount(minimum + auction.minIncrementMyr * steps),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space8),
         Text(
-          'Bids go up in steps of at least '
-          '${formatPrice(auction.minIncrementMyr)}.',
-          style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+          belowMinimum
+              ? 'That’s below the minimum of ${formatPrice(minimum)}.'
+              : 'Bids go up in steps of at least '
+                    '${formatPrice(auction.minIncrementMyr)}.',
+          style: text.footnote.copyWith(
+            color: belowMinimum
+                ? AppColors.destructive
+                : AppColors.secondaryLabel,
+          ),
         ),
         const SizedBox(height: AppSpacing.space16),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: _submitting ? null : () => _placeBid(auction),
+            key: placeBidButtonKey,
+            onPressed: _submitting || belowMinimum
+                ? null
+                : () => _placeBid(auction),
             child: _submitting
                 ? const ButtonSpinner()
-                : const Text('Place bid'),
+                : Text(
+                    typed == null ? 'Place bid' : 'Bid ${formatPrice(typed)}',
+                  ),
           ),
         ),
+        if (_raising) ...[
+          const SizedBox(height: AppSpacing.space8),
+          Center(
+            child: TextButton(
+              onPressed: () => setState(() {
+                _raising = false;
+                _touched = false;
+                _amount.clear();
+              }),
+              child: const Text('Keep my current bid'),
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _sellerActions(BuildContext context, Auction auction) {
+  Widget _sellerSection(BuildContext context, Auction auction, List<Bid> bids) {
     final text = Theme.of(context).textTheme;
-    if (!auction.isLive()) {
-      return Text(
-        auction.status == AuctionStatus.cancelled
-            ? 'You cancelled this auction.'
-            : auction.highestBidMyr == null
-            ? 'Ended with no bids. The car is hidden — put it back on sale '
-                  'from My Listings.'
-            : 'Sold for ${formatPrice(auction.highestBidMyr!)}.',
-        style: text.body.copyWith(color: AppColors.secondaryLabel),
-      );
-    }
     final uid = context.read<AuthRepository>().currentUser?.id ?? '';
-    final canCancel = auction.canCancel(uid);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('This is your auction', style: text.headline),
-        const SizedBox(height: AppSpacing.space8),
-        Text(
-          canCancel
-              ? 'Nobody has bid yet, so you can still cancel.'
-              : 'Someone has already bid, so this has to run its course.',
-          style: text.footnote.copyWith(color: AppColors.secondaryLabel),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.groupedBackground,
-              foregroundColor: canCancel
-                  ? AppColors.destructive
-                  : AppColors.tertiaryLabel,
-            ),
-            onPressed: canCancel ? () => _cancel(auction) : null,
-            child: const Text('Cancel auction'),
+        if (!auction.isLive()) ...[
+          Text(
+            auction.status == AuctionStatus.cancelled
+                ? 'You cancelled this auction.'
+                : auction.highestBidMyr == null
+                ? 'Ended with no bids. The car is hidden — put it back on '
+                      'sale from My Listings.'
+                : 'Sold for ${formatPrice(auction.highestBidMyr!)}.',
+            style: text.body.copyWith(color: AppColors.secondaryLabel),
           ),
-        ),
+          const SizedBox(height: AppSpacing.space12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: deleteAuctionButtonKey,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: AppColors.destructive,
+              ),
+              onPressed: () => _delete(auction),
+              child: const Text('Delete auction'),
+            ),
+          ),
+        ] else ...[
+          Text('This is your auction', style: text.headline),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            auction.bidCount == 0
+                ? 'Nobody has bid yet. You can cancel at any time.'
+                : 'Cancelling now marks every bid as lost and tells the '
+                      'bidders. The car goes back on sale.',
+            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: auction.canCancel(uid)
+                    ? AppColors.destructive
+                    : AppColors.tertiaryLabel,
+              ),
+              onPressed: auction.canCancel(uid) ? () => _cancel(auction) : null,
+              child: const Text('Cancel auction'),
+            ),
+          ),
+        ],
+        if (bids.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.space24),
+          const SectionHeader('Bids so far'),
+          GroupedSection(
+            children: [
+              for (final b in bids)
+                GroupedRow(
+                  label: formatPrice(b.amountMyr),
+                  labelColor: b.status == BidStatus.won
+                      ? AppColors.success
+                      : null,
+                  value: formatRelative(b.createdAt),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
-  Widget _outcome(BuildContext context, Auction auction) {
-    final text = Theme.of(context).textTheme;
+  Widget _outcome(BuildContext context, Auction auction, List<Bid> bids) {
+    final won = bids.any((b) => b.status == BidStatus.won);
     final message = switch (auction.status) {
       AuctionStatus.cancelled => 'This auction was cancelled by the seller.',
       _ when auction.highestBidMyr == null =>
         'This auction ended without any bids.',
-      _ =>
-        'This auction ended at ${formatPrice(auction.highestBidMyr!)}. '
-            'Check My bids to see how yours did.',
+      _ when won =>
+        'You won this auction at ${formatPrice(auction.highestBidMyr!)}. '
+            'It’s in your Purchases.',
+      _ when bids.isNotEmpty =>
+        'This auction ended at ${formatPrice(auction.highestBidMyr!)} — '
+            'a higher bid than yours.',
+      _ => 'This auction ended at ${formatPrice(auction.highestBidMyr!)}.',
     };
-    return Text(
-      message,
-      style: text.body.copyWith(color: AppColors.secondaryLabel),
+    return InlineNotice(
+      kind: won ? NoticeKind.success : NoticeKind.info,
+      text: message,
+    );
+  }
+}
+
+class _Countdown extends StatefulWidget {
+  const _Countdown({required this.auction});
+
+  final Auction auction;
+
+  @override
+  State<_Countdown> createState() => _CountdownState();
+}
+
+class _CountdownState extends State<_Countdown> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GroupedRow(
+      label: 'Time left',
+      value: formatCountdown(widget.auction.remaining()),
+      valueColor: AppColors.warning,
+    );
+  }
+}
+
+class _AmountChip extends StatelessWidget {
+  const _AmountChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+          border: Border.all(
+            color: AppColors.separator,
+            width: AppSpacing.hairline,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space8,
+          ),
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.footnote.copyWith(color: AppColors.primary),
+          ),
+        ),
+      ),
     );
   }
 }

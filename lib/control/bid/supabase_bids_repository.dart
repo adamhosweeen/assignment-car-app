@@ -224,13 +224,26 @@ class SupabaseBidsRepository implements BidsRepository {
     }
   }
 
+  @override
+  Future<Result<void>> deleteAuction(String auctionId) async {
+    try {
+      await _client
+          .rpc<void>('delete_auction', params: {'p_auction_id': auctionId})
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } catch (e) {
+      return Err(_message(e));
+    }
+  }
+
   static const List<String> _passThrough = [
     'Bid at least',
     'auction has ended',
     'no longer available',
     'your own car',
     'Only the seller',
-    'has to run its course',
+    'already ended',
+    'before deleting',
     'Only a car that is on sale',
     'at most 7 days',
     'end in the future',

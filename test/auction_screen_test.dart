@@ -1,0 +1,422 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/bid/bids_repository.dart';
+import 'package:assignment/model/auth/registration_data.dart';
+import 'package:assignment/model/bid/auction.dart';
+import 'package:assignment/model/bid/auction_with_listing.dart';
+import 'package:assignment/model/bid/bid.dart';
+import 'package:assignment/model/bid/bid_with_auction.dart';
+import 'package:assignment/model/listing/listing.dart';
+import 'package:assignment/model/listing/listing_enums.dart';
+import 'package:assignment/model/profile/car_interests.dart';
+import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/utils/result.dart';
+import 'package:assignment/views/bid/auction_screen.dart';
+
+final _now = DateTime.utc(2026, 9, 5, 12);
+
+final _buyer = Profile(
+  id: 'buyer-1',
+  email: 'b@example.com',
+  createdAt: DateTime.utc(2026, 1, 1),
+);
+
+final _seller = Profile(
+  id: 'seller-1',
+  email: 's@example.com',
+  createdAt: DateTime.utc(2026, 1, 1),
+);
+
+final _listing = Listing(
+  id: 'l1',
+  sellerId: 'seller-1',
+  status: ListingStatus.bidding,
+  make: 'Perodua',
+  model: 'Myvi',
+  year: 2020,
+  mileageKm: 38000,
+  transmission: Transmission.automatic,
+  fuelType: FuelType.petrol,
+  bodyType: BodyType.hatchback,
+  colour: 'White',
+  ownersCount: 1,
+  accidentFree: true,
+  registrationRegion: RegistrationRegion.west,
+  state: 'Selangor',
+  city: 'Petaling Jaya',
+  priceMyr: 45000,
+  createdAt: _now,
+  updatedAt: _now,
+);
+
+Auction _auction({
+  int? highestBidMyr,
+  int bidCount = 0,
+  AuctionStatus status = AuctionStatus.running,
+}) => Auction(
+  id: 'a1',
+  listingId: 'l1',
+  sellerId: 'seller-1',
+  startingPriceMyr: 30000,
+  minIncrementMyr: 500,
+  endsAt: DateTime.now().toUtc().add(const Duration(hours: 2)),
+  highestBidMyr: highestBidMyr,
+  bidCount: bidCount,
+  status: status,
+  createdAt: _now,
+);
+
+Bid _bid(int amount) => Bid(
+  id: 'b-$amount',
+  listingId: 'l1',
+  auctionId: 'a1',
+  bidderId: 'buyer-1',
+  amountMyr: amount,
+  createdAt: _now,
+  updatedAt: _now,
+);
+
+class _FakeAuth implements AuthRepository {
+  _FakeAuth(this.user);
+
+  final Profile user;
+
+  @override
+  Profile? get currentUser => user;
+
+  @override
+  Stream<Profile?> authState() => Stream.value(user);
+
+  @override
+  Future<Result<Profile>> signIn({
+    required String email,
+    required String password,
+  }) async => Ok(user);
+
+  @override
+  Future<Result<Profile>> signUp({
+    required String email,
+    required String password,
+    required RegistrationData data,
+  }) async => Ok(user);
+
+  @override
+  Future<Result<Profile>> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? state,
+    CarInterests? interests,
+    String? avatarUrl,
+  }) async => Ok(user);
+
+  @override
+  Future<Result<Profile>> updateAvatar(String localPath) async => Ok(user);
+
+  @override
+  Future<Result<Profile>> removeAvatar() async => Ok(user);
+
+  @override
+  Future<Result<void>> deleteAccount() async => const Ok(null);
+
+  @override
+  Future<void> signOut() async {}
+}
+
+class _FakeBids implements BidsRepository {
+  _FakeBids({required Auction auction, List<Bid> bids = const []})
+    : _auctionCtrl = StreamController<AuctionWithListing>.broadcast(),
+      _bidsCtrl = StreamController<List<Bid>>.broadcast() {
+    _auction = auction;
+    _bids = bids;
+  }
+
+  final StreamController<AuctionWithListing> _auctionCtrl;
+  final StreamController<List<Bid>> _bidsCtrl;
+  late Auction _auction;
+  late List<Bid> _bids;
+  final List<int> placed = [];
+
+  void push({Auction? auction, List<Bid>? bids}) {
+    if (auction != null) _auction = auction;
+    if (bids != null) _bids = bids;
+    _auctionCtrl.add(AuctionWithListing(auction: _auction, listing: _listing));
+    _bidsCtrl.add(_bids);
+  }
+
+  Future<void> close() async {
+    await _auctionCtrl.close();
+    await _bidsCtrl.close();
+  }
+
+  @override
+  Stream<AuctionWithListing> watchAuction(String auctionId) async* {
+    yield AuctionWithListing(auction: _auction, listing: _listing);
+    yield* _auctionCtrl.stream;
+  }
+
+  @override
+  Stream<List<Bid>> watchBidsForAuction(String auctionId) async* {
+    yield _bids;
+    yield* _bidsCtrl.stream;
+  }
+
+  @override
+  Future<Result<void>> placeBid(String auctionId, int amountMyr) async {
+    placed.add(amountMyr);
+    push(
+      auction: _auction.copyWith(
+        highestBidMyr: amountMyr,
+        bidCount: _auction.bidCount + 1,
+      ),
+      bids: [_bid(amountMyr), ..._bids],
+    );
+    return const Ok(null);
+  }
+
+  @override
+  Stream<List<AuctionWithListing>> watchLiveAuctions() => const Stream.empty();
+
+  @override
+  Stream<List<BidWithAuction>> watchMyBids() => const Stream.empty();
+
+  @override
+  Stream<List<AuctionWithListing>> watchMyAuctions() => const Stream.empty();
+
+  @override
+  Future<Result<String>> startAuction({
+    required String listingId,
+    required int startingPriceMyr,
+    required int minIncrementMyr,
+    required DateTime endsAt,
+  }) async => const Ok('a1');
+
+  @override
+  Future<Result<void>> cancelAuction(String auctionId) async => const Ok(null);
+
+  final List<String> deletedAuctions = [];
+
+  @override
+  Future<Result<void>> deleteAuction(String auctionId) async {
+    deletedAuctions.add(auctionId);
+    return const Ok(null);
+  }
+}
+
+Widget _app(_FakeBids bids, {Profile? as}) => MultiProvider(
+  providers: [
+    Provider<AuthRepository>.value(value: _FakeAuth(as ?? _buyer)),
+    Provider<BidsRepository>.value(value: bids),
+  ],
+  child: MaterialApp(
+    theme: AppTheme.light,
+    home: const AuctionScreen(id: 'a1'),
+  ),
+);
+
+String _fieldText(WidgetTester tester) =>
+    tester.widget<TextField>(find.byKey(bidAmountFieldKey)).controller!.text;
+
+Future<void> _pump(WidgetTester tester, _FakeBids bids, {Profile? as}) async {
+  tester.view.physicalSize = const Size(800, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(_app(bids, as: as));
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  group('buyer with no bid yet', () {
+    testWidgets('the field is prefilled with the minimum next bid', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      expect(find.text('Place your bid'), findsOneWidget);
+      expect(_fieldText(tester), '30000');
+      expect(find.text('Bid RM 30,000'), findsOneWidget);
+    });
+
+    testWidgets('a chip sets the amount and updates the button label', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction(highestBidMyr: 30000));
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      await tester.tap(find.text('+RM 1,000'));
+      await tester.pumpAndSettle();
+
+      expect(_fieldText(tester), '31500');
+      expect(find.text('Bid RM 31,500'), findsOneWidget);
+    });
+
+    testWidgets('typing below the minimum disables the button with a hint', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      await tester.enterText(find.byKey(bidAmountFieldKey), '25000');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('below the minimum'), findsOneWidget);
+      final button = tester.widget<FilledButton>(find.byKey(placeBidButtonKey));
+      expect(button.onPressed, isNull);
+      expect(bids.placed, isEmpty);
+    });
+
+    testWidgets('what the user typed survives someone else bidding', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      await tester.enterText(find.byKey(bidAmountFieldKey), '40000');
+      await tester.pumpAndSettle();
+
+      bids.push(auction: _auction(highestBidMyr: 32000, bidCount: 1));
+      await tester.pumpAndSettle();
+
+      expect(
+        _fieldText(tester),
+        '40000',
+        reason: 'the minimum changed but the typed amount must stay',
+      );
+      expect(find.text('RM 32,500'), findsOneWidget);
+    });
+
+    testWidgets('an untouched prefill follows the minimum as it moves', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+      expect(_fieldText(tester), '30000');
+
+      bids.push(auction: _auction(highestBidMyr: 32000, bidCount: 1));
+      await tester.pumpAndSettle();
+
+      expect(_fieldText(tester), '32500');
+    });
+  });
+
+  group('after placing a bid', () {
+    testWidgets('shows the leading state instead of a fresh form', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      await tester.tap(find.byKey(placeBidButtonKey));
+      await tester.pumpAndSettle();
+
+      expect(bids.placed, [30000]);
+      expect(find.textContaining('highest bidder at RM 30,000'), findsWidgets);
+      expect(find.byKey(bidAmountFieldKey), findsNothing);
+      expect(find.byKey(raiseBidButtonKey), findsOneWidget);
+    });
+
+    testWidgets('raise my bid reopens the form above the current highest', (
+      tester,
+    ) async {
+      final bids = _FakeBids(
+        auction: _auction(highestBidMyr: 30000, bidCount: 1),
+        bids: [_bid(30000)],
+      );
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      await tester.tap(find.byKey(raiseBidButtonKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Raise your bid'), findsOneWidget);
+      expect(_fieldText(tester), '30500');
+      expect(find.text('Keep my current bid'), findsOneWidget);
+    });
+  });
+
+  group('after being outbid', () {
+    testWidgets('says so and offers the form again', (tester) async {
+      final bids = _FakeBids(
+        auction: _auction(highestBidMyr: 33000, bidCount: 2),
+        bids: [_bid(30000)],
+      );
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      expect(find.textContaining('You’ve been outbid'), findsOneWidget);
+      expect(find.text('Raise your bid'), findsOneWidget);
+      expect(_fieldText(tester), '33500');
+    });
+  });
+
+  group('seller', () {
+    testWidgets('sees every bid and no bid form', (tester) async {
+      final bids = _FakeBids(
+        auction: _auction(highestBidMyr: 33000, bidCount: 2),
+        bids: [_bid(33000), _bid(30000)],
+      );
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      expect(find.text('This is your auction'), findsOneWidget);
+      expect(find.text('BIDS SO FAR'), findsOneWidget);
+      expect(find.text('RM 33,000'), findsWidgets);
+      expect(find.byKey(bidAmountFieldKey), findsNothing);
+      final cancel = tester.widget<FilledButton>(
+        find.ancestor(
+          of: find.text('Cancel auction'),
+          matching: find.byType(FilledButton),
+        ),
+      );
+      expect(
+        cancel.onPressed,
+        isNotNull,
+        reason: 'the seller may cancel at any time, bids or not',
+      );
+    });
+
+    testWidgets('a finished auction offers Delete auction', (tester) async {
+      final bids = _FakeBids(
+        auction: _auction(
+          highestBidMyr: 33000,
+          bidCount: 2,
+          status: AuctionStatus.settled,
+        ),
+      );
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      await tester.tap(find.byKey(deleteAuctionButtonKey));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete this auction?'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(bids.deletedAuctions, ['a1']);
+    });
+
+    testWidgets('a live auction has no Delete button', (tester) async {
+      final bids = _FakeBids(
+        auction: _auction(highestBidMyr: 33000, bidCount: 2),
+      );
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      expect(find.byKey(deleteAuctionButtonKey), findsNothing);
+    });
+  });
+}

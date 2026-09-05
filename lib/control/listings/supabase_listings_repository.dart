@@ -237,7 +237,16 @@ class SupabaseListingsRepository implements ListingsRepository {
   @override
   Future<Result<void>> deleteListing(String id) async {
     try {
-      await _client.from('listings').delete().eq('id', id);
+      final deleted = await _client
+          .from('listings')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      if (deleted.isEmpty) {
+        return const Err(
+          'This car can’t be deleted while it is sold or in an auction.',
+        );
+      }
       return const Ok(null);
     } catch (e) {
       return Err(mapError(e));

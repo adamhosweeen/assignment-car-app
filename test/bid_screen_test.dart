@@ -109,6 +109,15 @@ class _FakeAuth implements AuthRepository {
 /// listening to the same one twice throws "Stream has already been listened
 /// to", which is the bug this file pins.
 class _FakeBids implements BidsRepository {
+  _FakeBids({List<AuctionWithListing>? live, this.myAuctions = const []}) {
+    _live = live;
+  }
+
+  late final List<AuctionWithListing>? _live;
+  List<AuctionWithListing> myAuctions;
+  final List<String> deletedAuctions = [];
+  final _myAuctionsCtrl =
+      StreamController<List<AuctionWithListing>>.broadcast();
   int liveOpened = 0;
 
   Stream<T> _single<T>(T value) {
@@ -120,14 +129,28 @@ class _FakeBids implements BidsRepository {
   @override
   Stream<List<AuctionWithListing>> watchLiveAuctions() {
     liveOpened++;
-    return _single([_auction]);
+    return _single(_live ?? [_auction]);
   }
 
   @override
   Stream<List<BidWithAuction>> watchMyBids() => _single(const []);
 
   @override
-  Stream<List<AuctionWithListing>> watchMyAuctions() => _single(const []);
+  Stream<List<AuctionWithListing>> watchMyAuctions() async* {
+    yield myAuctions;
+    yield* _myAuctionsCtrl.stream;
+  }
+
+  @override
+  Future<Result<void>> deleteAuction(String auctionId) async {
+    deletedAuctions.add(auctionId);
+    myAuctions = [
+      for (final a in myAuctions)
+        if (a.auction.id != auctionId) a,
+    ];
+    _myAuctionsCtrl.add(myAuctions);
+    return const Ok(null);
+  }
 
   @override
   Stream<AuctionWithListing> watchAuction(String auctionId) =>
@@ -184,6 +207,48 @@ void main() {
       1,
       reason: 'the live stream is subscribed once and kept alive',
     );
+  });
+
+  testWidgets('a finished auction can be swiped away from My auctions', (
+    tester,
+  ) async {
+    final ended = AuctionWithListing(
+      auction: _auction.auction.copyWith(
+        status: AuctionStatus.settled,
+        highestBidMyr: 31000,
+        bidCount: 1,
+      ),
+      listing: _listing,
+    );
+    final bids = _FakeBids(live: const [], myAuctions: [ended]);
+    await tester.pumpWidget(_app(bids));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('My auctions'));
+    await tester.pumpAndSettle();
+    expect(find.text('2020 Perodua Myvi'), findsOneWidget);
+    expect(find.textContaining('Swipe left'), findsOneWidget);
+
+    await tester.drag(find.text('2020 Perodua Myvi'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    expect(bids.deletedAuctions, ['a1']);
+    expect(find.text('2020 Perodua Myvi'), findsNothing);
+  });
+
+  testWidgets('a live auction cannot be swiped away', (tester) async {
+    final bids = _FakeBids(live: const [], myAuctions: [_auction]);
+    await tester.pumpWidget(_app(bids));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('My auctions'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('2020 Perodua Myvi'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    expect(bids.deletedAuctions, isEmpty);
+    expect(find.text('2020 Perodua Myvi'), findsOneWidget);
   });
 
   testWidgets('every segment renders its empty state', (tester) async {

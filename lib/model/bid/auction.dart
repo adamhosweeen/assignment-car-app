@@ -91,7 +91,10 @@ class Auction {
   bool isSeller(String userId) => sellerId == userId;
 
   bool canCancel(String userId, {DateTime? now}) =>
-      isSeller(userId) && isLive(now: now) && bidCount == 0;
+      isSeller(userId) && isLive(now: now);
+
+  bool canDelete(String userId) =>
+      isSeller(userId) && status != AuctionStatus.running;
 
   Auction copyWith({
     String? id,

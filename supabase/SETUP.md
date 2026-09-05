@@ -261,6 +261,18 @@ backend).
                        $$select public.settle_due_auctions()$$);
   ```
 
+### 2r. Cancel any live auction, delete finished ones (`migrations/0015_auction_cancel_delete.sql`)
+- SQL Editor → paste
+  [`migrations/0015_auction_cancel_delete.sql`](migrations/0015_auction_cancel_delete.sql)
+  → Run. Apply **after** 0014.
+- `cancel_auction` no longer refuses once someone has bid: every bid is marked
+  lost, each bidder gets an "Auction cancelled" notification, and the car goes
+  back to `selling`.
+- New `delete_auction`: the seller can remove a settled or cancelled auction
+  from their history. Its bids go with it; a purchase it produced is untouched
+  (`purchases` references the listing and snapshots the car). A running
+  auction can never be deleted — cancel it first.
+
 ### Acceptance check for 0013 + 0014
 There is no SQL test harness in this repo, so run this by hand once:
 1. `select status, count(*) from public.listings group by 1;` → only the four
@@ -270,7 +282,9 @@ There is no SQL test harness in this repo, so run this by hand once:
    replaced by "Go to the auction".
 3. Buyer B: bid below the minimum → refused with the required amount; bid the
    starting price → accepted; raise it → accepted.
-4. Seller A can no longer cancel (someone has bid) and cannot mark the car sold.
+4. Seller A cannot mark the car sold or delete it while bidding runs.
+   Cancelling is allowed at any time and marks B's bids lost — try it on a
+   second auction, then swipe the cancelled one away from My auctions.
 5. Expire it: `update public.auctions set ends_at = now() where id = '<id>';`
    then reopen the Bid tab. The car is **Sold** at the winning amount, a
    `purchases` row exists for B with `method = 'bid'`, and the won / outbid /

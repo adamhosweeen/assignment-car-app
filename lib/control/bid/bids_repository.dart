@@ -24,4 +24,6 @@ abstract interface class BidsRepository {
   Future<Result<void>> placeBid(String auctionId, int amountMyr);
 
   Future<Result<void>> cancelAuction(String auctionId);
+
+  Future<Result<void>> deleteAuction(String auctionId);
 }
