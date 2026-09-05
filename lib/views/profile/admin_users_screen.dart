@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:assignment/control/admin/admin_providers.dart';
 import 'package:assignment/control/admin/admin_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/model/admin/admin_user_stats.dart';
+import 'package:assignment/model/admin/admin_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -21,7 +21,7 @@ class AdminUsersTab extends StatefulWidget {
     required this.onChanged,
   });
 
-  final Future<List<AdminUserStats>> users;
+  final Future<List<AdminUser>> users;
 
   final VoidCallback onChanged;
 
@@ -40,7 +40,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
     super.dispose();
   }
 
-  Future<void> _confirmSetBanned(AdminUserStats user, bool ban) async {
+  Future<void> _confirmSetBanned(AdminUser user, bool ban) async {
     final admin = context.read<AdminRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -89,7 +89,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
     }
   }
 
-  void _showDetails(AdminUserStats user) {
+  void _showDetails(AdminUser user) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -110,7 +110,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                 children: [
                   ProfileAvatar(
                     name: user.name,
-                    avatarUrl: user.avatarUrl,
+                    avatarUrl: user.profile.avatarUrl,
                     size: AppSpacing.avatarSm,
                   ),
                   const SizedBox(width: AppSpacing.space12),
@@ -127,22 +127,29 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
               const SizedBox(height: AppSpacing.space16),
               GroupedSection(
                 children: [
-                  GroupedRow(label: 'Role', value: user.role),
+                  GroupedRow(label: 'Role', value: user.profile.role),
                   GroupedRow(
                     label: 'Banned',
                     value: user.banned ? 'Yes' : 'No',
                     valueColor: user.banned ? AppColors.destructive : null,
                   ),
-                  GroupedRow(label: 'Email', value: user.email ?? '—'),
-                  GroupedRow(label: 'Phone', value: user.phone ?? '—'),
+                  GroupedRow(
+                    label: 'Email',
+                    value: user.profile.email.isEmpty
+                        ? '—'
+                        : user.profile.email,
+                  ),
+                  GroupedRow(label: 'Phone', value: user.profile.phone ?? '—'),
                   GroupedRow(
                     label: 'Date of birth',
-                    value: user.dob == null ? '—' : formatDate(user.dob!),
+                    value: user.profile.dob == null
+                        ? '—'
+                        : formatDate(user.profile.dob!),
                   ),
-                  GroupedRow(label: 'State', value: user.state ?? '—'),
+                  GroupedRow(label: 'State', value: user.profile.state ?? '—'),
                   GroupedRow(
                     label: 'Joined',
-                    value: formatDate(user.createdAt),
+                    value: formatDate(user.profile.createdAt),
                   ),
                   GroupedRow(label: 'Listed', value: '${user.activeCount}'),
                   GroupedRow(label: 'Sold', value: '${user.soldCount}'),
@@ -176,7 +183,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
 
-    return FutureBuilder<List<AdminUserStats>>(
+    return FutureBuilder<List<AdminUser>>(
       future: widget.users,
       builder: (context, snapshot) {
         final error = snapshot.error;
@@ -277,15 +284,15 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
 class _UserRow extends StatelessWidget {
   const _UserRow({required this.user, required this.onTap});
 
-  final AdminUserStats user;
+  final AdminUser user;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final subtitle = [
-      if (user.state != null) user.state!,
-      'joined ${formatMonthYear(user.createdAt)}',
+      if (user.profile.state != null) user.profile.state!,
+      'joined ${formatMonthYear(user.profile.createdAt)}',
     ].join(' · ');
 
     return GestureDetector(
@@ -300,7 +307,7 @@ class _UserRow extends StatelessWidget {
           children: [
             ProfileAvatar(
               name: user.name,
-              avatarUrl: user.avatarUrl,
+              avatarUrl: user.profile.avatarUrl,
               size: AppSpacing.avatarSm,
             ),
             const SizedBox(width: AppSpacing.space12),

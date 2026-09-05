@@ -2,7 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:assignment/control/admin/admin_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
-import 'package:assignment/model/admin/admin_user_stats.dart';
+import 'package:assignment/model/admin/admin_user.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/result.dart';
 
@@ -13,14 +13,13 @@ class SupabaseAdminRepository implements AdminRepository {
   static const Duration _fetchTimeout = Duration(seconds: 8);
 
   @override
-  Future<Result<List<AdminUserStats>>> listUsers() async {
+  Future<Result<List<AdminUser>>> listUsers() async {
     try {
       final rows = await _client
           .rpc<List<dynamic>>('admin_user_stats')
           .timeout(_fetchTimeout);
       return Ok([
-        for (final row in rows)
-          AdminUserStats.fromJson(row as Map<String, dynamic>),
+        for (final row in rows) AdminUser.fromJson(row as Map<String, dynamic>),
       ]);
     } catch (e) {
       return Err(mapError(e));

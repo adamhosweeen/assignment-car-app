@@ -15,12 +15,13 @@ class Profile {
     this.interests = const CarInterests(),
     this.avatarUrl,
     this.role = 'user',
+    this.banned = false,
     required this.createdAt,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
     id: json['id'] as String,
-    email: json['email'] as String,
+    email: json['email'] as String? ?? '',
     firstName: json['first_name'] as String?,
     lastName: json['last_name'] as String?,
     dob: asDateOrNull(json['dob']),
@@ -31,6 +32,7 @@ class Profile {
         : CarInterests.fromJson(json['interests'] as Map<String, dynamic>),
     avatarUrl: json['avatar_url'] as String?,
     role: json['role'] as String? ?? 'user',
+    banned: json['banned'] as bool? ?? false,
     createdAt: asDate(json['created_at']),
   );
 
@@ -44,6 +46,7 @@ class Profile {
   final CarInterests interests;
   final String? avatarUrl;
   final String role;
+  final bool banned;
   final DateTime createdAt;
 
   Map<String, dynamic> toJson() => {
@@ -57,6 +60,7 @@ class Profile {
     'interests': interests.toJson(),
     'avatar_url': avatarUrl,
     'role': role,
+    'banned': banned,
     'created_at': createdAt.toIso8601String(),
   };
 
@@ -84,6 +88,7 @@ class Profile {
     CarInterests? interests,
     Object? avatarUrl = _unset,
     String? role,
+    bool? banned,
     DateTime? createdAt,
   }) => Profile(
     id: id ?? this.id,
@@ -100,6 +105,7 @@ class Profile {
         ? this.avatarUrl
         : avatarUrl as String?,
     role: role ?? this.role,
+    banned: banned ?? this.banned,
     createdAt: createdAt ?? this.createdAt,
   );
 
@@ -117,6 +123,7 @@ class Profile {
           interests == other.interests &&
           avatarUrl == other.avatarUrl &&
           role == other.role &&
+          banned == other.banned &&
           createdAt == other.createdAt;
 
   @override
@@ -131,6 +138,7 @@ class Profile {
     interests,
     avatarUrl,
     role,
+    banned,
     createdAt,
   );
 
@@ -139,5 +147,5 @@ class Profile {
       'Profile(id: $id, email: $email, firstName: $firstName, '
       'lastName: $lastName, dob: $dob, phone: $phone, state: $state, '
       'interests: $interests, avatarUrl: $avatarUrl, role: $role, '
-      'createdAt: $createdAt)';
+      'banned: $banned, createdAt: $createdAt)';
 }

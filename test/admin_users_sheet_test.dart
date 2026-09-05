@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:assignment/control/admin/admin_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/model/admin/admin_user_stats.dart';
+import 'package:assignment/model/admin/admin_user.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/model/auth/registration_data.dart';
@@ -20,21 +20,24 @@ final _admin = Profile(
   createdAt: DateTime.utc(2026, 1, 1),
 );
 
-final _user = AdminUserStats(
-  id: 'u1',
-  displayName: 'Nur Aisyah binti Abdullah',
-  email: 'nur.aisyah.abdullah@verylongdomainexample.com.my',
-  phone: '+60123456789',
-  dob: DateTime.utc(1999, 4, 12),
-  state: 'Wilayah Persekutuan Kuala Lumpur',
-  createdAt: DateTime.utc(2026, 2, 2),
+final _user = AdminUser(
+  profile: Profile(
+    id: 'u1',
+    firstName: 'Nur Aisyah',
+    lastName: 'binti Abdullah',
+    email: 'nur.aisyah.abdullah@verylongdomainexample.com.my',
+    phone: '+60123456789',
+    dob: DateTime.utc(1999, 4, 12),
+    state: 'Wilayah Persekutuan Kuala Lumpur',
+    createdAt: DateTime.utc(2026, 2, 2),
+  ),
   activeCount: 3,
   soldCount: 2,
 );
 
 class _FakeAdmin implements AdminRepository {
   @override
-  Future<Result<List<AdminUserStats>>> listUsers() async => Ok([_user]);
+  Future<Result<List<AdminUser>>> listUsers() async => Ok([_user]);
 
   @override
   Future<Result<List<AdminReport>>> listReports() async => const Ok([]);

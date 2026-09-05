@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:assignment/control/admin/admin_providers.dart';
 import 'package:assignment/control/admin/admin_repository.dart';
-import 'package:assignment/model/admin/admin_user_stats.dart';
+import 'package:assignment/model/admin/admin_user.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -21,7 +21,7 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   int _tab = 0;
 
-  late Future<List<AdminUserStats>> _users;
+  late Future<List<AdminUser>> _users;
   late Future<List<AdminReport>> _reports;
 
   @override

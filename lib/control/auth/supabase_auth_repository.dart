@@ -66,22 +66,6 @@ class SupabaseAuthRepository implements AuthRepository {
     return const CarInterests();
   }
 
-  static Profile _rowToProfile(Map<String, dynamic> row) => Profile(
-    id: row['id'] as String,
-    email: row['email'] as String? ?? '',
-    firstName: row['first_name'] as String?,
-    lastName: row['last_name'] as String?,
-    dob: DateTime.tryParse(row['dob'] as String? ?? ''),
-    phone: row['phone'] as String?,
-    state: row['state'] as String?,
-    interests: _decodeInterests(row['interests']),
-    avatarUrl: row['avatar_url'] as String?,
-    role: row['role'] as String? ?? 'user',
-    createdAt:
-        DateTime.tryParse(row['created_at'] as String? ?? '')?.toUtc() ??
-        DateTime.now().toUtc(),
-  );
-
   Future<void> _refreshEnriched() async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -93,7 +77,7 @@ class SupabaseAuthRepository implements AuthRepository {
             .select(_profileColumns)
             .eq('id', user.id)
             .single();
-        _enriched = _rowToProfile(row);
+        _enriched = Profile.fromJson(row);
         await _cache.save(_enriched!);
       } catch (_) {
         _enriched = null;

@@ -1,5 +1,5 @@
 import 'package:assignment/control/admin/admin_repository.dart';
-import 'package:assignment/model/admin/admin_user_stats.dart';
+import 'package:assignment/model/admin/admin_user.dart';
 import 'package:assignment/model/report/admin_report.dart';
 import 'package:assignment/utils/result.dart';
 
@@ -12,7 +12,7 @@ class AdminException implements Exception {
   String toString() => message;
 }
 
-Future<List<AdminUserStats>> fetchAdminUsers(AdminRepository admin) async {
+Future<List<AdminUser>> fetchAdminUsers(AdminRepository admin) async {
   final res = await admin.listUsers();
   return switch (res) {
     Ok(:final value) => value,
@@ -28,31 +28,25 @@ Future<List<AdminReport>> fetchAdminReports(AdminRepository admin) async {
   };
 }
 
-List<AdminUserStats> filterAdminUsers(
-  List<AdminUserStats> users,
-  String query,
-) {
+List<AdminUser> filterAdminUsers(List<AdminUser> users, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return users;
   bool matches(String? field) => field?.toLowerCase().contains(q) ?? false;
   return [
     for (final u in users)
       if (matches(u.name) ||
-          matches(u.email) ||
-          matches(u.phone) ||
-          matches(u.state))
+          matches(u.profile.email) ||
+          matches(u.profile.phone) ||
+          matches(u.profile.state))
         u,
   ];
 }
 
 enum AdminSort { newest, listed, sold }
 
-List<AdminUserStats> sortAdminUsers(
-  List<AdminUserStats> users,
-  AdminSort sort,
-) {
-  int byNewest(AdminUserStats a, AdminUserStats b) {
-    final c = b.createdAt.compareTo(a.createdAt);
+List<AdminUser> sortAdminUsers(List<AdminUser> users, AdminSort sort) {
+  int byNewest(AdminUser a, AdminUser b) {
+    final c = b.profile.createdAt.compareTo(a.profile.createdAt);
     return c != 0 ? c : a.id.compareTo(b.id);
   }
 

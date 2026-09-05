@@ -85,7 +85,7 @@ class AssignmentApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Assignment',
+      title: 'CarSell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: context.read<GoRouter>(),

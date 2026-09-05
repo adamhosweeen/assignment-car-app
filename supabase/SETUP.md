@@ -273,6 +273,15 @@ backend).
   (`purchases` references the listing and snapshots the car). A running
   auction can never be deleted — cancel it first.
 
+### 2s. Admin rows reuse Profile (`migrations/0016_admin_user_names.sql`)
+- SQL Editor → paste
+  [`migrations/0016_admin_user_names.sql`](migrations/0016_admin_user_names.sql)
+  → Run. Apply **after** 0013 (its body counts `selling`/`bidding`).
+- `admin_user_stats()` now also returns `first_name` and `last_name`, so the
+  app decodes each row with the ordinary `Profile` model plus the two counts
+  instead of keeping a second, near-identical admin model. Return type changed,
+  so the function is dropped and recreated. No behaviour change for admins.
+
 ### Acceptance check for 0013 + 0014
 There is no SQL test harness in this repo, so run this by hand once:
 1. `select status, count(*) from public.listings group by 1;` → only the four
