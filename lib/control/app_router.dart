@@ -30,6 +30,7 @@ import 'package:assignment/views/profile/inbox_screen.dart';
 import 'package:assignment/views/profile/market_insights_screen.dart';
 import 'package:assignment/views/profile/my_info_screen.dart';
 import 'package:assignment/views/profile/profile_screen.dart';
+import 'package:assignment/views/profile/purchases_screen.dart';
 import 'package:assignment/views/profile/seller_profile_screen.dart';
 import 'package:assignment/views/profile/seller_search_screen.dart';
 
@@ -127,6 +128,10 @@ GoRouter createRouter(AuthRepository auth) {
       ),
       GoRoute(path: '/profile/info', builder: (_, _) => const MyInfoScreen()),
       GoRoute(path: '/profile/inbox', builder: (_, _) => const InboxScreen()),
+      GoRoute(
+        path: '/profile/purchases',
+        builder: (_, _) => const PurchasesScreen(),
+      ),
       GoRoute(
         path: '/profile/interests',
         builder: (_, _) => const CarInterestsScreen(),

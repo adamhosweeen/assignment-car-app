@@ -212,6 +212,11 @@ class ProfileScreen extends StatelessWidget {
               onTap: () => context.push('/profile/interests'),
             ),
             GroupedRow(
+              label: 'Purchases',
+              showChevron: true,
+              onTap: () => context.push('/profile/purchases'),
+            ),
+            GroupedRow(
               label: 'Market Insights',
               showChevron: true,
               onTap: () => context.push('/profile/insights'),

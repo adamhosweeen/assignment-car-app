@@ -187,6 +187,38 @@ backend).
   "Recommended for you" row used the same fallback and now shows its empty
   state ("Set your car interests…") instead.
 
+### 2n. Banned sellers' cars really disappear (`migrations/0011_hide_banned_listings.sql`)
+- SQL Editor → paste
+  [`migrations/0011_hide_banned_listings.sql`](migrations/0011_hide_banned_listings.sql)
+  → Run.
+- Additive and re-runnable; apply **after** 0003 (needs `profiles.banned`).
+- **Fixes a real hole.** 0003's ban check lived in a subquery inside the
+  `listings_select` policy, but RLS applies to tables referenced inside a
+  policy expression — and `profiles` is own-row only, so the subquery always
+  matched zero rows and every banned seller's cars stayed visible. The flag is
+  now read through the SECURITY DEFINER `is_banned()`, the same pattern
+  `is_admin()` uses.
+- Verify after banning someone, as a *different* signed-in user:
+  `select count(*) from public.listings where seller_id = '<banned uuid>';`
+  should return 0.
+
+### 2o. Purchase history (`migrations/0012_purchases.sql`)
+- SQL Editor → paste [`migrations/0012_purchases.sql`](migrations/0012_purchases.sql)
+  → Run.
+- Additive and re-runnable; apply **after** 0004, 0008 and 0009 — it replaces
+  `buy_listing()`, `buy_at_offer()` and `respond_to_bid()` so every route that
+  sells a car also writes the receipt.
+- Creates `purchases` (buyer, seller, listing, price actually paid, method,
+  and a make/model/year snapshot) with a **select-own policy and no write
+  policy** — only the SECURITY DEFINER functions insert, and neither side can
+  rewrite a receipt. `listing_id` is `on delete set null`, so the history
+  survives the listing being removed with the snapshot standing in.
+- Also adds `listings_select_buyer` / `listing_media_select_buyer`: a buyer
+  keeps read access to the car they bought, which `listings_select` would
+  otherwise deny once it is sold.
+- **No backfill.** Sales made before this migration genuinely have no buyer
+  recorded, so history starts from here.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live

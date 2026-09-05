@@ -30,6 +30,8 @@ import 'package:assignment/control/notifications/notifications_repository.dart';
 import 'package:assignment/control/notifications/supabase_notifications_repository.dart';
 import 'package:assignment/control/profiles/profiles_cache_repository.dart';
 import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/purchases/purchases_repository.dart';
+import 'package:assignment/control/purchases/supabase_purchases_repository.dart';
 import 'package:assignment/control/profiles/supabase_profiles_repository.dart';
 import 'package:assignment/control/reports/reports_repository.dart';
 import 'package:assignment/control/reports/supabase_reports_repository.dart';
@@ -75,6 +77,7 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
   final notifications = SupabaseNotificationsRepository(client);
   final profiles = SupabaseProfilesRepository(client, profilesCache);
   final insights = SupabaseInsightsRepository(client);
+  final purchases = SupabasePurchasesRepository(client);
   final admin = SupabaseAdminRepository(client);
   final reports = SupabaseReportsRepository(client);
 
@@ -100,6 +103,8 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     Provider<ProfilesRepository>.value(value: profiles),
 
     Provider<InsightsRepository>.value(value: insights),
+
+    Provider<PurchasesRepository>.value(value: purchases),
 
     Provider<AdminRepository>.value(value: admin),
 
