@@ -10,6 +10,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
+import 'package:assignment/widgets/notifications/notification_avatar.dart';
 
 class InboxScreen extends StatelessWidget {
   const InboxScreen({super.key});
@@ -137,15 +138,6 @@ class _InboxRow extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onTap;
 
-  IconData get _icon => switch (notification.kind) {
-    NotificationKind.welcome => Icons.waving_hand_outlined,
-    NotificationKind.listingMatch => Icons.directions_car_outlined,
-    NotificationKind.insightsUpdated => Icons.bar_chart,
-    NotificationKind.bidPlaced => Icons.gavel_outlined,
-    NotificationKind.bidAccepted => Icons.check_circle_outline,
-    NotificationKind.bidRejected => Icons.cancel_outlined,
-  };
-
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -163,19 +155,7 @@ class _InboxRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: AppSpacing.avatarSm,
-                height: AppSpacing.avatarSm,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primaryMuted,
-                ),
-                child: Icon(
-                  _icon,
-                  size: AppSpacing.iconMd,
-                  color: AppColors.primary,
-                ),
-              ),
+              NotificationAvatar(kind: n.kind),
               const SizedBox(width: AppSpacing.space12),
               Expanded(
                 child: Column(

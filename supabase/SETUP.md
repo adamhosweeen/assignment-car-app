@@ -168,6 +168,25 @@ backend).
 - Without this, the Bid tab and the "Place a bid" button on Listing Detail have
   no table to read or write.
 
+### 2m. Matches need real interests (`migrations/0010_match_interests_only.sql`)
+- SQL Editor → paste
+  [`migrations/0010_match_interests_only.sql`](migrations/0010_match_interests_only.sql)
+  → Run.
+- Additive and re-runnable; apply **after** 0001 (replaces the
+  `notify_listing_match()` trigger it created).
+- 0001 notified a user with **no** saved car preferences about every new listing
+  in their own state. That contradicts CLAUDE.md §2 ("location/fuel/transmission
+  only order the matches") and fills a brand-new user's inbox with cars they
+  never asked about. After this, a user with no preferences gets no
+  `listing_match` notifications at all; location still only orders real matches.
+- Ends with a `delete` that clears the `listing_match` rows the old fallback
+  already wrote for preference-less users. Drop that statement if you would
+  rather leave existing inboxes untouched.
+- Pairs with the client change in
+  `lib/control/listings/recommendations_provider.dart` — the Buy tab's
+  "Recommended for you" row used the same fallback and now shows its empty
+  state ("Set your car interests…") instead.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live

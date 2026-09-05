@@ -9,6 +9,7 @@ import 'package:assignment/model/chat/conversation_thread.dart';
 import 'package:assignment/model/chat/message.dart';
 import 'package:assignment/utils/async_snapshots.dart';
 import 'package:assignment/utils/restartable_stream.dart';
+import 'package:assignment/utils/switch_latest.dart';
 import 'package:assignment/utils/result.dart';
 
 class ConversationsFeed
@@ -33,22 +34,25 @@ final chatProviders = <SingleChildWidget>[
 Stream<AsyncSnapshot<List<ConversationThread>>> _watchConversations(
   AuthRepository auth,
   ChatRepository chat,
+) => auth
+    .authState()
+    .map((profile) => profile?.id)
+    .distinct()
+    .switchMap((userId) => _conversationsFor(userId, chat));
+
+Stream<AsyncSnapshot<List<ConversationThread>>> _conversationsFor(
+  String? userId,
+  ChatRepository chat,
 ) async* {
+  if (userId == null) {
+    yield const AsyncSnapshot<List<ConversationThread>>.withData(
+      ConnectionState.active,
+      <ConversationThread>[],
+    );
+    return;
+  }
   yield const AsyncSnapshot<List<ConversationThread>>.waiting();
-  yield* auth
-      .authState()
-      .map((profile) => profile?.id)
-      .distinct()
-      .asyncExpand(
-        (userId) => userId == null
-            ? Stream.value(
-                const AsyncSnapshot<List<ConversationThread>>.withData(
-                  ConnectionState.active,
-                  <ConversationThread>[],
-                ),
-              )
-            : snapshots(chat.watchConversations()),
-      );
+  yield* snapshots(chat.watchConversations());
 }
 
 int unreadChatCountOf(AsyncSnapshot<List<ConversationThread>> conversations) =>

@@ -97,7 +97,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         ),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.screenPadding),
           child: Column(
             mainAxisSize: MainAxisSize.min,

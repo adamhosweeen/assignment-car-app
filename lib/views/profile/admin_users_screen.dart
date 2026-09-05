@@ -92,6 +92,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
   void _showDetails(AdminUserStats user) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.groupedBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
@@ -99,7 +100,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
         ),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.screenPadding),
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -167,13 +167,13 @@ void main() {
       expect(result.map((l) => l.id), ['cheap']);
     });
 
-    test('with no car preferences, same state is the fallback', () {
+    test('with no car preferences, nothing is recommended', () {
       final buyer = profile(state: 'Selangor');
       final result = rankRecommended([
         listing(id: 'near', state: 'Selangor'),
         listing(id: 'far', state: 'Sabah'),
       ], buyer);
-      expect(result.map((l) => l.id), ['near']);
+      expect(result, isEmpty);
     });
 
     test('state alone does not qualify once car preferences are set', () {

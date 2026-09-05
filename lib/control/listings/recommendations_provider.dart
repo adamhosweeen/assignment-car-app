@@ -17,31 +17,26 @@ List<Listing> rankRecommended(
   final hasBudget = min != null || max != null;
   final hasPrimary =
       interests.makes.isNotEmpty || interests.bodyTypes.isNotEmpty || hasBudget;
-  if (!hasPrimary && profile.state == null) return const [];
+  if (!hasPrimary) return const [];
 
   final scored = <(Listing, int)>[];
   for (final listing in listings) {
     if (listing.sellerId == profile.id) continue;
 
-    final sameState = profile.state != null && listing.state == profile.state;
-    if (hasPrimary) {
-      if (interests.makes.isNotEmpty &&
-          !interests.makes.contains(listing.make)) {
-        continue;
-      }
-      if (interests.bodyTypes.isNotEmpty &&
-          !interests.bodyTypes.contains(listing.bodyType)) {
-        continue;
-      }
-      if (hasBudget &&
-          ((min != null && listing.priceMyr < min) ||
-              (max != null && listing.priceMyr > max))) {
-        continue;
-      }
-    } else if (!sameState) {
+    if (interests.makes.isNotEmpty && !interests.makes.contains(listing.make)) {
+      continue;
+    }
+    if (interests.bodyTypes.isNotEmpty &&
+        !interests.bodyTypes.contains(listing.bodyType)) {
+      continue;
+    }
+    if (hasBudget &&
+        ((min != null && listing.priceMyr < min) ||
+            (max != null && listing.priceMyr > max))) {
       continue;
     }
 
+    final sameState = profile.state != null && listing.state == profile.state;
     var score = 0;
     if (sameState) score += 2;
     if (interests.fuelType != null && interests.fuelType == listing.fuelType) {

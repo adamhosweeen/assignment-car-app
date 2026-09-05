@@ -8,6 +8,7 @@ import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/services/supabase_config.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/widgets/notifications/notification_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +89,8 @@ class AssignmentApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: context.read<GoRouter>(),
+      builder: (context, child) =>
+          NotificationBannerHost(child: child ?? const SizedBox.shrink()),
     );
   }
 }

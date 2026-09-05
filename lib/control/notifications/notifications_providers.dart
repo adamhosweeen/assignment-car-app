@@ -7,6 +7,7 @@ import 'package:assignment/control/notifications/notifications_repository.dart';
 import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/async_snapshots.dart';
 import 'package:assignment/utils/restartable_stream.dart';
+import 'package:assignment/utils/switch_latest.dart';
 
 class InboxFeed
     extends RestartableStream<AsyncSnapshot<List<AppNotification>>> {
@@ -30,22 +31,25 @@ final notificationsProviders = <SingleChildWidget>[
 Stream<AsyncSnapshot<List<AppNotification>>> _watchInbox(
   AuthRepository auth,
   NotificationsRepository notifications,
+) => auth
+    .authState()
+    .map((profile) => profile?.id)
+    .distinct()
+    .switchMap((userId) => _inboxFor(userId, notifications));
+
+Stream<AsyncSnapshot<List<AppNotification>>> _inboxFor(
+  String? userId,
+  NotificationsRepository notifications,
 ) async* {
+  if (userId == null) {
+    yield const AsyncSnapshot<List<AppNotification>>.withData(
+      ConnectionState.active,
+      <AppNotification>[],
+    );
+    return;
+  }
   yield const AsyncSnapshot<List<AppNotification>>.waiting();
-  yield* auth
-      .authState()
-      .map((profile) => profile?.id)
-      .distinct()
-      .asyncExpand(
-        (userId) => userId == null
-            ? Stream.value(
-                const AsyncSnapshot<List<AppNotification>>.withData(
-                  ConnectionState.active,
-                  <AppNotification>[],
-                ),
-              )
-            : snapshots(notifications.watchInbox()),
-      );
+  yield* snapshots(notifications.watchInbox());
 }
 
 int unreadCountOf(AsyncSnapshot<List<AppNotification>> inbox) =>

@@ -322,6 +322,7 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     await _cache.clear();
     await _chatCache.clear();
+    await _bidsCache.clear();
     await _client.auth.signOut();
   }
 }
