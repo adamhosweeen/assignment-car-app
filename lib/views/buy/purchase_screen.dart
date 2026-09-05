@@ -102,7 +102,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
           if (listing == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (listing.status != ListingStatus.active) {
+          if (listing.status != ListingStatus.selling) {
             return _successScaffold(listing);
           }
           return _Checkout(

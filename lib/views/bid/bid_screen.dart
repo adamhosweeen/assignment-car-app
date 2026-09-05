@@ -5,13 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_providers.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
+import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
-import 'package:assignment/model/bid/bid_with_listing.dart';
+import 'package:assignment/model/bid/bid_with_auction.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
-import 'package:assignment/utils/result.dart';
-import 'package:assignment/widgets/bid/bid_card.dart';
+import 'package:assignment/widgets/bid/auction_card.dart';
+import 'package:assignment/widgets/bid/bid_status_badge.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 
 class BidScreen extends StatefulWidget {
@@ -24,8 +25,9 @@ class BidScreen extends StatefulWidget {
 class _BidScreenState extends State<BidScreen> {
   int _segment = 0;
 
-  late Stream<List<BidWithListing>> _myBids;
-  late Stream<List<BidWithListing>> _received;
+  late Stream<List<AuctionWithListing>> _live;
+  late Stream<List<BidWithAuction>> _myBids;
+  late Stream<List<AuctionWithListing>> _myAuctions;
 
   @override
   void initState() {
@@ -36,45 +38,121 @@ class _BidScreenState extends State<BidScreen> {
   void _subscribe() {
     final auth = context.read<AuthRepository>();
     final bids = context.read<BidsRepository>();
+    _live = watchLiveAuctions(bids);
     _myBids = watchMyBids(auth, bids);
-    _received = watchBidsReceived(auth, bids);
+    _myAuctions = watchMyAuctions(auth, bids);
   }
 
   void _retry() => setState(_subscribe);
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<BidWithListing>>(
-      stream: _received,
-      builder: (context, received) {
-        final pending = pendingBidsReceivedCount(received.data);
-        return Scaffold(
-          backgroundColor: AppColors.groupedBackground,
-          appBar: AppBar(
-            title: const Text('Bids'),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(AppSpacing.searchBarHeight),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenPadding,
-                  0,
-                  AppSpacing.screenPadding,
-                  AppSpacing.space12,
-                ),
-                child: SegmentedControl(
-                  labels: [
-                    'My bids',
-                    pending > 0 ? 'On my cars ($pending)' : 'On my cars',
-                  ],
-                  selected: _segment,
-                  onChanged: (i) => setState(() => _segment = i),
-                ),
-              ),
+    return Scaffold(
+      backgroundColor: AppColors.groupedBackground,
+      appBar: AppBar(
+        title: const Text('Bids'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(AppSpacing.searchBarHeight),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding,
+              0,
+              AppSpacing.screenPadding,
+              AppSpacing.space12,
+            ),
+            child: SegmentedControl(
+              labels: const ['Live', 'My bids', 'My auctions'],
+              selected: _segment,
+              onChanged: (i) => setState(() => _segment = i),
             ),
           ),
-          body: _segment == 0
-              ? _MyBidsList(stream: _myBids, onRetry: _retry)
-              : _ReceivedList(snapshot: received, onRetry: _retry),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/auction/new'),
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        icon: const Icon(Icons.gavel),
+        label: const Text('Start an auction'),
+      ),
+      body: switch (_segment) {
+        0 => _AuctionList(
+          stream: _live,
+          onRetry: _retry,
+          emptyTitle: 'No live auctions',
+          emptyMessage:
+              'When someone puts a car up for auction it shows here. '
+              'You can start one on a car you are selling.',
+        ),
+        1 => _MyBidsList(stream: _myBids, onRetry: _retry),
+        _ => _AuctionList(
+          stream: _myAuctions,
+          onRetry: _retry,
+          emptyTitle: 'You haven’t run an auction yet',
+          emptyMessage:
+              'Tap “Start an auction” and pick one of the cars you have '
+              'for sale.',
+        ),
+      },
+    );
+  }
+}
+
+class _AuctionList extends StatelessWidget {
+  const _AuctionList({
+    required this.stream,
+    required this.onRetry,
+    required this.emptyTitle,
+    required this.emptyMessage,
+  });
+
+  final Stream<List<AuctionWithListing>> stream;
+  final VoidCallback onRetry;
+  final String emptyTitle;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<AuctionWithListing>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _EmptyState(
+            icon: Icons.cloud_off_outlined,
+            title: 'Couldn’t load auctions',
+            message: 'Check your connection and try again.',
+            onRetry: onRetry,
+          );
+        }
+        final items = snapshot.data;
+        if (items == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (items.isEmpty) {
+          return _EmptyState(
+            icon: Icons.gavel_outlined,
+            title: emptyTitle,
+            message: emptyMessage,
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenPadding,
+            AppSpacing.screenPadding,
+            AppSpacing.screenPadding,
+            AppSpacing.space32 * 2,
+          ),
+          itemCount: items.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(height: AppSpacing.space12),
+          itemBuilder: (_, i) => AuctionCard(
+            entry: items[i],
+            onTap: () => context.push('/auction/${items[i].auction.id}'),
+          ),
         );
       },
     );
@@ -84,193 +162,75 @@ class _BidScreenState extends State<BidScreen> {
 class _MyBidsList extends StatelessWidget {
   const _MyBidsList({required this.stream, required this.onRetry});
 
-  final Stream<List<BidWithListing>> stream;
+  final Stream<List<BidWithAuction>> stream;
   final VoidCallback onRetry;
-
-  Future<void> _withdraw(BuildContext context, BidWithListing entry) async {
-    final confirmed = await _confirm(
-      context,
-      title: 'Withdraw bid?',
-      message:
-          'Your ${formatPrice(entry.bid.amountMyr)} bid on the '
-          '${entry.listing.title} will be withdrawn. You can bid again later '
-          'while the car is still for sale.',
-      confirmLabel: 'Withdraw',
-      destructive: true,
-    );
-    if (!confirmed || !context.mounted) return;
-
-    final res = await context.read<BidsRepository>().withdrawBid(entry.bid.id);
-    if (!context.mounted) return;
-    if (res case Err(:final message)) {
-      _toast(context, message);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return _BidList(
+    final text = Theme.of(context).textTheme;
+    return StreamBuilder<List<BidWithAuction>>(
       stream: stream,
-      emptyTitle: 'No bids yet',
-      emptyMessage:
-          'Find a car in the Buy tab and place a bid — the seller can accept, '
-          'reject, or let you know they want more.',
-      onRetry: onRetry,
-      cardBuilder: (entry) => BidCard(
-        entry: entry,
-        subtitle: 'Placed ${formatRelative(entry.bid.createdAt)}',
-        onOpenListing: () => context.push('/listing/${entry.listing.id}'),
-        actions: [
-          if (entry.bid.status.isLive)
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.groupedBackground,
-                foregroundColor: AppColors.destructive,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _EmptyState(
+            icon: Icons.cloud_off_outlined,
+            title: 'Couldn’t load bids',
+            message: 'Check your connection and try again.',
+            onRetry: onRetry,
+          );
+        }
+        final all = snapshot.data;
+        if (all == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = latestBidPerAuction(all);
+        if (items.isEmpty) {
+          return const _EmptyState(
+            icon: Icons.gavel_outlined,
+            title: 'No bids yet',
+            message:
+                'Open a live auction and place a bid — you’ll be able to '
+                'follow it here.',
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenPadding,
+            AppSpacing.screenPadding,
+            AppSpacing.screenPadding,
+            AppSpacing.space32 * 2,
+          ),
+          itemCount: items.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(height: AppSpacing.space12),
+          itemBuilder: (_, i) {
+            final entry = items[i];
+            final leading = entry.isWinning && entry.bid.status.isLive;
+            return AuctionCard(
+              entry: entry.auction,
+              onTap: () => context.push('/auction/${entry.bid.auctionId}'),
+              trailing: Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.space8),
+                child: BidStatusBadge(status: entry.bid.status),
               ),
-              onPressed: () => _withdraw(context, entry),
-              child: const Text('Withdraw'),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReceivedList extends StatelessWidget {
-  const _ReceivedList({required this.snapshot, required this.onRetry});
-
-  final AsyncSnapshot<List<BidWithListing>> snapshot;
-  final VoidCallback onRetry;
-
-  Future<void> _respond(
-    BuildContext context,
-    BidWithListing entry, {
-    required bool accept,
-  }) async {
-    final amount = formatPrice(entry.bid.amountMyr);
-    final confirmed = await _confirm(
-      context,
-      title: accept ? 'Accept this bid?' : 'Reject this bid?',
-      message: accept
-          ? 'Your ${entry.listing.title} will be marked sold at $amount, and '
-                'every other bid on it will be rejected. This cannot be undone.'
-          : 'The bidder will be told their $amount bid was not accepted.',
-      confirmLabel: accept ? 'Accept' : 'Reject',
-      destructive: !accept,
-    );
-    if (!confirmed || !context.mounted) return;
-
-    final res = await context.read<BidsRepository>().respondToBid(
-      entry.bid.id,
-      accept: accept,
-    );
-    if (!context.mounted) return;
-    if (res case Err(:final message)) {
-      _toast(context, message);
-    } else {
-      _toast(
-        context,
-        accept ? 'Bid accepted — the car is marked sold.' : 'Bid rejected.',
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _BidList(
-      snapshot: snapshot,
-      emptyTitle: 'No bids on your cars',
-      emptyMessage:
-          'When someone bids on a car you have listed, it shows up here for '
-          'you to accept or reject.',
-      onRetry: onRetry,
-      cardBuilder: (entry) => BidCard(
-        entry: entry,
-        subtitle: _receivedSubtitle(entry.bid),
-        onOpenListing: () => context.push('/listing/${entry.listing.id}'),
-        actions: [
-          if (entry.bid.status.isLive) ...[
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.groupedBackground,
-                foregroundColor: AppColors.destructive,
+              footer: Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.space12),
+                child: Text(
+                  leading
+                      ? 'Your ${formatPrice(entry.bid.amountMyr)} bid is '
+                            'leading.'
+                      : 'You bid ${formatPrice(entry.bid.amountMyr)}.',
+                  style: text.footnote.copyWith(
+                    color: leading
+                        ? AppColors.success
+                        : AppColors.secondaryLabel,
+                  ),
+                ),
               ),
-              onPressed: () => _respond(context, entry, accept: false),
-              child: const Text('Reject'),
-            ),
-            FilledButton(
-              onPressed: () => _respond(context, entry, accept: true),
-              child: const Text('Accept'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _receivedSubtitle(Bid bid) {
-    if (bid.status == BidStatus.accepted && bid.contactPhone != null) {
-      return 'Contact the bidder on ${bid.contactPhone}';
-    }
-    return 'Received ${formatRelative(bid.createdAt)}';
-  }
-}
-
-class _BidList extends StatelessWidget {
-  const _BidList({
-    this.stream,
-    this.snapshot,
-    required this.emptyTitle,
-    required this.emptyMessage,
-    required this.onRetry,
-    required this.cardBuilder,
-  }) : assert(
-         (stream == null) != (snapshot == null),
-         'pass exactly one of stream / snapshot',
-       );
-
-  final Stream<List<BidWithListing>>? stream;
-  final AsyncSnapshot<List<BidWithListing>>? snapshot;
-  final String emptyTitle;
-  final String emptyMessage;
-  final VoidCallback onRetry;
-  final Widget Function(BidWithListing) cardBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final snapshot = this.snapshot;
-    if (snapshot != null) return _body(snapshot);
-    return StreamBuilder<List<BidWithListing>>(
-      stream: stream,
-      builder: (_, snapshot) => _body(snapshot),
-    );
-  }
-
-  Widget _body(AsyncSnapshot<List<BidWithListing>> snapshot) {
-    if (snapshot.hasError) {
-      return _EmptyState(
-        icon: Icons.cloud_off_outlined,
-        title: 'Couldn’t load bids',
-        message: 'Check your connection and try again.',
-        onRetry: onRetry,
-      );
-    }
-    final bids = snapshot.data;
-    if (bids == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (bids.isEmpty) {
-      return _EmptyState(
-        icon: Icons.gavel_outlined,
-        title: emptyTitle,
-        message: emptyMessage,
-      );
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.screenPadding),
-      itemCount: bids.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space12),
-      itemBuilder: (_, i) => cardBuilder(bids[i]),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -293,7 +253,7 @@ class _EmptyState extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.screenPadding),
+        padding: const EdgeInsets.all(AppSpacing.space32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -303,53 +263,16 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.space8),
             Text(
               message,
-              style: text.subhead.copyWith(color: AppColors.secondaryLabel),
               textAlign: TextAlign.center,
+              style: text.subhead.copyWith(color: AppColors.secondaryLabel),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.space16),
-              TextButton(onPressed: onRetry, child: const Text('Try again')),
+              TextButton(onPressed: onRetry, child: const Text('Retry')),
             ],
           ],
         ),
       ),
     );
   }
-}
-
-Future<bool> _confirm(
-  BuildContext context, {
-  required String title,
-  required String message,
-  required String confirmLabel,
-  bool destructive = false,
-}) async {
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: AppColors.surface,
-      title: Text(title, style: Theme.of(dialogContext).textTheme.headline),
-      content: Text(message, style: Theme.of(dialogContext).textTheme.subhead),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          style: destructive
-              ? TextButton.styleFrom(foregroundColor: AppColors.destructive)
-              : null,
-          child: Text(confirmLabel),
-        ),
-      ],
-    ),
-  );
-  return result ?? false;
-}
-
-void _toast(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
 }

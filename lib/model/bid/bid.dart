@@ -1,29 +1,25 @@
 import 'package:assignment/utils/json.dart';
 
-const Object _unset = Object();
-
-enum BidStatus { pending, accepted, rejected, withdrawn }
+enum BidStatus { placed, won, lost }
 
 extension BidStatusLabel on BidStatus {
   String get label => switch (this) {
-    BidStatus.pending => 'Pending',
-    BidStatus.accepted => 'Accepted',
-    BidStatus.rejected => 'Rejected',
-    BidStatus.withdrawn => 'Withdrawn',
+    BidStatus.placed => 'Placed',
+    BidStatus.won => 'Won',
+    BidStatus.lost => 'Lost',
   };
 
-  bool get isLive => this == BidStatus.pending;
+  bool get isLive => this == BidStatus.placed;
 }
 
 class Bid {
   const Bid({
     required this.id,
     required this.listingId,
+    required this.auctionId,
     required this.bidderId,
     required this.amountMyr,
-    this.status = BidStatus.pending,
-    this.contactPhone,
-    this.notifyWhatsapp = false,
+    this.status = BidStatus.placed,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -31,34 +27,30 @@ class Bid {
   factory Bid.fromJson(Map<String, dynamic> json) => Bid(
     id: json['id'] as String,
     listingId: json['listing_id'] as String,
+    auctionId: json['auction_id'] as String,
     bidderId: json['bidder_id'] as String,
     amountMyr: asInt(json['amount_myr']),
-    status: asEnumOrNull(BidStatus.values, json['status']) ?? BidStatus.pending,
-    contactPhone: json['contact_phone'] as String?,
-    notifyWhatsapp: json['notify_whatsapp'] as bool? ?? false,
+    status: asEnumOrNull(BidStatus.values, json['status']) ?? BidStatus.placed,
     createdAt: asDate(json['created_at']),
     updatedAt: asDate(json['updated_at']),
   );
 
   final String id;
   final String listingId;
+  final String auctionId;
   final String bidderId;
   final int amountMyr;
   final BidStatus status;
-
-  final String? contactPhone;
-  final bool notifyWhatsapp;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'listing_id': listingId,
+    'auction_id': auctionId,
     'bidder_id': bidderId,
     'amount_myr': amountMyr,
     'status': status.name,
-    'contact_phone': contactPhone,
-    'notify_whatsapp': notifyWhatsapp,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
@@ -68,23 +60,19 @@ class Bid {
   Bid copyWith({
     String? id,
     String? listingId,
+    String? auctionId,
     String? bidderId,
     int? amountMyr,
     BidStatus? status,
-    Object? contactPhone = _unset,
-    bool? notifyWhatsapp,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Bid(
     id: id ?? this.id,
     listingId: listingId ?? this.listingId,
+    auctionId: auctionId ?? this.auctionId,
     bidderId: bidderId ?? this.bidderId,
     amountMyr: amountMyr ?? this.amountMyr,
     status: status ?? this.status,
-    contactPhone: identical(contactPhone, _unset)
-        ? this.contactPhone
-        : contactPhone as String?,
-    notifyWhatsapp: notifyWhatsapp ?? this.notifyWhatsapp,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -95,11 +83,10 @@ class Bid {
       other is Bid &&
           id == other.id &&
           listingId == other.listingId &&
+          auctionId == other.auctionId &&
           bidderId == other.bidderId &&
           amountMyr == other.amountMyr &&
           status == other.status &&
-          contactPhone == other.contactPhone &&
-          notifyWhatsapp == other.notifyWhatsapp &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt;
 
@@ -107,17 +94,16 @@ class Bid {
   int get hashCode => Object.hash(
     id,
     listingId,
+    auctionId,
     bidderId,
     amountMyr,
     status,
-    contactPhone,
-    notifyWhatsapp,
     createdAt,
     updatedAt,
   );
 
   @override
   String toString() =>
-      'Bid(id: $id, listingId: $listingId, bidderId: $bidderId, '
-      'amountMyr: $amountMyr, status: $status, createdAt: $createdAt)';
+      'Bid(id: $id, auctionId: $auctionId, amountMyr: $amountMyr, '
+      'status: $status, createdAt: $createdAt)';
 }

@@ -188,7 +188,8 @@ Design rules that still apply inside any migration:
    rejected, withdrawn), created_at)` + RLS (bidder reads/writes own; seller reads
    bids on own listings; only the seller updates `status` to accepted/rejected;
    only the bidder to withdrawn) + realtime. SETUP.md step. Reviewer pastes it.
-2. Replace the doc-only `model/bid/bid.dart` with a `Bid` model (+ `BidStatus`).
+2. The bid module is built: timed auctions in `0014_auctions.sql`, models in
+   `model/bid/`, screens in `views/bid/`.
 3. Fill `control/bid/bids_repository.dart` (surface is sketched in its doc
    comment), add `supabase_bids_repository.dart`, `bids_providers.dart`, and a
    provider line in `providers.dart`.

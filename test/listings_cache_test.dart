@@ -8,7 +8,7 @@ import 'package:assignment/model/listing/listing_media.dart';
 Listing fullListing({String id = 'l1', int year = 2020}) => Listing(
   id: id,
   sellerId: 'seller-1',
-  status: ListingStatus.active,
+  status: ListingStatus.selling,
   make: 'Honda',
   model: 'City',
   variant: '1.5 V',
@@ -49,7 +49,7 @@ Listing fullListing({String id = 'l1', int year = 2020}) => Listing(
 Listing minimalListing({String id = 'l2'}) => Listing(
   id: id,
   sellerId: 'seller-2',
-  status: ListingStatus.active,
+  status: ListingStatus.selling,
   make: 'Perodua',
   model: 'Myvi',
   year: 2018,

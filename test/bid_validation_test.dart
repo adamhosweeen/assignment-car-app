@@ -3,20 +3,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:assignment/model/bid/bid_validation.dart';
 
 void main() {
-  const asking = 48800;
-
   group('parseBidAmount', () {
     test('accepts plain digits', () {
       expect(parseBidAmount('45000'), 45000);
     });
 
-    test('tolerates the separators and prefix people paste in', () {
+    test('tolerates formatting the user pasted in', () {
       expect(parseBidAmount('RM 45,000'), 45000);
       expect(parseBidAmount('45 000'), 45000);
-      expect(parseBidAmount(' 45,000 '), 45000);
+      expect(parseBidAmount('  45000  '), 45000);
     });
 
-    test('rejects empty, non-numeric, and zero input', () {
+    test('rejects anything that is not a positive amount', () {
       expect(parseBidAmount(''), isNull);
       expect(parseBidAmount('   '), isNull);
       expect(parseBidAmount('abc'), isNull);
@@ -26,93 +24,90 @@ void main() {
   });
 
   group('validateBidAmount', () {
-    test('accepts a sensible bid below asking', () {
-      expect(validateBidAmount('45000', askingPriceMyr: asking), isNull);
+    test('accepts the minimum exactly and anything above it', () {
+      expect(validateBidAmount('50000', minimumMyr: 50000), isNull);
+      expect(validateBidAmount('51000', minimumMyr: 50000), isNull);
     });
 
-    test('accepts a bid above asking — that is what a bidding war is', () {
-      expect(validateBidAmount('52000', askingPriceMyr: asking), isNull);
+    test('refuses a bid below the minimum next bid', () {
+      final error = validateBidAmount('49999', minimumMyr: 50000);
+      expect(error, isNotNull);
+      expect(error, contains('RM 50,000'));
     });
 
-    test('requires an amount', () {
-      expect(validateBidAmount('', askingPriceMyr: asking), isNotNull);
+    test('refuses empty and unparseable input', () {
+      expect(validateBidAmount('', minimumMyr: 1000), isNotNull);
+      expect(validateBidAmount('abc', minimumMyr: 1000), isNotNull);
     });
 
-    test('rejects a non-numeric amount', () {
-      expect(validateBidAmount('abc', askingPriceMyr: asking), isNotNull);
-    });
-
-    test('rejects a dropped digit as far below asking', () {
-      expect(validateBidAmount('4500', askingPriceMyr: asking), isNotNull);
-    });
-
-    test('rejects an added digit as far above asking', () {
-      expect(validateBidAmount('450000', askingPriceMyr: asking), isNotNull);
-    });
-
-    test('rejects an amount under the absolute floor', () {
-      expect(validateBidAmount('50', askingPriceMyr: 200), isNotNull);
-    });
-
-    test('accepts the exact asking price', () {
-      expect(validateBidAmount('48800', askingPriceMyr: asking), isNull);
-    });
-
-    test('accepts the boundaries of the asking-price window', () {
-      expect(validateBidAmount('4880', askingPriceMyr: asking), isNull);
-      expect(validateBidAmount('146400', askingPriceMyr: asking), isNull);
-    });
-
-    test('every rejection is a plain sentence, not an exception dump', () {
-      final message = validateBidAmount('1', askingPriceMyr: asking);
-      expect(message, isNotNull);
-      expect(message, endsWith('.'));
-      expect(message, isNot(contains('Exception')));
+    test('every message is a plain sentence with no exception text', () {
+      for (final raw in ['', 'abc', '10', '999999999999']) {
+        final message = validateBidAmount(raw, minimumMyr: 1000);
+        expect(message, isNotNull);
+        expect(message, endsWith('.'));
+        expect(message, isNot(contains('Exception')));
+      }
     });
   });
 
-  group('validateBidPhone', () {
-    test(
-      'accepts Malaysian mobile numbers with and without the leading zero',
-      () {
-        expect(validateBidPhone('0111234567'), isNull);
-        expect(validateBidPhone('111234567'), isNull);
-        expect(validateBidPhone('01116689921'), isNull);
-      },
-    );
-
-    test('requires a number', () {
-      expect(validateBidPhone(''), isNotNull);
-      expect(validateBidPhone('   '), isNotNull);
+  group('auction setup validation', () {
+    test('a sensible starting price and increment pass', () {
+      expect(validateStartingPrice('30000'), isNull);
+      expect(validateIncrement('500'), isNull);
     });
 
-    test('rejects a landline, a too-short number, and letters', () {
-      expect(validateBidPhone('0312345678'), isNotNull);
-      expect(validateBidPhone('0111'), isNotNull);
-      expect(validateBidPhone('not a phone'), isNotNull);
+    test('a starting price below the floor is refused', () {
+      expect(validateStartingPrice('50'), isNotNull);
+      expect(validateStartingPrice(''), isNotNull);
+    });
+
+    test('an increment below the floor is refused', () {
+      expect(validateIncrement('10'), isNotNull);
+      expect(validateIncrement(''), isNotNull);
     });
   });
 
-  group('bidAmountHint', () {
-    test('names the gap below asking', () {
-      expect(
-        bidAmountHint(45000, askingPriceMyr: asking),
-        contains('below the asking price'),
-      );
+  group('auction durations', () {
+    test('every preset is positive and labelled', () {
+      for (final d in kAuctionDurations) {
+        expect(d.inMinutes, greaterThan(0));
+        expect(auctionDurationLabel(d), isNotEmpty);
+      }
     });
 
-    test('names the gap above asking', () {
-      expect(
-        bidAmountHint(52000, askingPriceMyr: asking),
-        contains('above the asking price'),
-      );
+    test('the presets match the set the database allows', () {
+      expect(kAuctionDurations.map((d) => d.inMinutes).toList(), [
+        60,
+        360,
+        720,
+        1440,
+        4320,
+        10080,
+      ]);
     });
 
-    test('calls out an exact match', () {
+    test('labels read naturally in hours and days', () {
+      expect(auctionDurationLabel(const Duration(hours: 1)), '1 hour');
+      expect(auctionDurationLabel(const Duration(hours: 6)), '6 hours');
+      expect(auctionDurationLabel(const Duration(days: 1)), '1 day');
+      expect(auctionDurationLabel(const Duration(days: 7)), '7 days');
+    });
+  });
+
+  group('formatCountdown', () {
+    test('counts down through days, hours and minutes', () {
+      expect(formatCountdown(const Duration(days: 2, hours: 3)), '2d 3h left');
       expect(
-        bidAmountHint(asking, askingPriceMyr: asking),
-        'Same as the asking price.',
+        formatCountdown(const Duration(hours: 5, minutes: 20)),
+        '5h 20m left',
       );
+      expect(formatCountdown(const Duration(minutes: 9)), '9m left');
+    });
+
+    test('handles the last seconds and a passed deadline', () {
+      expect(formatCountdown(const Duration(seconds: 30)), 'Ending now');
+      expect(formatCountdown(Duration.zero), 'Ended');
+      expect(formatCountdown(const Duration(seconds: -5)), 'Ended');
     });
   });
 }

@@ -11,7 +11,7 @@ import 'package:assignment/widgets/listing/listing_card_compact.dart';
 final _listing = Listing(
   id: 'l1',
   sellerId: 's1',
-  status: ListingStatus.active,
+  status: ListingStatus.selling,
   make: 'Perodua',
   model: 'Myvi',
   variant: '1.5 AV',

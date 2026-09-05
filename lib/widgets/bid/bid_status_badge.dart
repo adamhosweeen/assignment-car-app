@@ -12,10 +12,9 @@ class BidStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      BidStatus.pending => AppColors.primary,
-      BidStatus.accepted => AppColors.success,
-      BidStatus.rejected => AppColors.destructive,
-      BidStatus.withdrawn => AppColors.secondaryLabel,
+      BidStatus.placed => AppColors.primary,
+      BidStatus.won => AppColors.success,
+      BidStatus.lost => AppColors.secondaryLabel,
     };
     return DecoratedBox(
       decoration: BoxDecoration(

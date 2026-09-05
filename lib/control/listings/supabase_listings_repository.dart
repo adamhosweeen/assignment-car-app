@@ -19,13 +19,14 @@ class SupabaseListingsRepository implements ListingsRepository {
   final ListingsCacheRepository _cache;
   static const String _bucket = 'listing-media';
   static const String _select = '*, listing_media(*)';
+  static const List<String> _visibleStatuses = ['selling', 'bidding'];
   static const Duration _fetchTimeout = Duration(seconds: 8);
 
   Future<List<Listing>> _fetchActive() async {
     final rows = await _client
         .from('listings')
         .select(_select)
-        .eq('status', 'active')
+        .inFilter('status', _visibleStatuses)
         .order('created_at', ascending: false)
         .limit(50);
     return rows.map(_fromRow).toList();
@@ -36,7 +37,6 @@ class SupabaseListingsRepository implements ListingsRepository {
         .from('listings')
         .select(_select)
         .eq('seller_id', sellerId)
-        .neq('status', 'deleted')
         .order('created_at', ascending: false);
     return rows.map(_fromRow).toList();
   }
@@ -64,7 +64,7 @@ class SupabaseListingsRepository implements ListingsRepository {
         .from('listings')
         .select(_select)
         .eq('seller_id', sellerId)
-        .eq('status', 'active')
+        .eq('status', 'selling')
         .order('created_at', ascending: false);
     return rows.map(_fromRow).toList();
   }
@@ -83,7 +83,7 @@ class SupabaseListingsRepository implements ListingsRepository {
       final rows = await _client
           .from('listings')
           .select(_select)
-          .eq('status', 'active')
+          .inFilter('status', _visibleStatuses)
           .or('make.ilike.%$q%,model.ilike.%$q%,variant.ilike.%$q%')
           .order('created_at', ascending: false)
           .limit(50)
@@ -175,7 +175,9 @@ class SupabaseListingsRepository implements ListingsRepository {
     }
     final id = draft.id;
     try {
-      await _client.from('listings').upsert(_payload(draft, sellerId, 'draft'));
+      await _client
+          .from('listings')
+          .upsert(_payload(draft, sellerId, 'hidden'));
 
       await _client.from('listing_media').delete().eq('listing_id', id);
       for (var i = 0; i < draft.photoPaths.length; i++) {
@@ -202,7 +204,7 @@ class SupabaseListingsRepository implements ListingsRepository {
         });
       }
 
-      await _client.from('listings').update({'status': 'active'}).eq('id', id);
+      await _client.from('listings').update({'status': 'selling'}).eq('id', id);
 
       return getById(id);
     } catch (e) {
@@ -227,7 +229,20 @@ class SupabaseListingsRepository implements ListingsRepository {
   }
 
   @override
-  Future<Result<void>> softDelete(String id) => _setStatus(id, 'deleted');
+  Future<Result<void>> hide(String id) => _setStatus(id, 'hidden');
+
+  @override
+  Future<Result<void>> unhide(String id) => _setStatus(id, 'selling');
+
+  @override
+  Future<Result<void>> deleteListing(String id) async {
+    try {
+      await _client.from('listings').delete().eq('id', id);
+      return const Ok(null);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
 
   Future<Result<void>> _setStatus(String id, String status) async {
     try {

@@ -87,7 +87,7 @@ void main() {
     final listing = Listing(
       id: 'l1',
       sellerId: 'u1',
-      status: ListingStatus.active,
+      status: ListingStatus.selling,
       make: 'Perodua',
       model: 'Myvi',
       variant: '1.5 AV',

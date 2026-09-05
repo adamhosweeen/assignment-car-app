@@ -12,10 +12,10 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      ListingStatus.active => (AppColors.primary, 'Active'),
+      ListingStatus.selling => (AppColors.primary, 'Selling'),
+      ListingStatus.bidding => (AppColors.warning, 'Bidding'),
+      ListingStatus.hidden => (AppColors.secondaryLabel, 'Hidden'),
       ListingStatus.sold => (AppColors.success, 'Sold'),
-      ListingStatus.draft => (AppColors.secondaryLabel, 'Draft'),
-      ListingStatus.deleted => (AppColors.destructive, 'Deleted'),
     };
     return DecoratedBox(
       decoration: BoxDecoration(

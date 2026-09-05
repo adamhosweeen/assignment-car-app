@@ -19,5 +19,9 @@ abstract interface class ListingsRepository {
 
   Future<Result<void>> buy(String id);
 
-  Future<Result<void>> softDelete(String id);
+  Future<Result<void>> hide(String id);
+
+  Future<Result<void>> unhide(String id);
+
+  Future<Result<void>> deleteListing(String id);
 }

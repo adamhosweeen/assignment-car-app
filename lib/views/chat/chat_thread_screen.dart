@@ -283,7 +283,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       message: m,
                       isMine: uid != null && m.isMine(uid),
                       iAmBuyer: uid != null && uid == conversation.buyerId,
-                      listingActive: listing?.status == ListingStatus.active,
+                      listingActive: listing?.status == ListingStatus.selling,
                       acting: _actingOnMessageId == m.id,
                       countered: _counteredOfferIds.contains(m.id),
                       onConfirm: () => _confirmOffer(m),
@@ -302,7 +302,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             onSend: _send,
             negotiable:
                 (listing?.negotiable ?? false) &&
-                listing?.status == ListingStatus.active,
+                listing?.status == ListingStatus.selling,
             onOffer: _makeOffer,
           ),
         ],

@@ -10,7 +10,7 @@ class Listing {
   const Listing({
     required this.id,
     required this.sellerId,
-    this.status = ListingStatus.draft,
+    this.status = ListingStatus.hidden,
     required this.make,
     required this.model,
     this.variant,
@@ -37,9 +37,7 @@ class Listing {
   factory Listing.fromJson(Map<String, dynamic> json) => Listing(
     id: json['id'] as String,
     sellerId: json['seller_id'] as String,
-    status:
-        asEnumOrNull(ListingStatus.values, json['status']) ??
-        ListingStatus.draft,
+    status: listingStatusFromValue(json['status']),
     make: json['make'] as String,
     model: json['model'] as String,
     variant: json['variant'] as String?,

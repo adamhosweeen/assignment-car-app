@@ -59,6 +59,15 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
     if (res case Err(:final message)) _showError(message);
   }
 
+  Future<void> _setHidden(Listing l, bool hidden) async {
+    final listings = context.read<ListingsRepository>();
+    final res = hidden
+        ? await listings.hide(l.id)
+        : await listings.unhide(l.id);
+    if (!mounted) return;
+    if (res case Err(:final message)) _showError(message);
+  }
+
   Future<void> _edit(Listing l) async {
     await context.read<DraftRepository>().save(draftFromListing(l));
     if (!mounted) return;
@@ -74,7 +83,8 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
         backgroundColor: AppColors.surface,
         title: const Text('Delete this listing?'),
         content: const Text(
-          'This removes it from the Buy feed. You can’t undo this.',
+          'This removes the car and its photos for good. You can’t undo this. '
+          'To take it off the Buy feed but keep it, hide it instead.',
         ),
         actions: [
           TextButton(
@@ -90,7 +100,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
       ),
     );
     if (confirmed != true) return;
-    final res = await listings.softDelete(l.id);
+    final res = await listings.deleteListing(l.id);
     if (!mounted) return;
     if (res case Err(:final message)) _showError(message);
   }
@@ -109,7 +119,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (l.status == ListingStatus.active) ...[
+            if (l.status == ListingStatus.selling) ...[
               ListTile(
                 leading: const Icon(Icons.check_circle_outline),
                 title: const Text('Mark as sold'),
@@ -126,23 +136,59 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
                   _edit(l);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.visibility_off_outlined),
+                title: const Text('Hide from buyers'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _setHidden(l, true);
+                },
+              ),
             ],
-            ListTile(
-              leading: const Icon(
-                Icons.delete_outline,
-                color: AppColors.destructive,
+            if (l.status == ListingStatus.hidden) ...[
+              ListTile(
+                leading: const Icon(Icons.visibility_outlined),
+                title: const Text('Put back on sale'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _setHidden(l, false);
+                },
               ),
-              title: Text(
-                'Delete',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.body.copyWith(color: AppColors.destructive),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _edit(l);
+                },
               ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _delete(l);
-              },
-            ),
+            ],
+            if (l.status == ListingStatus.bidding)
+              const ListTile(
+                leading: Icon(Icons.gavel_outlined),
+                title: Text('Auction running'),
+                subtitle: Text(
+                  'Manage it from the Bid tab. It can’t be edited or sold '
+                  'while bidding is open.',
+                ),
+              ),
+            if (l.status != ListingStatus.sold)
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.destructive,
+                ),
+                title: Text(
+                  'Delete',
+                  style: Theme.of(
+                    sheetContext,
+                  ).textTheme.body.copyWith(color: AppColors.destructive),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _delete(l);
+                },
+              ),
           ],
         ),
       ),
@@ -183,13 +229,13 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
           if (all == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          final active = all
-              .where((l) => l.status == ListingStatus.active)
-              .toList();
-          final sold = all
-              .where((l) => l.status == ListingStatus.sold)
-              .toList();
-          final isEmpty = active.isEmpty && sold.isEmpty;
+          List<Listing> withStatus(ListingStatus status) =>
+              all.where((l) => l.status == status).toList();
+          final selling = withStatus(ListingStatus.selling);
+          final bidding = withStatus(ListingStatus.bidding);
+          final hidden = withStatus(ListingStatus.hidden);
+          final sold = withStatus(ListingStatus.sold);
+          final isEmpty = all.isEmpty;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -213,15 +259,17 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
                   message: 'Tap + to create your first listing.',
                 )
               else ...[
-                if (active.isNotEmpty) ...[
-                  const SectionHeader('Active'),
-                  for (final l in active) _tile(l),
-                ],
-                if (sold.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.space8),
-                  const SectionHeader('Sold'),
-                  for (final l in sold) _tile(l),
-                ],
+                for (final (header, group) in [
+                  ('Selling', selling),
+                  ('Bidding', bidding),
+                  ('Hidden', hidden),
+                  ('Sold', sold),
+                ])
+                  if (group.isNotEmpty) ...[
+                    SectionHeader(header),
+                    for (final l in group) _tile(l),
+                    const SizedBox(height: AppSpacing.space8),
+                  ],
               ],
             ],
           );

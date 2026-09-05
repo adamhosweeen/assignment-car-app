@@ -1,24 +1,27 @@
+import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
-import 'package:assignment/model/bid/bid_with_listing.dart';
+import 'package:assignment/model/bid/bid_with_auction.dart';
 import 'package:assignment/utils/result.dart';
 
 abstract interface class BidsRepository {
-  Stream<List<BidWithListing>> watchMyBids();
+  Stream<List<AuctionWithListing>> watchLiveAuctions();
 
-  Stream<List<BidWithListing>> watchBidsReceived();
+  Stream<List<BidWithAuction>> watchMyBids();
 
-  Stream<List<Bid>> watchBidsForListing(String listingId);
+  Stream<List<AuctionWithListing>> watchMyAuctions();
 
-  Future<Result<Bid?>> myPendingBidFor(String listingId);
+  Stream<AuctionWithListing> watchAuction(String auctionId);
 
-  Future<Result<Bid>> placeBid(
-    String listingId,
-    int amountMyr, {
-    required String contactPhone,
-    bool notifyWhatsapp,
+  Stream<List<Bid>> watchBidsForAuction(String auctionId);
+
+  Future<Result<String>> startAuction({
+    required String listingId,
+    required int startingPriceMyr,
+    required int minIncrementMyr,
+    required DateTime endsAt,
   });
 
-  Future<Result<void>> withdrawBid(String bidId);
+  Future<Result<void>> placeBid(String auctionId, int amountMyr);
 
-  Future<Result<void>> respondToBid(String bidId, {required bool accept});
+  Future<Result<void>> cancelAuction(String auctionId);
 }

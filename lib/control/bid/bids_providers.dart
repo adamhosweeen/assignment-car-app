@@ -1,40 +1,34 @@
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
-import 'package:assignment/model/bid/bid.dart';
-import 'package:assignment/model/bid/bid_with_listing.dart';
-import 'package:assignment/utils/result.dart';
+import 'package:assignment/model/bid/auction_with_listing.dart';
+import 'package:assignment/model/bid/bid_with_auction.dart';
 
-Stream<List<BidWithListing>> watchMyBids(
+Stream<List<AuctionWithListing>> watchLiveAuctions(BidsRepository bids) =>
+    bids.watchLiveAuctions();
+
+Stream<List<BidWithAuction>> watchMyBids(
   AuthRepository auth,
   BidsRepository bids,
 ) {
-  if (auth.currentUser == null) return Stream.value(const <BidWithListing>[]);
+  if (auth.currentUser == null) return Stream.value(const []);
   return bids.watchMyBids();
 }
 
-Stream<List<BidWithListing>> watchBidsReceived(
+Stream<List<AuctionWithListing>> watchMyAuctions(
   AuthRepository auth,
   BidsRepository bids,
 ) {
-  if (auth.currentUser == null) return Stream.value(const <BidWithListing>[]);
-  return bids.watchBidsReceived();
+  if (auth.currentUser == null) return Stream.value(const []);
+  return bids.watchMyAuctions();
 }
 
-Stream<List<Bid>> watchBidsForListing(BidsRepository bids, String listingId) =>
-    bids.watchBidsForListing(listingId);
+int liveBidsCount(List<BidWithAuction>? myBids) =>
+    myBids?.where((b) => b.auction.auction.isLive()).length ?? 0;
 
-Future<Bid?> fetchMyPendingBid(
-  AuthRepository auth,
-  BidsRepository bids,
-  String listingId,
-) async {
-  if (auth.currentUser == null) return null;
-  final res = await bids.myPendingBidFor(listingId);
-  return switch (res) {
-    Ok(:final value) => value,
-    Err(:final message) => throw Exception(message),
-  };
+List<BidWithAuction> latestBidPerAuction(List<BidWithAuction> bids) {
+  final seen = <String>{};
+  return [
+    for (final b in bids)
+      if (seen.add(b.bid.auctionId)) b,
+  ];
 }
-
-int pendingBidsReceivedCount(List<BidWithListing>? received) =>
-    received?.where((b) => b.bid.status.isLive).length ?? 0;

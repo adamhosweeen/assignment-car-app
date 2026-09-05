@@ -12,15 +12,9 @@ import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
 import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/control/bid/bids_cache_repository.dart';
 
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(
-    this._client,
-    this._cache,
-    this._chatCache,
-    this._bidsCache,
-  ) {
+  SupabaseAuthRepository(this._client, this._cache, this._chatCache) {
     _refreshEnriched();
     _client.auth.onAuthStateChange.listen((_) => _refreshEnriched());
   }
@@ -28,7 +22,6 @@ class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
   final ProfileCacheRepository _cache;
   final ChatCacheRepository _chatCache;
-  final BidsCacheRepository _bidsCache;
 
   static const String _profileColumns = '*';
 
@@ -308,7 +301,6 @@ class SupabaseAuthRepository implements AuthRepository {
 
       await _cache.clear();
       await _chatCache.clear();
-      await _bidsCache.clear();
       try {
         await _client.auth.signOut();
       } catch (_) {}
@@ -322,7 +314,6 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     await _cache.clear();
     await _chatCache.clear();
-    await _bidsCache.clear();
     await _client.auth.signOut();
   }
 }

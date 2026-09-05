@@ -16,7 +16,7 @@ import 'package:assignment/views/buy/purchase_screen.dart';
 final _listing = Listing(
   id: 'l1',
   sellerId: 's1',
-  status: ListingStatus.active,
+  status: ListingStatus.selling,
   make: 'Perodua',
   model: 'Myvi',
   year: 2020,

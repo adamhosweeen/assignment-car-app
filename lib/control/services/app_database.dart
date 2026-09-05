@@ -6,7 +6,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'assignment.db');
     return openDatabase(
       path,
-      version: 10,
+      version: 11,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -46,6 +46,13 @@ class AppDatabase {
         }
         if (oldVersion < 10) {
           await _createBidCache(db);
+        }
+        if (oldVersion < 11) {
+          await db.execute('DELETE FROM listing_cache_media');
+          await db.execute('DELETE FROM listing_cache');
+          await db.execute('DELETE FROM bid_cache_listing_media');
+          await db.execute('DELETE FROM bid_cache_listing');
+          await db.execute('DELETE FROM bid_cache');
         }
       },
       onCreate: (db, version) async {

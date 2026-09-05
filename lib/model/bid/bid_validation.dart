@@ -3,11 +3,24 @@ library;
 import 'package:assignment/model/listing/listing_draft.dart' show kMaxPriceMyr;
 import 'package:assignment/utils/formatters.dart';
 
-const double kMinBidFractionOfAsking = 0.10;
-
-const double kMaxBidMultipleOfAsking = 3;
-
 const int kMinBidMyr = 100;
+
+const int kMinIncrementMyr = 100;
+
+const List<Duration> kAuctionDurations = [
+  Duration(hours: 1),
+  Duration(hours: 6),
+  Duration(hours: 12),
+  Duration(days: 1),
+  Duration(days: 3),
+  Duration(days: 7),
+];
+
+String auctionDurationLabel(Duration d) {
+  if (d.inHours < 24) return '${d.inHours} hour${d.inHours == 1 ? '' : 's'}';
+  final days = d.inDays;
+  return '$days day${days == 1 ? '' : 's'}';
+}
 
 int? parseBidAmount(String raw) {
   final digits = raw.replaceAll(RegExp('[^0-9]'), '');
@@ -17,7 +30,7 @@ int? parseBidAmount(String raw) {
   return value;
 }
 
-String? validateBidAmount(String raw, {required int askingPriceMyr}) {
+String? validateBidAmount(String raw, {required int minimumMyr}) {
   if (raw.trim().isEmpty) return 'Enter how much you want to bid.';
 
   final value = parseBidAmount(raw);
@@ -26,35 +39,48 @@ String? validateBidAmount(String raw, {required int askingPriceMyr}) {
   if (value > kMaxPriceMyr) {
     return 'That’s too high. Enter an amount under ${formatPrice(kMaxPriceMyr)}.';
   }
+  if (value < minimumMyr) {
+    return 'Bid at least ${formatPrice(minimumMyr)}.';
+  }
+  return null;
+}
+
+String? validateStartingPrice(String raw) {
+  if (raw.trim().isEmpty) return 'Enter a starting price.';
+  final value = parseBidAmount(raw);
+  if (value == null) return 'Enter a valid amount in Ringgit, e.g. 30000.';
   if (value < kMinBidMyr) {
-    return 'Bids start at ${formatPrice(kMinBidMyr)}.';
+    return 'Start at ${formatPrice(kMinBidMyr)} or more.';
   }
-
-  final floor = (askingPriceMyr * kMinBidFractionOfAsking).round();
-  if (value < floor) {
-    return 'That’s far below the ${formatPrice(askingPriceMyr)} asking price. '
-        'Bid at least ${formatPrice(floor)}.';
-  }
-  final ceiling = (askingPriceMyr * kMaxBidMultipleOfAsking).round();
-  if (value > ceiling) {
-    return 'That’s far above the ${formatPrice(askingPriceMyr)} asking price. '
-        'Check the amount before bidding.';
+  if (value > kMaxPriceMyr) {
+    return 'That’s too high. Enter an amount under ${formatPrice(kMaxPriceMyr)}.';
   }
   return null;
 }
 
-String? validateBidPhone(String raw) {
-  if (raw.trim().isEmpty) return 'Enter a mobile number the seller can reach.';
-  if (nationalToE164(raw) == null) {
-    return 'That doesn’t look like a Malaysian mobile number, e.g. 0111234567.';
+String? validateIncrement(String raw) {
+  if (raw.trim().isEmpty) return 'Enter a minimum increment.';
+  final value = parseBidAmount(raw);
+  if (value == null) return 'Enter a valid amount in Ringgit, e.g. 500.';
+  if (value < kMinIncrementMyr) {
+    return 'The increment has to be at least ${formatPrice(kMinIncrementMyr)}.';
+  }
+  if (value > kMaxPriceMyr) {
+    return 'That increment is too large.';
   }
   return null;
 }
 
-String? bidAmountHint(int amountMyr, {required int askingPriceMyr}) {
-  if (amountMyr == askingPriceMyr) return 'Same as the asking price.';
-  if (amountMyr > askingPriceMyr) {
-    return '${formatPrice(amountMyr - askingPriceMyr)} above the asking price.';
+String formatCountdown(Duration left) {
+  if (left <= Duration.zero) return 'Ended';
+  if (left.inDays > 0) {
+    final hours = left.inHours % 24;
+    return '${left.inDays}d ${hours}h left';
   }
-  return '${formatPrice(askingPriceMyr - amountMyr)} below the asking price.';
+  if (left.inHours > 0) {
+    final minutes = left.inMinutes % 60;
+    return '${left.inHours}h ${minutes}m left';
+  }
+  if (left.inMinutes > 0) return '${left.inMinutes}m left';
+  return 'Ending now';
 }

@@ -2,55 +2,46 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:assignment/model/bid/bid.dart';
 
-void main() {
-  Bid bid({
-    BidStatus status = BidStatus.pending,
-    String bidderId = 'bidder',
-    int amountMyr = 45000,
-  }) => Bid(
-    id: 'b1',
-    listingId: 'l1',
-    bidderId: bidderId,
-    amountMyr: amountMyr,
-    status: status,
-    contactPhone: '0111234567',
-    createdAt: DateTime.utc(2026, 8, 30, 9),
-    updatedAt: DateTime.utc(2026, 8, 30, 9),
-  );
+Bid bid({String id = 'b1', BidStatus status = BidStatus.placed}) => Bid(
+  id: id,
+  listingId: 'l1',
+  auctionId: 'a1',
+  bidderId: 'bidder-1',
+  amountMyr: 45000,
+  status: status,
+  createdAt: DateTime.utc(2026, 8, 30, 9),
+  updatedAt: DateTime.utc(2026, 8, 30, 10),
+);
 
+void main() {
   group('Bid', () {
     test('isMine follows bidder_id', () {
-      expect(bid().isMine('bidder'), isTrue);
-      expect(bid().isMine('seller'), isFalse);
+      expect(bid().isMine('bidder-1'), isTrue);
+      expect(bid().isMine('someone-else'), isFalse);
     });
 
-    test('round-trips through JSON with snake_case column names', () {
+    test('round-trips through snake_case JSON', () {
       final json = bid().toJson();
       expect(json['listing_id'], 'l1');
-      expect(json['bidder_id'], 'bidder');
+      expect(json['auction_id'], 'a1');
+      expect(json['bidder_id'], 'bidder-1');
       expect(json['amount_myr'], 45000);
-      expect(json['status'], 'pending');
-      expect(json['contact_phone'], '0111234567');
-      expect(json['notify_whatsapp'], isFalse);
+      expect(json['status'], 'placed');
       expect(Bid.fromJson(json), bid());
     });
 
-    test(
-      'defaults a row with no status or opt-in to pending, not opted in',
-      () {
-        final decoded = Bid.fromJson({
-          'id': 'b2',
-          'listing_id': 'l1',
-          'bidder_id': 'bidder',
-          'amount_myr': 30000,
-          'created_at': '2026-08-30T09:00:00.000Z',
-          'updated_at': '2026-08-30T09:00:00.000Z',
-        });
-        expect(decoded.status, BidStatus.pending);
-        expect(decoded.notifyWhatsapp, isFalse);
-        expect(decoded.contactPhone, isNull);
-      },
-    );
+    test('a row with no status defaults to placed', () {
+      final b = Bid.fromJson({
+        'id': 'b1',
+        'listing_id': 'l1',
+        'auction_id': 'a1',
+        'bidder_id': 'u1',
+        'amount_myr': 1000,
+        'created_at': '2026-08-30T09:00:00.000Z',
+        'updated_at': '2026-08-30T09:00:00.000Z',
+      });
+      expect(b.status, BidStatus.placed);
+    });
 
     test('every status decodes from its Postgres text value', () {
       for (final status in BidStatus.values) {
@@ -62,14 +53,13 @@ void main() {
   });
 
   group('BidStatus', () {
-    test('only pending is live — the others are terminal', () {
-      expect(BidStatus.pending.isLive, isTrue);
-      expect(BidStatus.accepted.isLive, isFalse);
-      expect(BidStatus.rejected.isLive, isFalse);
-      expect(BidStatus.withdrawn.isLive, isFalse);
+    test('only a placed bid is live', () {
+      expect(BidStatus.placed.isLive, isTrue);
+      expect(BidStatus.won.isLive, isFalse);
+      expect(BidStatus.lost.isLive, isFalse);
     });
 
-    test('every status has a display label', () {
+    test('every status has a label', () {
       for (final status in BidStatus.values) {
         expect(status.label, isNotEmpty);
       }

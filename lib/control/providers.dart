@@ -11,7 +11,6 @@ import 'package:assignment/control/services/signed_url_cache.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/control/bid/bids_cache_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/bid/supabase_bids_repository.dart';
 import 'package:assignment/control/chat/chat_cache_repository.dart';
@@ -46,12 +45,6 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     storage.db,
     storage.initialConversationRows,
   );
-  final bidsCache = BidsCacheRepository(
-    storage.db,
-    storage.initialBidRows,
-    storage.initialBidListingRows,
-    storage.initialBidListingMediaRows,
-  );
   final listingsCache = ListingsCacheRepository(
     storage.db,
     storage.initialListingRows,
@@ -65,15 +58,10 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
   );
 
   final client = Supabase.instance.client;
-  final auth = SupabaseAuthRepository(
-    client,
-    profileCache,
-    chatCache,
-    bidsCache,
-  );
+  final auth = SupabaseAuthRepository(client, profileCache, chatCache);
   final listings = SupabaseListingsRepository(client, listingsCache);
   final chat = SupabaseChatRepository(client, chatCache);
-  final bids = SupabaseBidsRepository(client, bidsCache);
+  final bids = SupabaseBidsRepository(client);
   final notifications = SupabaseNotificationsRepository(client);
   final profiles = SupabaseProfilesRepository(client, profilesCache);
   final insights = SupabaseInsightsRepository(client);
@@ -85,7 +73,6 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     Provider<AppStorage>.value(value: storage),
     Provider<ProfileCacheRepository>.value(value: profileCache),
     Provider<ChatCacheRepository>.value(value: chatCache),
-    Provider<BidsCacheRepository>.value(value: bidsCache),
     Provider<ListingsCacheRepository>.value(value: listingsCache),
     Provider<ProfilesCacheRepository>.value(value: profilesCache),
 

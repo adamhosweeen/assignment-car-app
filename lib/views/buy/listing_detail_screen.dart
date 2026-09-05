@@ -3,12 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/profiles/profiles_repository.dart';
-import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/profile/public_profile.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
@@ -19,7 +17,6 @@ import 'package:assignment/model/listing/draft_from_listing.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/listing/listing_media.dart';
-import 'package:assignment/control/bid/bids_providers.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/control/profiles/profiles_providers.dart';
@@ -39,17 +36,11 @@ class ListingDetailScreen extends StatefulWidget {
 
 class _ListingDetailScreenState extends State<ListingDetailScreen> {
   late final Future<Listing> _listing;
-  late final Future<Bid?> _pendingBid;
 
   @override
   void initState() {
     super.initState();
     _listing = fetchListingById(context.read<ListingsRepository>(), widget.id);
-    _pendingBid = fetchMyPendingBid(
-      context.read<AuthRepository>(),
-      context.read<BidsRepository>(),
-      widget.id,
-    );
   }
 
   @override
@@ -80,17 +71,16 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return _DetailScaffold(listing: listing, pendingBid: _pendingBid);
+        return _DetailScaffold(listing: listing);
       },
     );
   }
 }
 
 class _DetailScaffold extends StatelessWidget {
-  const _DetailScaffold({required this.listing, required this.pendingBid});
+  const _DetailScaffold({required this.listing});
 
   final Listing listing;
-  final Future<Bid?> pendingBid;
 
   Future<void> _edit(BuildContext context) async {
     await context.read<DraftRepository>().save(draftFromListing(listing));
@@ -231,20 +221,15 @@ class _DetailScaffold extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.screenPadding),
-          child: FutureBuilder<Bid?>(
-            future: pendingBid,
-            builder: (context, bid) => _Actions(
-              listing: listing,
-              isSeller:
-                  context.read<AuthRepository>().currentUser?.id ==
-                  listing.sellerId,
-              onEdit: () => _edit(context),
-              onMarkSold: () => _markSold(context),
-              onChat: () => _openChat(context),
-              onBuy: () => context.push('/listing/${listing.id}/buy'),
-              onBid: () => context.push('/listing/${listing.id}/bid'),
-              hasPendingBid: bid.data != null,
-            ),
+          child: _Actions(
+            listing: listing,
+            isSeller:
+                context.read<AuthRepository>().currentUser?.id ==
+                listing.sellerId,
+            onEdit: () => _edit(context),
+            onMarkSold: () => _markSold(context),
+            onChat: () => _openChat(context),
+            onBuy: () => context.push('/listing/${listing.id}/buy'),
           ),
         ),
       ),
@@ -311,8 +296,6 @@ class _Actions extends StatelessWidget {
     required this.onMarkSold,
     required this.onChat,
     required this.onBuy,
-    required this.onBid,
-    required this.hasPendingBid,
   });
 
   final Listing listing;
@@ -321,54 +304,59 @@ class _Actions extends StatelessWidget {
   final VoidCallback onMarkSold;
   final VoidCallback onChat;
   final VoidCallback onBuy;
-  final VoidCallback onBid;
-
-  final bool hasPendingBid;
 
   @override
   Widget build(BuildContext context) {
     if (!isSeller) {
-      final available = listing.status == ListingStatus.active;
+      final available = listing.status == ListingStatus.selling;
+      final bidding = listing.status == ListingStatus.bidding;
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: available ? onBuy : null,
-              child: Text(available ? 'Buy this car' : 'Sold'),
+              onPressed: bidding
+                  ? () => context.push('/home/bid')
+                  : available
+                  ? onBuy
+                  : null,
+              child: Text(
+                bidding
+                    ? 'Go to the auction'
+                    : available
+                    ? 'Buy this car'
+                    : 'Sold',
+              ),
             ),
           ),
+          if (bidding) ...[
+            const SizedBox(height: AppSpacing.space8),
+            Text(
+              'This car is in an auction, so it can’t be bought outright '
+              'right now.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
+            ),
+          ],
           const SizedBox(height: AppSpacing.space8),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.groupedBackground,
-                    foregroundColor: AppColors.primary,
-                  ),
-                  onPressed: available ? onBid : null,
-                  child: Text(hasPendingBid ? 'Change bid' : 'Place a bid'),
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: AppColors.primary,
               ),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.groupedBackground,
-                    foregroundColor: AppColors.primary,
-                  ),
-                  onPressed: onChat,
-                  child: const Text('Chat'),
-                ),
-              ),
-            ],
+              onPressed: onChat,
+              child: const Text('Chat'),
+            ),
           ),
         ],
       );
     }
-    if (listing.status != ListingStatus.active) {
+    if (listing.status != ListingStatus.selling) {
       return const SizedBox.shrink();
     }
     final editButton = FilledButton(

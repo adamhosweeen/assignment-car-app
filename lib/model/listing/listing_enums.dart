@@ -1,6 +1,6 @@
 library;
 
-enum ListingStatus { draft, active, sold, deleted }
+enum ListingStatus { selling, bidding, hidden, sold }
 
 enum Transmission { automatic, manual }
 
@@ -47,11 +47,24 @@ extension RegistrationRegionLabel on RegistrationRegion {
   };
 }
 
+ListingStatus listingStatusFromValue(Object? raw) => switch (raw) {
+  'selling' => ListingStatus.selling,
+  'bidding' => ListingStatus.bidding,
+  'hidden' => ListingStatus.hidden,
+  'sold' => ListingStatus.sold,
+  'active' => ListingStatus.selling,
+  'draft' || 'deleted' => ListingStatus.hidden,
+  _ => ListingStatus.hidden,
+};
+
 extension ListingStatusLabel on ListingStatus {
   String get label => switch (this) {
-    ListingStatus.draft => 'Draft',
-    ListingStatus.active => 'Active',
+    ListingStatus.selling => 'Selling',
+    ListingStatus.bidding => 'Bidding',
+    ListingStatus.hidden => 'Hidden',
     ListingStatus.sold => 'Sold',
-    ListingStatus.deleted => 'Deleted',
   };
+
+  bool get isVisibleToBuyers =>
+      this == ListingStatus.selling || this == ListingStatus.bidding;
 }

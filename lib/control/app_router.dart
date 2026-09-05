@@ -13,8 +13,9 @@ import 'package:assignment/views/auth/register_flow_screen.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/views/auth/welcome_screen.dart';
+import 'package:assignment/views/bid/auction_screen.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
-import 'package:assignment/views/bid/place_bid_screen.dart';
+import 'package:assignment/views/bid/start_auction_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
 import 'package:assignment/views/chat/chat_thread_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
@@ -100,12 +101,15 @@ GoRouter createRouter(AuthRepository auth) {
           );
         },
       ),
-      GoRoute(
-        path: '/listing/:id/bid',
-        builder: (_, state) =>
-            PlaceBidScreen(listingId: state.pathParameters['id']!),
-      ),
       GoRoute(path: '/search', builder: (_, _) => const CarSearchScreen()),
+      GoRoute(
+        path: '/auction/new',
+        builder: (_, _) => const StartAuctionScreen(),
+      ),
+      GoRoute(
+        path: '/auction/:id',
+        builder: (_, state) => AuctionScreen(id: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/chat/:id',
         builder: (_, state) => ChatThreadScreen(

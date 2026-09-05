@@ -21,7 +21,7 @@ Listing listing({
   return Listing(
     id: id,
     sellerId: sellerId,
-    status: ListingStatus.active,
+    status: ListingStatus.selling,
     make: make,
     model: 'Model',
     year: 2020,

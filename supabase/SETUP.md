@@ -219,6 +219,64 @@ backend).
 - **No backfill.** Sales made before this migration genuinely have no buyer
   recorded, so history starts from here.
 
+### 2p. Four listing statuses (`migrations/0013_listing_statuses.sql`)
+- SQL Editor → paste
+  [`migrations/0013_listing_statuses.sql`](migrations/0013_listing_statuses.sql)
+  → Run. **Apply 0010, 0011 and 0012 first** — 0013 re-creates functions those
+  files define, and 0011 hard-codes `status = 'active'` in `listings_select`, so
+  pasting 0011 *after* 0013 would silently empty the Buy feed.
+- Replaces `draft/active/sold/deleted` with **selling / bidding / hidden /
+  sold**, remapping existing rows (`active`→`selling`, `draft`+`deleted`→
+  `hidden`). Re-runnable: the remap is a no-op the second time.
+- **Ship this with the matching app build.** The Dart enum changes in the same
+  commit; an old client reading `'selling'` cannot decode it. The app's sqflite
+  cache is wiped by the v11 upgrade for the same reason.
+- Hardening included: a `sold` or `bidding` car can't be deleted, only the
+  auction functions can move a car into or out of `bidding`, and a seller can no
+  longer delete a sold car's photos out from under the buyer's receipt.
+- **A real delete now cascades to chats** about that car
+  (`conversations.listing_id` is `on delete cascade`). Purchase history survives
+  — `purchases.listing_id` is `on delete set null` and the row snapshots
+  make/model/year.
+
+### 2q. Auctions (`migrations/0014_auctions.sql`)
+- SQL Editor → paste [`migrations/0014_auctions.sql`](migrations/0014_auctions.sql)
+  → Run. Apply **after** 0013.
+- Creates `auctions` (starting price, minimum increment, deadline, plus a
+  denormalised `highest_bid_myr` / `bid_count` so every viewer can see the state
+  of play — `bids` itself stays own-or-seller). Reshapes `bids`: they belong to
+  an auction, carry no contact details, and the one-bid-per-person index is
+  gone. **Existing bids are deleted** — they predate auctions.
+- Adds `start_auction`, `place_bid`, `cancel_auction` and
+  `settle_due_auctions`, and drops the old `withdraw_bid` / `respond_to_bid`
+  accept-reject flow. `bids` has **no insert policy** any more: RLS cannot
+  express "beat the current highest by the increment", so every write goes
+  through a SECURITY DEFINER function.
+- **Settlement has no scheduler.** `settle_due_auctions()` is called
+  opportunistically by the app before each auction read, so an auction closes
+  the first time anyone looks. For punctual closing with no traffic, enable
+  pg_cron and add:
+  ```sql
+  select cron.schedule('settle-auctions', '* * * * *',
+                       $$select public.settle_due_auctions()$$);
+  ```
+
+### Acceptance check for 0013 + 0014
+There is no SQL test harness in this repo, so run this by hand once:
+1. `select status, count(*) from public.listings group by 1;` → only the four
+   new values.
+2. Seller A: Bid tab → **Start an auction** → pick a car → 1 hour → confirm.
+   The car shows **Bidding** in My Listings and in the Buy feed, and Buy now is
+   replaced by "Go to the auction".
+3. Buyer B: bid below the minimum → refused with the required amount; bid the
+   starting price → accepted; raise it → accepted.
+4. Seller A can no longer cancel (someone has bid) and cannot mark the car sold.
+5. Expire it: `update public.auctions set ends_at = now() where id = '<id>';`
+   then reopen the Bid tab. The car is **Sold** at the winning amount, a
+   `purchases` row exists for B with `method = 'bid'`, and the won / outbid /
+   ended notifications arrive.
+6. Try `delete from public.listings where id = '<sold id>';` as B or A → 0 rows.
+
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.
 - **Disable "Confirm email"** for v1 — the app expects `signUp` to return a live
