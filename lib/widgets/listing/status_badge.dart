@@ -12,7 +12,7 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      ListingStatus.selling => (AppColors.primary, 'Selling'),
+      ListingStatus.selling => (AppColors.info, 'Selling'),
       ListingStatus.bidding => (AppColors.warning, 'Bidding'),
       ListingStatus.hidden => (AppColors.secondaryLabel, 'Hidden'),
       ListingStatus.sold => (AppColors.success, 'Sold'),

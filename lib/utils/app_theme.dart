@@ -12,7 +12,7 @@ abstract final class AppColors {
 
   static const Color surface = Color(0xFFFFFFFF);
 
-  static const Color primary = Color(0xFF007AFF);
+  static const Color primary = Color(0xFF000000);
 
   static const Color separator = Color(0xFFC6C6C8);
 
@@ -28,7 +28,7 @@ abstract final class AppColors {
 
   static const Color onPrimary = Color(0xFFFFFFFF);
 
-  static const Color primaryMuted = Color(0x1F007AFF);
+  static const Color primaryMuted = Color(0x1F000000);
 
   static const Color fill = Color(0x1F767680);
 
@@ -38,7 +38,9 @@ abstract final class AppColors {
 
   static const Color warning = Color(0xFFFF9500);
 
-  static const Color hero = Color(0xFF000000);
+  static const Color info = Color(0xFF007AFF);
+
+  static const Color hero = primary;
 
   static const Color onHero = Color(0xFFFFFFFF);
 
@@ -75,6 +77,7 @@ const List<AppColorToken> kColorTokens = [
   AppColorToken('destructive', AppColors.destructive, 'Delete, errors'),
   AppColorToken('success', AppColors.success, 'Sold badge, confirmations'),
   AppColorToken('warning', AppColors.warning, 'Password strength "okay"'),
+  AppColorToken('info', AppColors.info, 'Selling status badge'),
   AppColorToken('primaryMuted', AppColors.primaryMuted, 'Tinted fills, info'),
   AppColorToken(
     'destructiveMuted',
