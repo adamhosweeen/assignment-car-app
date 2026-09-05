@@ -33,7 +33,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.space12),
                       Text(
-                        'Garaj',
+                        'CarSell',
                         style: text.largeTitle.copyWith(
                           color: AppColors.onHero,
                         ),

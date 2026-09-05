@@ -35,7 +35,7 @@ class MissingConfigApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Assignment',
+      title: 'CarSell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: Builder(

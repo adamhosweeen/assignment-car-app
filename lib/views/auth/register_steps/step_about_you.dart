@@ -161,7 +161,7 @@ class _StepAboutYouState extends State<StepAboutYou> {
         underage
             ? const InlineNotice(
                 kind: NoticeKind.error,
-                text: 'You must be 18 or older to use Garaj.',
+                text: 'You must be 18 or older to use CarSell.',
               )
             : const InlineNotice(
                 text:

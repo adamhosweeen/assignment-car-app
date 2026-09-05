@@ -45,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: AppSpacing.space16),
               Text(
-                'Garaj',
+                'CarSell',
                 style: Theme.of(
                   context,
                 ).textTheme.largeTitle.copyWith(color: AppColors.onHero),
