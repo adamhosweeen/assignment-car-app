@@ -78,7 +78,10 @@ void main() {
     expect(sut.draft.currentStep, 0);
   });
 
-  test('signing out (auth -> null) also drops the draft', () async {
+  test('a null emission (sign-out / transient) does NOT drop the draft here',
+      () async {
+    // signOut() clears the draft table directly; SellController must ignore
+    // null so a settling session (null -> user) never wipes an edit draft.
     final repo = _FakeDraftRepo(_seededDraft());
     final auth = StreamController<Profile?>();
     addTearDown(auth.close);
@@ -91,8 +94,26 @@ void main() {
     auth.add(null);
     await pumpEventQueue();
 
-    expect(repo.clearCalls, 1);
-    expect(sut.draft.make, isNull);
+    expect(repo.clearCalls, 0);
+    expect(sut.draft.id, 'draft-A');
+  });
+
+  test('a transient null before the first user is ignored (startup race)',
+      () async {
+    final repo = _FakeDraftRepo(_seededDraft());
+    final auth = StreamController<Profile?>();
+    addTearDown(auth.close);
+
+    final sut = SellController(repo, authChanges: auth.stream);
+    addTearDown(sut.dispose);
+
+    auth.add(null); // session not resolved yet
+    await pumpEventQueue();
+    auth.add(_user('A')); // same user's session lands
+    await pumpEventQueue();
+
+    expect(repo.clearCalls, 0);
+    expect(sut.draft.id, 'draft-A');
   });
 
   test('re-emitting the same user does not touch the draft', () async {

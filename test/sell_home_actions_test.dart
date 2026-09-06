@@ -220,4 +220,56 @@ void main() {
       expect(find.text('This car can’t be deleted right now.'), findsOneWidget);
     });
   });
+
+  group('resume banner', () {
+    testWidgets('disappears when the draft is discarded elsewhere '
+        '(e.g. published from inside the wizard)', (tester) async {
+      final repo = _MutableDraftRepo(hasDraft: true);
+      late SellController controller;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthRepository>.value(value: _FakeAuth()),
+            Provider<ListingsRepository>.value(
+              value: _FakeListings(_car(ListingStatus.selling)),
+            ),
+            Provider<DraftRepository>.value(value: repo),
+            ChangeNotifierProvider<SellController>(
+              create: (_) => controller = SellController(repo),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const SellHomeScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Unfinished listing'), findsOneWidget);
+
+      // What the wizard's publish/discard path does.
+      await controller.discard();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unfinished listing'), findsNothing);
+    });
+  });
+}
+
+class _MutableDraftRepo implements DraftRepository {
+  _MutableDraftRepo({required bool hasDraft}) : _has = hasDraft;
+
+  bool _has;
+
+  @override
+  bool get hasDraft => _has;
+
+  @override
+  ListingDraft? load() => null;
+
+  @override
+  Future<void> save(ListingDraft draft) async => _has = true;
+
+  @override
+  Future<void> clear() async => _has = false;
 }

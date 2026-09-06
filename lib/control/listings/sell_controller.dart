@@ -18,29 +18,33 @@ class SellController extends ChangeNotifier {
   final DraftRepository _drafts;
   ListingDraft _draft;
 
-  // The draft lives in device-local sqflite and carries no owner, so when the
-  // signed-in account changes it must be dropped — otherwise the next person to
-  // log in on this phone inherits the previous user's in-progress listing.
+  // The draft lives in device-local sqflite and carries no owner, so when a
+  // *different* account signs in on this phone the in-memory draft must be
+  // dropped — otherwise the next person inherits the previous user's listing.
+  // (Sign-out itself clears the draft table in SupabaseAuthRepository.signOut.)
   StreamSubscription<Profile?>? _authSub;
   String? _ownerId;
-  bool _sawFirstAuth = false;
 
   ListingDraft get draft => _draft;
+
+  /// Whether a real in-progress draft is saved on this device. Reactive:
+  /// listeners are notified when it is created, committed, or discarded.
+  bool get hasDraft => _drafts.hasDraft;
 
   static ListingDraft _fresh() =>
       ListingDraft(id: newId(), updatedAt: DateTime.now().toUtc());
 
   void _onAuthChanged(Profile? profile) {
     final id = profile?.id;
-    if (!_sawFirstAuth) {
-      // First emission is just "who is logged in now"; a persisted draft only
-      // survives an app restart alongside that same user's session.
-      _sawFirstAuth = true;
-      _ownerId = id;
+    // Ignore null: the stream emits it transiently while the session settles or
+    // refreshes, and a real sign-out is handled by signOut() clearing the table.
+    if (id == null) return;
+    if (_ownerId == null) {
+      _ownerId = id; // first signed-in account we've observed — nothing to drop
       return;
     }
-    if (id == _ownerId) return;
-    _ownerId = id;
+    if (id == _ownerId) return; // same account (token refresh / re-emit)
+    _ownerId = id; // a different account signed in on this device
     discard(); // clears sqflite + resets to a fresh draft + notifies
   }
 
