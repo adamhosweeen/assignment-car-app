@@ -125,6 +125,14 @@ class SellController extends ChangeNotifier {
   Future<void> setStateName(String? s) => _commit(_draft.copyWith(state: s));
   Future<void> setCity(String? c) => _commit(_draft.copyWith(city: c));
 
+  /// Apply a GPS-detected state: set it and its region together in one write.
+  Future<void> setDetectedState(String stateName) => _commit(
+    _draft.copyWith(
+      registrationRegion: MalaysianStates.regionOf(stateName),
+      state: stateName,
+    ),
+  );
+
   Future<void> setPrice(int? p) => _commit(_draft.copyWith(priceMyr: p));
   Future<void> setNegotiable(bool v) => _commit(_draft.copyWith(negotiable: v));
 
