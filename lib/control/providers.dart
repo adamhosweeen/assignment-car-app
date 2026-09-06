@@ -58,7 +58,12 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
   );
 
   final client = Supabase.instance.client;
-  final auth = SupabaseAuthRepository(client, profileCache, chatCache);
+  final auth = SupabaseAuthRepository(
+    client,
+    profileCache,
+    chatCache,
+    draftRepository,
+  );
   final listings = SupabaseListingsRepository(client, listingsCache);
   final chat = SupabaseChatRepository(client, chatCache);
   final bids = SupabaseBidsRepository(client);
@@ -108,7 +113,8 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     ...chatProviders,
 
     ChangeNotifierProvider<SellController>(
-      create: (_) => SellController(draftRepository),
+      create: (_) =>
+          SellController(draftRepository, authChanges: auth.authState()),
     ),
 
     Provider<GoRouter>(

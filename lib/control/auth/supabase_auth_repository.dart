@@ -7,6 +7,7 @@ import 'package:assignment/utils/ids.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
 import 'package:assignment/control/chat/chat_cache_repository.dart';
+import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/model/profile/car_interests.dart';
 import 'package:assignment/model/profile/profile.dart';
@@ -14,7 +15,12 @@ import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._client, this._cache, this._chatCache) {
+  SupabaseAuthRepository(
+    this._client,
+    this._cache,
+    this._chatCache,
+    this._drafts,
+  ) {
     _refreshEnriched();
     _client.auth.onAuthStateChange.listen((_) => _refreshEnriched());
   }
@@ -22,6 +28,7 @@ class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
   final ProfileCacheRepository _cache;
   final ChatCacheRepository _chatCache;
+  final DraftRepository _drafts;
 
   static const String _profileColumns = '*';
 
@@ -285,6 +292,7 @@ class SupabaseAuthRepository implements AuthRepository {
 
       await _cache.clear();
       await _chatCache.clear();
+      await _drafts.clear();
       try {
         await _client.auth.signOut();
       } catch (_) {}
@@ -298,6 +306,7 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     await _cache.clear();
     await _chatCache.clear();
+    await _drafts.clear();
     await _client.auth.signOut();
   }
 }

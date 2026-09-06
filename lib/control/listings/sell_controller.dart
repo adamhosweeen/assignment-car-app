@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:assignment/control/listings/draft_repository.dart';
@@ -5,17 +7,48 @@ import 'package:assignment/utils/ids.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/malaysian_states.dart';
+import 'package:assignment/model/profile/profile.dart';
 
 class SellController extends ChangeNotifier {
-  SellController(this._drafts) : _draft = _drafts.load() ?? _fresh();
+  SellController(this._drafts, {Stream<Profile?>? authChanges})
+    : _draft = _drafts.load() ?? _fresh() {
+    _authSub = authChanges?.listen(_onAuthChanged);
+  }
 
   final DraftRepository _drafts;
   ListingDraft _draft;
+
+  // The draft lives in device-local sqflite and carries no owner, so when the
+  // signed-in account changes it must be dropped — otherwise the next person to
+  // log in on this phone inherits the previous user's in-progress listing.
+  StreamSubscription<Profile?>? _authSub;
+  String? _ownerId;
+  bool _sawFirstAuth = false;
 
   ListingDraft get draft => _draft;
 
   static ListingDraft _fresh() =>
       ListingDraft(id: newId(), updatedAt: DateTime.now().toUtc());
+
+  void _onAuthChanged(Profile? profile) {
+    final id = profile?.id;
+    if (!_sawFirstAuth) {
+      // First emission is just "who is logged in now"; a persisted draft only
+      // survives an app restart alongside that same user's session.
+      _sawFirstAuth = true;
+      _ownerId = id;
+      return;
+    }
+    if (id == _ownerId) return;
+    _ownerId = id;
+    discard(); // clears sqflite + resets to a fresh draft + notifies
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 
   void reload() {
     _draft = _drafts.load() ?? _fresh();
@@ -91,6 +124,14 @@ class SellController extends ChangeNotifier {
 
   Future<void> setStateName(String? s) => _commit(_draft.copyWith(state: s));
   Future<void> setCity(String? c) => _commit(_draft.copyWith(city: c));
+
+  /// Apply a GPS-detected state: set it and its region together in one write.
+  Future<void> setDetectedState(String stateName) => _commit(
+    _draft.copyWith(
+      registrationRegion: MalaysianStates.regionOf(stateName),
+      state: stateName,
+    ),
+  );
 
   Future<void> setPrice(int? p) => _commit(_draft.copyWith(priceMyr: p));
   Future<void> setNegotiable(bool v) => _commit(_draft.copyWith(negotiable: v));

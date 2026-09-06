@@ -88,4 +88,32 @@ void main() {
     expect(find.text('Selangor'), findsNothing);
     expect(_row(tester, 'State').value, 'Select');
   });
+
+  testWidgets('the "Use my location" row is present', (tester) async {
+    await tester.pumpWidget(_app(_draft()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Use my location'), findsOneWidget);
+    expect(_row(tester, 'Use my location').onTap, isNotNull);
+    expect(find.byIcon(Icons.my_location), findsOneWidget);
+  });
+
+  group('SellController.setDetectedState', () {
+    Future<SellController> controller() async =>
+        SellController(_SeededDraftRepo(_draft()));
+
+    test('an East state also sets the East region', () async {
+      final c = await controller();
+      await c.setDetectedState('Sabah');
+      expect(c.draft.state, 'Sabah');
+      expect(c.draft.registrationRegion, RegistrationRegion.east);
+    });
+
+    test('a West state also sets the West region', () async {
+      final c = await controller();
+      await c.setDetectedState('Selangor');
+      expect(c.draft.state, 'Selangor');
+      expect(c.draft.registrationRegion, RegistrationRegion.west);
+    });
+  });
 }
