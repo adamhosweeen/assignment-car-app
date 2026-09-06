@@ -42,10 +42,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
   void _startSelling({bool editing = false}) =>
       context.push('/sell/new', extra: editing);
 
-  Future<void> _discardDraft() =>
-      // Goes through the controller so the in-memory draft is reset too (not
-      // just the sqflite row) and listeners are notified.
-      context.read<SellController>().discard();
+  Future<void> _discardDraft() => context.read<SellController>().discard();
 
   void _showError(String message) {
     ScaffoldMessenger.of(context)
@@ -198,8 +195,6 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the controller so the resume banner disappears the moment the draft
-    // is discarded — including by publishing from inside the wizard.
     final hasDraft = context.watch<SellController>().hasDraft;
 
     return Scaffold(

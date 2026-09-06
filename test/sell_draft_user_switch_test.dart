@@ -18,8 +18,6 @@ ListingDraft _seededDraft() => ListingDraft(
   updatedAt: DateTime.utc(2026, 9, 1),
 );
 
-/// Mutable in-memory stand-in: `clear()` really empties it so `discard()` /
-/// `reload()` fall back to a fresh draft.
 class _FakeDraftRepo implements DraftRepository {
   _FakeDraftRepo(this._draft);
 
@@ -80,8 +78,6 @@ void main() {
 
   test('a null emission (sign-out / transient) does NOT drop the draft here',
       () async {
-    // signOut() clears the draft table directly; SellController must ignore
-    // null so a settling session (null -> user) never wipes an edit draft.
     final repo = _FakeDraftRepo(_seededDraft());
     final auth = StreamController<Profile?>();
     addTearDown(auth.close);
@@ -107,9 +103,9 @@ void main() {
     final sut = SellController(repo, authChanges: auth.stream);
     addTearDown(sut.dispose);
 
-    auth.add(null); // session not resolved yet
+    auth.add(null);
     await pumpEventQueue();
-    auth.add(_user('A')); // same user's session lands
+    auth.add(_user('A'));
     await pumpEventQueue();
 
     expect(repo.clearCalls, 0);
@@ -126,7 +122,7 @@ void main() {
 
     auth.add(_user('A'));
     await pumpEventQueue();
-    auth.add(_user('A')); // e.g. a token refresh
+    auth.add(_user('A'));
     await pumpEventQueue();
 
     expect(repo.clearCalls, 0);

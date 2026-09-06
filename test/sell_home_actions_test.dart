@@ -247,7 +247,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Unfinished listing'), findsOneWidget);
 
-      // What the wizard's publish/discard path does.
       await controller.discard();
       await tester.pumpAndSettle();
 

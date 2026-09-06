@@ -18,17 +18,11 @@ class SellController extends ChangeNotifier {
   final DraftRepository _drafts;
   ListingDraft _draft;
 
-  // The draft lives in device-local sqflite and carries no owner, so when a
-  // *different* account signs in on this phone the in-memory draft must be
-  // dropped — otherwise the next person inherits the previous user's listing.
-  // (Sign-out itself clears the draft table in SupabaseAuthRepository.signOut.)
   StreamSubscription<Profile?>? _authSub;
   String? _ownerId;
 
   ListingDraft get draft => _draft;
 
-  /// Whether a real in-progress draft is saved on this device. Reactive:
-  /// listeners are notified when it is created, committed, or discarded.
   bool get hasDraft => _drafts.hasDraft;
 
   static ListingDraft _fresh() =>
@@ -36,16 +30,14 @@ class SellController extends ChangeNotifier {
 
   void _onAuthChanged(Profile? profile) {
     final id = profile?.id;
-    // Ignore null: the stream emits it transiently while the session settles or
-    // refreshes, and a real sign-out is handled by signOut() clearing the table.
     if (id == null) return;
     if (_ownerId == null) {
-      _ownerId = id; // first signed-in account we've observed — nothing to drop
+      _ownerId = id;
       return;
     }
-    if (id == _ownerId) return; // same account (token refresh / re-emit)
-    _ownerId = id; // a different account signed in on this device
-    discard(); // clears sqflite + resets to a fresh draft + notifies
+    if (id == _ownerId) return;
+    _ownerId = id;
+    discard();
   }
 
   @override
@@ -129,7 +121,6 @@ class SellController extends ChangeNotifier {
   Future<void> setStateName(String? s) => _commit(_draft.copyWith(state: s));
   Future<void> setCity(String? c) => _commit(_draft.copyWith(city: c));
 
-  /// Apply a GPS-detected state: set it and its region together in one write.
   Future<void> setDetectedState(String stateName) => _commit(
     _draft.copyWith(
       registrationRegion: MalaysianStates.regionOf(stateName),

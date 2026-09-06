@@ -22,7 +22,6 @@ class StepLocation extends StatefulWidget {
 class _StepLocationState extends State<StepLocation> {
   late final TextEditingController _city;
 
-  // Transient UI state for the "Use my location" row — not part of the draft.
   bool _detecting = false;
   bool _locationFailed = false;
 
