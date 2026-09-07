@@ -254,6 +254,10 @@ class _AuctionScreenState extends State<AuctionScreen> {
               label: 'Minimum next bid',
               value: formatPrice(auction.minimumNextBidMyr),
             ),
+            GroupedRow(
+              label: 'Started',
+              value: formatDateTime(auction.createdAt),
+            ),
             if (finalising)
               const GroupedRow(
                 label: 'Status',
@@ -262,8 +266,17 @@ class _AuctionScreenState extends State<AuctionScreen> {
               )
             else if (live)
               _Countdown(auction: auction)
+            // A cancelled auction stopped when the seller pulled it, so its
+            // ends_at never arrived; settled_at is the real stop time.
+            else if (auction.status == AuctionStatus.cancelled)
+              GroupedRow(
+                label: 'Cancelled',
+                value: formatDateTime(auction.settledAt ?? auction.endsAt),
+              )
+            // ends_at, not settled_at: settlement is opportunistic and can run
+            // well after bidding actually closed.
             else
-              GroupedRow(label: 'Status', value: auction.status.label),
+              GroupedRow(label: 'Ended', value: formatDateTime(auction.endsAt)),
           ],
         ),
         if (finalising) ...[

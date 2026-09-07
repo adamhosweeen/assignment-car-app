@@ -47,6 +47,15 @@ String formatDate(DateTime date) {
   return '${local.day} ${_months[local.month - 1]} ${local.year}';
 }
 
+String _clockTime(DateTime local) {
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$hour:$minute ${local.hour < 12 ? 'AM' : 'PM'}';
+}
+
+String formatDateTime(DateTime date) =>
+    '${formatDate(date)}, ${_clockTime(date.toLocal())}';
+
 String formatMonthYear(DateTime date) {
   final local = date.toLocal();
   return '${_months[local.month - 1]} ${local.year}';
