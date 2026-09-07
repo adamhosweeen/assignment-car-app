@@ -14,6 +14,10 @@ abstract interface class BidsRepository {
 
   Stream<List<Bid>> watchBidsForAuction(String auctionId);
 
+  /// The most recent auction for a listing, whatever its status.
+  /// `Ok(null)` means the listing has never been auctioned.
+  Future<Result<String?>> latestAuctionIdForListing(String listingId);
+
   Future<Result<String>> startAuction({
     required String listingId,
     required int startingPriceMyr,

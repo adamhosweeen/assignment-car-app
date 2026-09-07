@@ -200,6 +200,10 @@ class _FakeBids implements BidsRepository {
   @override
   Future<Result<void>> cancelAuction(String auctionId) async => const Ok(null);
 
+  @override
+  Future<Result<String?>> latestAuctionIdForListing(String listingId) async =>
+      const Ok(null);
+
   final List<String> deletedAuctions = [];
 
   @override

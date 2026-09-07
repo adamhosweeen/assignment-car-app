@@ -236,6 +236,27 @@ class SupabaseBidsRepository implements BidsRepository {
     }
   }
 
+  // The listing carries no auction id, so the auction page is reached by
+  // resolving the newest auction row for the listing. Status is deliberately
+  // not filtered: a listing can still read `bidding` moments after its auction
+  // ended, and AuctionScreen renders a settled auction fine.
+  @override
+  Future<Result<String?>> latestAuctionIdForListing(String listingId) async {
+    try {
+      final row = await _client
+          .from('auctions')
+          .select('id')
+          .eq('listing_id', listingId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle()
+          .timeout(_fetchTimeout);
+      return Ok(row?['id'] as String?);
+    } catch (e) {
+      return Err(_message(e));
+    }
+  }
+
   static const List<String> _passThrough = [
     'Bid at least',
     'auction has ended',

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
@@ -109,6 +110,27 @@ class _DetailScaffold extends StatelessWidget {
     switch (res) {
       case Ok(:final value):
         context.push('/chat/${value.id}', extra: value);
+      case Err(:final message):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<void> _goToAuction(BuildContext context) async {
+    final res = await context.read<BidsRepository>().latestAuctionIdForListing(
+      listing.id,
+    );
+    if (!context.mounted) return;
+    switch (res) {
+      case Ok(value: final auctionId?):
+        context.push('/auction/$auctionId');
+      case Ok():
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('This car is not in an auction.')),
+          );
       case Err(:final message):
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -229,6 +251,7 @@ class _DetailScaffold extends StatelessWidget {
             onEdit: () => _edit(context),
             onMarkSold: () => _markSold(context),
             onChat: () => _openChat(context),
+            onAuction: () => _goToAuction(context),
             onBuy: () => context.push('/listing/${listing.id}/buy'),
           ),
         ),
@@ -295,6 +318,7 @@ class _Actions extends StatelessWidget {
     required this.onEdit,
     required this.onMarkSold,
     required this.onChat,
+    required this.onAuction,
     required this.onBuy,
   });
 
@@ -303,6 +327,7 @@ class _Actions extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onMarkSold;
   final VoidCallback onChat;
+  final VoidCallback onAuction;
   final VoidCallback onBuy;
 
   @override
@@ -317,7 +342,7 @@ class _Actions extends StatelessWidget {
             width: double.infinity,
             child: FilledButton(
               onPressed: bidding
-                  ? () => context.push('/home/bid')
+                  ? onAuction
                   : available
                   ? onBuy
                   : null,
