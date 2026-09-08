@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -186,7 +185,8 @@ class _BodyState extends State<_Body> {
                     child: ListingCard(
                       listing: l,
                       cover: CoverImage(media: l.cover),
-                      onTap: () => context.push('/listing/${l.id}'),
+                      onTap: () =>
+                          Navigator.pushNamed(context, '/listing/${l.id}'),
                     ),
                   ),
               ],

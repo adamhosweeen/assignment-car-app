@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -88,7 +87,7 @@ class _BidScreenState extends State<BidScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'bid-start-auction-fab',
-        onPressed: () => context.push('/auction/new'),
+        onPressed: () => Navigator.pushNamed(context, '/auction/new'),
         elevation: 0,
         focusElevation: 0,
         hoverElevation: 0,
@@ -201,7 +200,7 @@ class _AuctionList extends StatelessWidget {
   Widget _tile(BuildContext context, AuctionWithListing entry) {
     final card = AuctionCard(
       entry: entry,
-      onTap: () => context.push('/auction/${entry.auction.id}'),
+      onTap: () => Navigator.pushNamed(context, '/auction/${entry.auction.id}'),
     );
     final dismiss = onDismiss;
     if (dismiss == null || !(canDismiss?.call(entry) ?? false)) return card;
@@ -276,7 +275,10 @@ class _MyBidsList extends StatelessWidget {
             final leading = entry.isWinning && entry.bid.status.isLive;
             return AuctionCard(
               entry: entry.auction,
-              onTap: () => context.push('/auction/${entry.bid.auctionId}'),
+              onTap: () => Navigator.pushNamed(
+                context,
+                '/auction/${entry.bid.auctionId}',
+              ),
               trailing: Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.space8),
                 child: BidStatusBadge(status: entry.bid.status),

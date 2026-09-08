@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/model/profile/car_interests.dart';
@@ -115,7 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!mounted) return;
     switch (result) {
       case Ok():
-        context.pop();
+        Navigator.pop(context);
       case Err(:final message):
         setState(() => _saving = false);
         _showMessage(message);

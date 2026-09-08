@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/notifications/notification_alerts.dart';
 import 'package:assignment/control/notifications/notifications_repository.dart';
 import 'package:assignment/model/notifications/app_notification.dart';
@@ -56,32 +56,25 @@ class _FakeNotifications implements NotificationsRepository {
       const Stream<List<AppNotification>>.empty();
 }
 
-GoRouter _testRouter() => GoRouter(
-  initialLocation: '/home/buy',
-  routes: [
-    GoRoute(
-      path: '/home/buy',
-      builder: (_, _) => const Scaffold(body: Text('Buy feed')),
-    ),
-    GoRoute(
-      path: '/listing/:id',
-      builder: (_, state) =>
-          Scaffold(body: Text('Listing ${state.pathParameters['id']}')),
-    ),
-    GoRoute(
-      path: '/profile/inbox',
-      builder: (_, _) => const Scaffold(body: Text('Inbox screen')),
-    ),
-  ],
-);
+Route<dynamic> _testRoute(RouteSettings settings) {
+  final label = switch (Uri.parse(settings.name ?? '').pathSegments) {
+    ['listing', final id] => 'Listing $id',
+    ['profile', 'inbox'] => 'Inbox screen',
+    _ => 'Buy feed',
+  };
+  return MaterialPageRoute<void>(
+    settings: settings,
+    builder: (_) => Scaffold(body: Text(label)),
+  );
+}
 
 Widget _app({
-  required GoRouter router,
+  required AppNavigator navigator,
   required Stream<AsyncSnapshot<List<AppNotification>>> inbox,
   required NotificationsRepository notifications,
 }) => MultiProvider(
   providers: [
-    Provider<GoRouter>.value(value: router),
+    Provider<AppNavigator>.value(value: navigator),
     Provider<NotificationsRepository>.value(value: notifications),
     Provider<Profile?>.value(value: _user),
     StreamProvider<AsyncSnapshot<List<AppNotification>>>.value(
@@ -89,9 +82,12 @@ Widget _app({
       initialData: const AsyncSnapshot<List<AppNotification>>.waiting(),
     ),
   ],
-  child: MaterialApp.router(
+  child: MaterialApp(
     theme: AppTheme.light,
-    routerConfig: router,
+    navigatorKey: navigator.key,
+    navigatorObservers: [navigator.tracker],
+    onGenerateRoute: _testRoute,
+    home: const Scaffold(body: Text('Buy feed')),
     builder: (context, child) =>
         NotificationBannerHost(child: child ?? const SizedBox.shrink()),
   ),
@@ -139,22 +135,26 @@ void main() {
   group('NotificationBannerHost', () {
     late StreamController<AsyncSnapshot<List<AppNotification>>> inbox;
     late _FakeNotifications notifications;
-    late GoRouter router;
+    late AppNavigator navigator;
 
     setUp(() {
       inbox = StreamController<AsyncSnapshot<List<AppNotification>>>();
       notifications = _FakeNotifications();
-      router = _testRouter();
+      navigator = AppNavigator();
     });
 
     tearDown(() async {
       await inbox.close();
-      router.dispose();
+      navigator.dispose();
     });
 
     Future<void> pumpApp(WidgetTester tester) async {
       await tester.pumpWidget(
-        _app(router: router, inbox: inbox.stream, notifications: notifications),
+        _app(
+          navigator: navigator,
+          inbox: inbox.stream,
+          notifications: notifications,
+        ),
       );
       await tester.pump();
     }
@@ -220,7 +220,7 @@ void main() {
       await pumpApp(tester);
       await emit(tester, []);
 
-      router.push('/profile/inbox');
+      navigator.open('/profile/inbox');
       await tester.pumpAndSettle();
       expect(find.text('Inbox screen'), findsOneWidget);
 

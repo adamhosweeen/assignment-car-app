@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/listings/listings_providers.dart';
@@ -81,7 +80,7 @@ class _ResultsState extends State<_Results> {
             return ListingCard(
               listing: l,
               cover: CoverImage(media: l.cover),
-              onTap: () => context.push('/listing/${l.id}'),
+              onTap: () => Navigator.pushNamed(context, '/listing/${l.id}'),
             );
           },
         );

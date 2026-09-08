@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/profiles/profiles_providers.dart';
@@ -85,7 +84,8 @@ class _ResultsState extends State<_Results> {
                 for (final p in profiles)
                   SellerRow(
                     profile: p,
-                    onTap: () => context.push('/seller/${p.id}'),
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/seller/${p.id}'),
                   ),
               ],
             ),

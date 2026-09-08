@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:assignment/control/notifications/notifications_providers.dart';
@@ -215,19 +214,19 @@ class ProfileScreen extends StatelessWidget {
               value: unread == 0 ? null : '$unread new',
               valueColor: AppColors.primary,
               showChevron: true,
-              onTap: () => context.push('/profile/inbox'),
+              onTap: () => Navigator.pushNamed(context, '/profile/inbox'),
             ),
             GroupedRow(
               leading: Icons.person_outline,
               label: 'My Info',
               showChevron: true,
-              onTap: () => context.push('/profile/info'),
+              onTap: () => Navigator.pushNamed(context, '/profile/info'),
             ),
             GroupedRow(
               leading: Icons.favorite_outline,
               label: 'Car Interests',
               showChevron: true,
-              onTap: () => context.push('/profile/interests'),
+              onTap: () => Navigator.pushNamed(context, '/profile/interests'),
             ),
           ],
         ),
@@ -239,19 +238,19 @@ class ProfileScreen extends StatelessWidget {
               leading: Icons.receipt_long_outlined,
               label: 'Purchases',
               showChevron: true,
-              onTap: () => context.push('/profile/purchases'),
+              onTap: () => Navigator.pushNamed(context, '/profile/purchases'),
             ),
             GroupedRow(
               leading: Icons.search,
               label: 'Find Sellers',
               showChevron: true,
-              onTap: () => context.push('/sellers'),
+              onTap: () => Navigator.pushNamed(context, '/sellers'),
             ),
             GroupedRow(
               leading: Icons.bar_chart,
               label: 'Market Insights',
               showChevron: true,
-              onTap: () => context.push('/profile/insights'),
+              onTap: () => Navigator.pushNamed(context, '/profile/insights'),
             ),
           ],
         ),
@@ -264,7 +263,7 @@ class ProfileScreen extends StatelessWidget {
                 leading: Icons.admin_panel_settings_outlined,
                 label: 'Admin',
                 showChevron: true,
-                onTap: () => context.push('/admin'),
+                onTap: () => Navigator.pushNamed(context, '/admin'),
               ),
             ],
           ),

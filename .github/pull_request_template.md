@@ -5,7 +5,7 @@
 
 
 ## Shared files touched (and why)
-<!-- app_router / providers.dart / app_shell / utils / widgets/common / SQL preamble / pubspec — list each, or "none" -->
+<!-- app_navigation / app_routes / providers.dart / app_shell / utils / widgets/common / SQL preamble / pubspec — list each, or "none" -->
 
 ## Migration file the reviewer must paste
 <!-- supabase/migrations/000N_<module>_<desc>.sql, or "none". 0001_init.sql must be untouched. -->

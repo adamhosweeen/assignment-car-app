@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -316,7 +315,8 @@ class _AuctionScreenState extends State<AuctionScreen> {
         ),
         const SizedBox(height: AppSpacing.space12),
         TextButton(
-          onPressed: () => context.push('/listing/${entry.listing.id}'),
+          onPressed: () =>
+              Navigator.pushNamed(context, '/listing/${entry.listing.id}'),
           child: const Text('See the full listing'),
         ),
       ],

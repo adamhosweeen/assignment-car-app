@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/notifications/notification_alerts.dart';
 import 'package:assignment/control/notifications/notifications_repository.dart';
 import 'package:assignment/model/notifications/app_notification.dart';
@@ -89,14 +89,7 @@ class _NotificationBannerHostState extends State<NotificationBannerHost>
     });
   }
 
-  bool get _onInbox {
-    final matches = context
-        .read<GoRouter>()
-        .routerDelegate
-        .currentConfiguration
-        .matches;
-    return matches.isNotEmpty && matches.last.matchedLocation == _inboxRoute;
-  }
+  bool get _onInbox => context.read<AppNavigator>().currentRoute == _inboxRoute;
 
   void _showNext() {
     if (_queue.isEmpty || _current != null) return;
@@ -128,11 +121,11 @@ class _NotificationBannerHostState extends State<NotificationBannerHost>
 
   void _open(AppNotification n) {
     _timer?.cancel();
-    final router = context.read<GoRouter>();
+    final navigator = context.read<AppNavigator>();
     final notifications = context.read<NotificationsRepository>();
     if (!n.isRead) notifications.markRead(n.id);
     final route = n.route;
-    if (route != null) router.push(route);
+    if (route != null) navigator.open(route);
     _dismiss();
   }
 

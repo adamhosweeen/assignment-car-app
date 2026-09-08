@@ -1,11 +1,10 @@
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import 'package:assignment/control/admin/admin_repository.dart';
 import 'package:assignment/control/admin/supabase_admin_repository.dart';
-import 'package:assignment/control/app_router.dart';
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/services/signed_url_cache.dart';
 import 'package:assignment/control/auth/profile_cache_repository.dart';
@@ -117,10 +116,10 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
           SellController(draftRepository, authChanges: auth.authState()),
     ),
 
-    Provider<GoRouter>(
+    Provider<AppNavigator>(
       lazy: false,
-      create: (_) => createRouter(auth),
-      dispose: (_, router) => router.dispose(),
+      create: (_) => AppNavigator(),
+      dispose: (_, navigator) => navigator.dispose(),
     ),
   ];
 }

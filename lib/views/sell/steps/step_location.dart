@@ -86,7 +86,8 @@ class _StepLocationState extends State<StepLocation> {
     const placeholder = AppColors.tertiaryLabel;
     return SellStepScaffold(
       title: 'Registration & location',
-      subtitle: 'Use your location, or pick the region — the state list '
+      subtitle:
+          'Use your location, or pick the region — the state list '
           'follows from it.',
       children: [
         GroupedSection(
@@ -130,7 +131,8 @@ class _StepLocationState extends State<StepLocation> {
           const SizedBox(height: AppSpacing.space12),
           const InlineNotice(
             kind: NoticeKind.error,
-            text: 'We couldn’t detect your location — pick the region and '
+            text:
+                'We couldn’t detect your location — pick the region and '
                 'state manually.',
           ),
         ] else if (draft.state != null) ...[

@@ -61,8 +61,8 @@ plus its SQL block(s) and its section(s) in the docs.
 **Shared — not owned by any module.** Changes here must be small, additive, and
 called out explicitly in the PR description:
 
-- `lib/main.dart`, `lib/control/app_router.dart`, `lib/control/providers.dart`,
-  `lib/views/app_shell.dart`
+- `lib/main.dart`, `lib/control/app_navigation.dart`, `lib/control/app_routes.dart`,
+  `lib/control/providers.dart`, `lib/views/app_shell.dart`
 - `lib/utils/*` (`app_theme.dart`, `app_spacing.dart`, `formatters.dart`, …)
 - `lib/widgets/common/*`, `lib/widgets/listing/media_image.dart`
 - `lib/control/services/*` (`error_mapper`, `image_utils`, sqflite `app_database`

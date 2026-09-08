@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -166,9 +165,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 
   void _goToOfferCheckout(Message offer, String listingId) {
-    context.push(
+    Navigator.pushNamed(
+      context,
       '/listing/$listingId/buy',
-      extra: (messageId: offer.id, amountMyr: offer.offerAmountMyr!),
+      arguments: (messageId: offer.id, amountMyr: offer.offerAmountMyr!),
     );
   }
 
@@ -212,7 +212,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       appBar: AppBar(
         title: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => context.push('/listing/${conversation.listingId}'),
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/listing/${conversation.listingId}',
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

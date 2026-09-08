@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
@@ -69,7 +69,7 @@ class _BuyFeedScreenState extends State<BuyFeedScreen> {
                 const SizedBox(height: AppSpacing.space12),
                 SearchField(
                   hint: 'Search cars',
-                  onTap: () => context.push('/search'),
+                  onTap: () => Navigator.pushNamed(context, '/search'),
                 ),
               ],
             ),
@@ -89,7 +89,9 @@ class _BuyFeedScreenState extends State<BuyFeedScreen> {
           final listings = snapshot.data;
           if (listings == null) return const _FeedSkeleton();
           if (listings.isEmpty) {
-            return _EmptyFeed(onSell: () => context.go('/home/sell'));
+            return _EmptyFeed(
+              onSell: () => context.read<AppNavigator>().goHome(homeTabSell),
+            );
           }
           if (_tab == 0) {
             final recommended = recommendedListings(
@@ -108,13 +110,13 @@ class _BuyFeedScreenState extends State<BuyFeedScreen> {
             return _RefreshableFeed(
               listings: recommended,
               onRefresh: _refresh,
-              onTap: (id) => context.push('/listing/$id'),
+              onTap: (id) => Navigator.pushNamed(context, '/listing/$id'),
             );
           }
           return _RefreshableFeed(
             listings: listings,
             onRefresh: _refresh,
-            onTap: (id) => context.push('/listing/$id'),
+            onTap: (id) => Navigator.pushNamed(context, '/listing/$id'),
           );
         },
       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
@@ -128,7 +128,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       listing: listing,
       orderRef: _orderRef,
       placedAt: _placedAt,
-      onDone: () => context.go('/home/buy'),
+      onDone: () => context.read<AppNavigator>().goHome(homeTabBuy),
     ),
   );
 }
@@ -273,7 +273,8 @@ class _SellerCardState extends State<_SellerCard> {
           children: [
             SellerRow(
               profile: profile,
-              onTap: () => context.push('/seller/${profile.id}'),
+              onTap: () =>
+                  Navigator.pushNamed(context, '/seller/${profile.id}'),
             ),
           ],
         );

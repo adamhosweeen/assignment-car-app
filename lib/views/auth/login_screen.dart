@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/utils/result.dart';
@@ -64,11 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _back() {
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/welcome');
-    }
+    if (Navigator.canPop(context)) Navigator.pop(context);
   }
 
   @override
@@ -180,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: AuthButtons.darkOutlined(context),
                         onPressed: _loading
                             ? null
-                            : () => context.push('/register'),
+                            : () => Navigator.pushNamed(context, '/register'),
                         child: const Text('Create an account'),
                       ),
                       const SizedBox(height: AppSpacing.space12),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/purchases/purchases_providers.dart';
@@ -74,7 +73,8 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                         item: item,
                         onTap: item.purchase.listingId == null
                             ? null
-                            : () => context.push(
+                            : () => Navigator.pushNamed(
+                                context,
                                 '/listing/${item.purchase.listingId}',
                               ),
                       ),

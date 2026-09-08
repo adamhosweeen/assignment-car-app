@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
-import 'package:go_router/go_router.dart';
 
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -57,7 +56,7 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space32),
                 FilledButton(
                   style: AuthButtons.light(context),
-                  onPressed: () => context.push('/login'),
+                  onPressed: () => Navigator.pushNamed(context, '/login'),
                   child: const Text('Log in'),
                 ),
                 const SizedBox(height: AppSpacing.space16),
@@ -65,7 +64,7 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space16),
                 OutlinedButton(
                   style: AuthButtons.lightOutlined(context),
-                  onPressed: () => context.push('/register'),
+                  onPressed: () => Navigator.pushNamed(context, '/register'),
                   child: const Text('Sign up'),
                 ),
                 const SizedBox(height: AppSpacing.space8),

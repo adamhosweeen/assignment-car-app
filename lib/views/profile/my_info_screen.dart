@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/model/profile/profile.dart';
@@ -20,7 +19,7 @@ class MyInfoScreen extends StatelessWidget {
         actions: [
           if (profile != null)
             TextButton(
-              onPressed: () => context.push('/profile/edit'),
+              onPressed: () => Navigator.pushNamed(context, '/profile/edit'),
               child: const Text('Edit'),
             ),
         ],

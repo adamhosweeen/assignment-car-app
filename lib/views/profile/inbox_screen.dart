@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/notifications/notifications_providers.dart';
@@ -20,7 +19,7 @@ class InboxScreen extends StatelessWidget {
       context.read<NotificationsRepository>().markRead(n.id);
     }
     final route = n.route;
-    if (route != null && context.mounted) context.push(route);
+    if (route != null && context.mounted) Navigator.pushNamed(context, route);
   }
 
   Future<void> _delete(BuildContext context, AppNotification n) async {

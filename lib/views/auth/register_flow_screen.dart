@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/auth/registration_controller.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -39,7 +38,7 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
 
   void _back() {
     if (_step == 0) {
-      context.pop();
+      Navigator.pop(context);
     } else {
       _goTo(_step - 1);
     }

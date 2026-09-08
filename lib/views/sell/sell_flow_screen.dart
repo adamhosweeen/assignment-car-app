@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/utils/result.dart';
@@ -51,14 +51,14 @@ class _SellFlowScreenState extends State<SellFlowScreen> {
   void _back() {
     if (widget.editing) {
       if (_step == _lastStep) {
-        context.pop();
+        Navigator.pop(context);
       } else {
         _goTo(_lastStep);
       }
       return;
     }
     if (_step == 0) {
-      context.pop();
+      Navigator.pop(context);
     } else {
       _goTo(_step - 1);
     }
@@ -86,7 +86,7 @@ class _SellFlowScreenState extends State<SellFlowScreen> {
       case Ok():
         await context.read<SellController>().discard();
         if (!mounted) return;
-        context.go('/home/sell');
+        context.read<AppNavigator>().goHome(homeTabSell);
       case Err(:final message):
         setState(() => _publishing = false);
         ScaffoldMessenger.of(context)

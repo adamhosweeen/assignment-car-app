@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/insights/insights_providers.dart';
@@ -156,7 +155,7 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
                   'Add your location in My Info to see what’s popular in '
                   'your state.',
               actionLabel: 'Open My Info',
-              onAction: () => context.push('/profile/info'),
+              onAction: () => Navigator.pushNamed(context, '/profile/info'),
             ),
           ];
         }

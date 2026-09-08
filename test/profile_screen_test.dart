@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/model/auth/registration_data.dart';
@@ -99,27 +99,10 @@ class _NoDraftRepo implements DraftRepository {
 }
 
 Widget _app(Profile profile, {List<AppNotification> inbox = const []}) {
-  final router = GoRouter(
-    initialLocation: '/home/profile',
-    routes: [
-      GoRoute(path: '/home/profile', builder: (_, _) => const ProfileScreen()),
-      for (final path in [
-        '/profile/inbox',
-        '/profile/info',
-        '/profile/interests',
-        '/profile/purchases',
-        '/profile/insights',
-        '/sellers',
-        '/admin',
-      ])
-        GoRoute(
-          path: path,
-          builder: (_, _) => Scaffold(body: Text('ROUTE $path')),
-        ),
-    ],
-  );
+  final navigator = AppNavigator();
   return MultiProvider(
     providers: [
+      Provider<AppNavigator>.value(value: navigator),
       Provider<AuthRepository>.value(value: _FakeAuth(profile)),
       Provider<DraftRepository>.value(value: _NoDraftRepo()),
       Provider<Profile?>.value(value: profile),
@@ -127,7 +110,16 @@ Widget _app(Profile profile, {List<AppNotification> inbox = const []}) {
         value: AsyncSnapshot.withData(ConnectionState.active, inbox),
       ),
     ],
-    child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    child: MaterialApp(
+      theme: AppTheme.light,
+      navigatorKey: navigator.key,
+      navigatorObservers: [navigator.tracker],
+      onGenerateRoute: (settings) => MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => Scaffold(body: Text('ROUTE ${settings.name}')),
+      ),
+      home: const ProfileScreen(),
+    ),
   );
 }
 

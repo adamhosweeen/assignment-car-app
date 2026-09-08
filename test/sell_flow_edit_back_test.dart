@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
@@ -49,29 +49,26 @@ ListingDraft _draftAtReview() => ListingDraft(
 );
 
 Future<void> _pumpEditFlow(WidgetTester tester) async {
-  final router = GoRouter(
-    initialLocation: '/listing',
-    routes: [
-      GoRoute(
-        path: '/listing',
-        builder: (_, _) => const Scaffold(body: Text('LISTING PAGE')),
-      ),
-      GoRoute(
-        path: '/sell/new',
-        builder: (_, state) => SellFlowScreen(editing: state.extra == true),
-      ),
-    ],
-  );
+  final navigator = AppNavigator();
 
   await tester.pumpWidget(
     ChangeNotifierProvider<SellController>(
       create: (_) => SellController(_SeededDraftRepo(_draftAtReview())),
-      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      child: MaterialApp(
+        theme: AppTheme.light,
+        navigatorKey: navigator.key,
+        navigatorObservers: [navigator.tracker],
+        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => SellFlowScreen(editing: settings.arguments == true),
+        ),
+        home: const Scaffold(body: Text('LISTING PAGE')),
+      ),
     ),
   );
   await tester.pumpAndSettle();
 
-  router.push('/sell/new', extra: true);
+  navigator.key.currentState!.pushNamed('/sell/new', arguments: true);
   await tester.pumpAndSettle();
 }
 

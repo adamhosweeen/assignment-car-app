@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
@@ -40,7 +39,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
   }
 
   void _startSelling({bool editing = false}) =>
-      context.push('/sell/new', extra: editing);
+      Navigator.pushNamed(context, '/sell/new', arguments: editing);
 
   Future<void> _discardDraft() => context.read<SellController>().discard();
 
@@ -284,7 +283,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
         listing: l,
         cover: CoverImage(media: l.cover),
         statusBadge: StatusBadge(status: l.status),
-        onTap: () => context.push('/listing/${l.id}'),
+        onTap: () => Navigator.pushNamed(context, '/listing/${l.id}'),
         onLongPress: () => _showActions(l),
         trailing: GestureDetector(
           behavior: HitTestBehavior.opaque,

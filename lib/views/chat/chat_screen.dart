@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -78,9 +77,10 @@ class ChatScreen extends StatelessWidget {
                 _ConversationRow(
                   thread: thread,
                   currentUserId: uid,
-                  onTap: () => context.push(
+                  onTap: () => Navigator.pushNamed(
+                    context,
                     '/chat/${thread.conversation.id}',
-                    extra: thread.conversation,
+                    arguments: thread.conversation,
                   ),
                 ),
             ],

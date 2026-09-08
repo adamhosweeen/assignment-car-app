@@ -41,21 +41,24 @@ class _FakeDraftRepo implements DraftRepository {
 }
 
 void main() {
-  test('draft survives the first auth emission (same session resume)', () async {
-    final repo = _FakeDraftRepo(_seededDraft());
-    final auth = StreamController<Profile?>();
-    addTearDown(auth.close);
+  test(
+    'draft survives the first auth emission (same session resume)',
+    () async {
+      final repo = _FakeDraftRepo(_seededDraft());
+      final auth = StreamController<Profile?>();
+      addTearDown(auth.close);
 
-    final sut = SellController(repo, authChanges: auth.stream);
-    addTearDown(sut.dispose);
+      final sut = SellController(repo, authChanges: auth.stream);
+      addTearDown(sut.dispose);
 
-    auth.add(_user('A'));
-    await pumpEventQueue();
+      auth.add(_user('A'));
+      await pumpEventQueue();
 
-    expect(repo.clearCalls, 0);
-    expect(sut.draft.id, 'draft-A');
-    expect(sut.draft.make, 'Perodua');
-  });
+      expect(repo.clearCalls, 0);
+      expect(sut.draft.id, 'draft-A');
+      expect(sut.draft.make, 'Perodua');
+    },
+  );
 
   test('switching to another account drops the previous draft', () async {
     final repo = _FakeDraftRepo(_seededDraft());
@@ -76,41 +79,45 @@ void main() {
     expect(sut.draft.currentStep, 0);
   });
 
-  test('a null emission (sign-out / transient) does NOT drop the draft here',
-      () async {
-    final repo = _FakeDraftRepo(_seededDraft());
-    final auth = StreamController<Profile?>();
-    addTearDown(auth.close);
+  test(
+    'a null emission (sign-out / transient) does NOT drop the draft here',
+    () async {
+      final repo = _FakeDraftRepo(_seededDraft());
+      final auth = StreamController<Profile?>();
+      addTearDown(auth.close);
 
-    final sut = SellController(repo, authChanges: auth.stream);
-    addTearDown(sut.dispose);
+      final sut = SellController(repo, authChanges: auth.stream);
+      addTearDown(sut.dispose);
 
-    auth.add(_user('A'));
-    await pumpEventQueue();
-    auth.add(null);
-    await pumpEventQueue();
+      auth.add(_user('A'));
+      await pumpEventQueue();
+      auth.add(null);
+      await pumpEventQueue();
 
-    expect(repo.clearCalls, 0);
-    expect(sut.draft.id, 'draft-A');
-  });
+      expect(repo.clearCalls, 0);
+      expect(sut.draft.id, 'draft-A');
+    },
+  );
 
-  test('a transient null before the first user is ignored (startup race)',
-      () async {
-    final repo = _FakeDraftRepo(_seededDraft());
-    final auth = StreamController<Profile?>();
-    addTearDown(auth.close);
+  test(
+    'a transient null before the first user is ignored (startup race)',
+    () async {
+      final repo = _FakeDraftRepo(_seededDraft());
+      final auth = StreamController<Profile?>();
+      addTearDown(auth.close);
 
-    final sut = SellController(repo, authChanges: auth.stream);
-    addTearDown(sut.dispose);
+      final sut = SellController(repo, authChanges: auth.stream);
+      addTearDown(sut.dispose);
 
-    auth.add(null);
-    await pumpEventQueue();
-    auth.add(_user('A'));
-    await pumpEventQueue();
+      auth.add(null);
+      await pumpEventQueue();
+      auth.add(_user('A'));
+      await pumpEventQueue();
 
-    expect(repo.clearCalls, 0);
-    expect(sut.draft.id, 'draft-A');
-  });
+      expect(repo.clearCalls, 0);
+      expect(sut.draft.id, 'draft-A');
+    },
+  );
 
   test('re-emitting the same user does not touch the draft', () async {
     final repo = _FakeDraftRepo(_seededDraft());

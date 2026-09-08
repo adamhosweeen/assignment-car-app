@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/auth/auth_repository.dart';
@@ -87,7 +86,7 @@ class _DetailScaffold extends StatelessWidget {
     await context.read<DraftRepository>().save(draftFromListing(listing));
     if (!context.mounted) return;
     context.read<SellController>().reload();
-    context.push('/sell/new', extra: true);
+    Navigator.pushNamed(context, '/sell/new', arguments: true);
   }
 
   Future<void> _markSold(BuildContext context) async {
@@ -98,7 +97,7 @@ class _DetailScaffold extends StatelessWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
     } else {
-      context.pop();
+      Navigator.pop(context);
     }
   }
 
@@ -109,7 +108,7 @@ class _DetailScaffold extends StatelessWidget {
     if (!context.mounted) return;
     switch (res) {
       case Ok(:final value):
-        context.push('/chat/${value.id}', extra: value);
+        Navigator.pushNamed(context, '/chat/${value.id}', arguments: value);
       case Err(:final message):
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -124,7 +123,7 @@ class _DetailScaffold extends StatelessWidget {
     if (!context.mounted) return;
     switch (res) {
       case Ok(value: final auctionId?):
-        context.push('/auction/$auctionId');
+        Navigator.pushNamed(context, '/auction/$auctionId');
       case Ok():
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -252,7 +251,8 @@ class _DetailScaffold extends StatelessWidget {
             onMarkSold: () => _markSold(context),
             onChat: () => _openChat(context),
             onAuction: () => _goToAuction(context),
-            onBuy: () => context.push('/listing/${listing.id}/buy'),
+            onBuy: () =>
+                Navigator.pushNamed(context, '/listing/${listing.id}/buy'),
           ),
         ),
       ),
@@ -302,7 +302,8 @@ class _SellerSectionState extends State<_SellerSection> {
           children: [
             SellerRow(
               profile: profile,
-              onTap: () => context.push('/seller/${profile.id}'),
+              onTap: () =>
+                  Navigator.pushNamed(context, '/seller/${profile.id}'),
             ),
           ],
         );

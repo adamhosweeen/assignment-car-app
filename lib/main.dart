@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
+import 'package:assignment/control/app_navigation.dart';
+import 'package:assignment/control/app_routes.dart';
 import 'package:assignment/control/providers.dart';
 import 'package:assignment/control/services/app_storage.dart';
 import 'package:assignment/control/services/supabase_config.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/views/auth/auth_gate.dart';
 import 'package:assignment/widgets/notifications/notification_banner.dart';
 
 Future<void> main() async {
@@ -84,11 +86,15 @@ class AssignmentApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    final navigator = context.read<AppNavigator>();
+    return MaterialApp(
       title: 'CarSell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      routerConfig: context.read<GoRouter>(),
+      navigatorKey: navigator.key,
+      navigatorObservers: [navigator.tracker],
+      onGenerateRoute: generateRoute,
+      home: const AuthGate(),
       builder: (context, child) =>
           NotificationBannerHost(child: child ?? const SizedBox.shrink()),
     );

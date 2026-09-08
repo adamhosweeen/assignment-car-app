@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
@@ -141,7 +141,7 @@ class _StartAuctionScreenState extends State<StartAuctionScreen> {
     setState(() => _submitting = false);
     switch (res) {
       case Ok(:final value):
-        context.pushReplacement('/auction/$value');
+        Navigator.pushReplacementNamed(context, '/auction/$value');
       case Err(:final message):
         setState(() => _serverError = message);
     }
@@ -171,7 +171,8 @@ class _StartAuctionScreenState extends State<StartAuctionScreen> {
               text:
                   'You need a car that is for sale before you can auction it.',
               action: TextButton(
-                onPressed: () => context.go('/home/sell'),
+                onPressed: () =>
+                    context.read<AppNavigator>().goHome(homeTabSell),
                 child: const Text('Go to My Listings'),
               ),
             );

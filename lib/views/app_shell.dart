@@ -1,18 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/chat/chat_providers.dart';
 import 'package:assignment/control/notifications/notifications_providers.dart';
 import 'package:assignment/model/chat/conversation_thread.dart';
 import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/views/bid/bid_screen.dart';
+import 'package:assignment/views/buy/buy_feed_screen.dart';
+import 'package:assignment/views/chat/chat_screen.dart';
+import 'package:assignment/views/profile/profile_screen.dart';
+import 'package:assignment/views/sell/sell_home_screen.dart';
 
-class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.shell});
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
 
-  final StatefulNavigationShell shell;
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  late final AppNavigator _navigator;
+  late int _index;
+  final Set<int> _visited = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _navigator = context.read<AppNavigator>();
+    _index = _navigator.tab.value;
+    _visited.add(_index);
+    _navigator.tab.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    _navigator.tab.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!mounted) return;
+    setState(() {
+      _index = _navigator.tab.value;
+      _visited.add(_index);
+    });
+  }
+
+  void _select(int index) => _navigator.tab.value = index;
 
   @override
   Widget build(BuildContext context) {
@@ -23,15 +60,30 @@ class AppShell extends StatelessWidget {
       context.watch<AsyncSnapshot<List<ConversationThread>>>(),
     );
     return Scaffold(
-      body: shell,
+      body: IndexedStack(
+        index: _index,
+        children: [
+          for (var i = 0; i < _tabs.length; i++)
+            _visited.contains(i) ? _screenAt(i) : const SizedBox.shrink(),
+        ],
+      ),
       bottomNavigationBar: _BottomNav(
-        shell: shell,
+        index: _index,
+        onSelect: _select,
         profileBadge: unread > 0,
         chatBadge: chatUnread > 0,
       ),
     );
   }
 }
+
+Widget _screenAt(int index) => switch (index) {
+  homeTabBuy => const BuyFeedScreen(),
+  homeTabSell => const SellHomeScreen(),
+  homeTabBid => const BidScreen(),
+  homeTabChat => const ChatScreen(),
+  _ => const ProfileScreen(),
+};
 
 class _NavDef {
   const _NavDef(this.icon, this.activeIcon, this.label);
@@ -48,18 +100,16 @@ const List<_NavDef> _tabs = [
   _NavDef(Icons.person_outline, Icons.person, 'Profile'),
 ];
 
-const int _chatIndex = 3;
-
-const int _profileIndex = 4;
-
 class _BottomNav extends StatelessWidget {
   const _BottomNav({
-    required this.shell,
+    required this.index,
+    required this.onSelect,
     required this.profileBadge,
     required this.chatBadge,
   });
 
-  final StatefulNavigationShell shell;
+  final int index;
+  final ValueChanged<int> onSelect;
   final bool profileBadge;
   final bool chatBadge;
 
@@ -85,14 +135,11 @@ class _BottomNav extends StatelessWidget {
                 Expanded(
                   child: _NavItem(
                     def: _tabs[i],
-                    selected: i == shell.currentIndex,
+                    selected: i == index,
                     badge:
-                        (profileBadge && i == _profileIndex) ||
-                        (chatBadge && i == _chatIndex),
-                    onTap: () => shell.goBranch(
-                      i,
-                      initialLocation: i == shell.currentIndex,
-                    ),
+                        (profileBadge && i == homeTabProfile) ||
+                        (chatBadge && i == homeTabChat),
+                    onTap: () => onSelect(i),
                   ),
                 ),
             ],
