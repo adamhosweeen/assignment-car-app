@@ -13,7 +13,7 @@ class AdminException implements Exception {
   String toString() => message;
 }
 
-Future<List<AppUser>> fetchAppUsers(AdminRepository admin) async {
+Future<List<AppUser>> fetchAdminUsers(AdminRepository admin) async {
   final res = await admin.listUsers();
   return switch (res) {
     Ok(:final value) => value,
@@ -29,7 +29,7 @@ Future<List<Report>> fetchReports(AdminRepository admin) async {
   };
 }
 
-List<AppUser> filterAppUsers(List<AppUser> users, String query) {
+List<AppUser> filterUsers(List<AppUser> users, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return users;
   bool matches(String? field) => field?.toLowerCase().contains(q) ?? false;
@@ -45,7 +45,7 @@ List<AppUser> filterAppUsers(List<AppUser> users, String query) {
 
 enum AdminSort { newest, listed, sold }
 
-List<AppUser> sortAppUsers(List<AppUser> users, AdminSort sort) {
+List<AppUser> sortUsers(List<AppUser> users, AdminSort sort) {
   int byNewest(AppUser a, AppUser b) {
     final c = b.createdAt.compareTo(a.createdAt);
     return c != 0 ? c : a.id.compareTo(b.id);

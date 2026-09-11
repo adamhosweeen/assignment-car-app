@@ -32,7 +32,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   void _load() {
     final admin = context.read<AdminRepository>();
-    _users = fetchAppUsers(admin);
+    _users = fetchAdminUsers(admin);
     _reports = fetchReports(admin);
   }
 
@@ -62,7 +62,7 @@ class _AdminScreenState extends State<AdminScreen> {
             child: IndexedStack(
               index: _tab,
               children: [
-                AppUsersTab(users: _users, onChanged: _reload),
+                AdminUsersTab(users: _users, onChanged: _reload),
                 ReportsTab(reports: _reports, onChanged: _reload),
               ],
             ),

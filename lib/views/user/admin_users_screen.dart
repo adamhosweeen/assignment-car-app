@@ -14,18 +14,22 @@ import 'package:assignment/widgets/common/search_field.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/user/profile_avatar.dart';
 
-class AppUsersTab extends StatefulWidget {
-  const AppUsersTab({super.key, required this.users, required this.onChanged});
+class AdminUsersTab extends StatefulWidget {
+  const AdminUsersTab({
+    super.key,
+    required this.users,
+    required this.onChanged,
+  });
 
   final Future<List<AppUser>> users;
 
   final VoidCallback onChanged;
 
   @override
-  State<AppUsersTab> createState() => _AppUsersTabState();
+  State<AdminUsersTab> createState() => _AppUsersTabState();
 }
 
-class _AppUsersTabState extends State<AppUsersTab> {
+class _AppUsersTabState extends State<AdminUsersTab> {
   AdminSort _sort = AdminSort.newest;
   final _search = TextEditingController();
   String _query = '';
@@ -218,7 +222,7 @@ class _AppUsersTabState extends State<AppUsersTab> {
             ),
           );
         }
-        final visible = sortAppUsers(filterAppUsers(users, _query), _sort);
+        final visible = sortUsers(filterUsers(users, _query), _sort);
         final totalActive = users.fold(0, (n, u) => n + (u.activeCount ?? 0));
         final totalSold = users.fold(0, (n, u) => n + (u.soldCount ?? 0));
 

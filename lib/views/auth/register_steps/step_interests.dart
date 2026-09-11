@@ -40,7 +40,7 @@ class StepInterests extends StatelessWidget {
           const InlineNotice(
             text:
                 'Nothing picked — that’s fine. You can set preferences later '
-                'from AppUser → Car Interests.',
+                'from Profile → Car Interests.',
           )
         else
           const InlineNotice(

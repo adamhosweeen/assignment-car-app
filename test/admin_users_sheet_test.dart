@@ -102,7 +102,7 @@ Widget _app() => MultiProvider(
   child: MaterialApp(
     theme: AppTheme.light,
     home: Scaffold(
-      body: AppUsersTab(users: Future.value([_user]), onChanged: () {}),
+      body: AdminUsersTab(users: Future.value([_user]), onChanged: () {}),
     ),
   ),
 );

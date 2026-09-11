@@ -18,6 +18,7 @@ class InboxScreen extends StatefulWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   late Future<List<InboxMessage>> _items;
+  List<InboxMessage>? _last;
 
   @override
   void initState() {
@@ -29,7 +30,7 @@ class _InboxScreenState extends State<InboxScreen> {
     final inbox = context.read<InboxRepository>();
     _items = inbox.list().then(
       (res) => switch (res) {
-        Ok(:final value) => value,
+        Ok(:final value) => _last = value,
         Err(:final message) => throw InboxException(message),
       },
     );
@@ -76,7 +77,9 @@ class _InboxScreenState extends State<InboxScreen> {
               onRetry: () => setState(_load),
             );
           }
-          final items = snapshot.data;
+          // fall back to the last good list so marking read or
+          // deleting doesn't blank the screen while it refetches
+          final items = snapshot.data ?? _last;
           if (items == null) {
             return const Center(child: CircularProgressIndicator());
           }

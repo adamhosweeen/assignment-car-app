@@ -544,11 +544,15 @@ create trigger listings_reject_pending_bids
 -- ═══ 6. Purchases ════════════════════════════════════════════════════════════
 -- One row per completed sale, written only by the selling functions below.
 -- price_myr is what was actually paid; make/model/year are snapshotted so the
--- receipt survives the listing being edited or removed (listing_id goes null).
+-- receipt survives the listing being edited or removed (listing_id goes null)
+-- and the seller closing their account (seller_id goes null).
 create table public.purchases (
   id          uuid primary key default gen_random_uuid(),
   buyer_id    uuid not null references public.users (id) on delete cascade,
-  seller_id   uuid not null references public.users (id) on delete cascade,
+  -- set null, not cascade: if the SELLER closes their account the buyer keeps
+  -- the receipt (the make/model/year snapshot below is what renders it).
+  -- buyer_id DOES cascade — your own history goes with you.
+  seller_id   uuid references public.users (id) on delete set null,
   listing_id  uuid references public.listings (id) on delete set null,
   price_myr   integer not null check (price_myr > 0),
   method      text not null check (method in ('buy_now', 'chat_offer', 'bid')),
@@ -1254,7 +1258,10 @@ begin
           || ' · ' || new.state,
         new.id, '/listing/' || new.id
       )
-      on conflict (user_id, listing_id) do nothing;
+      -- the arbiter index is partial, so its predicate must be repeated
+      -- here or Postgres cannot match it (SQLSTATE 42P10).
+      on conflict (user_id, listing_id) where listing_id is not null
+      do nothing;
     end if;
   end loop;
   return new;

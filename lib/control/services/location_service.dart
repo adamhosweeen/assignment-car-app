@@ -13,14 +13,23 @@ Future<String?> detectStateName() async {
         permission == LocationPermission.deniedForever) {
       return null;
     }
-    final position = await Geolocator.getCurrentPosition(
+    final position = await _position();
+    if (position == null) return null;
+    return MalaysianStates.nearestTo(position.latitude, position.longitude);
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<Position?> _position() async {
+  try {
+    return await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.low,
         timeLimit: Duration(seconds: 8),
       ),
     );
-    return MalaysianStates.nearestTo(position.latitude, position.longitude);
   } catch (_) {
-    return null;
+    return Geolocator.getLastKnownPosition();
   }
 }

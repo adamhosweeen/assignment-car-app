@@ -103,7 +103,7 @@ void main() {
     });
   });
 
-  group('filterAppUsers', () {
+  group('filterUsers', () {
     final aiman = _user(
       'a',
       firstName: 'Aiman',
@@ -122,48 +122,49 @@ void main() {
     final all = [aiman, siti];
 
     test('blank query returns everyone', () {
-      expect(filterAppUsers(all, ''), all);
-      expect(filterAppUsers(all, '   '), all);
+      expect(filterUsers(all, ''), all);
+      expect(filterUsers(all, '   '), all);
     });
 
     test('matches name, email, phone, and state, case-insensitively', () {
-      expect(filterAppUsers(all, 'RAHMAN'), [aiman]);
-      expect(filterAppUsers(all, 'mail.my'), [siti]);
-      expect(filterAppUsers(all, '0123456'), [aiman]);
-      expect(filterAppUsers(all, 'johor'), [siti]);
+      expect(filterUsers(all, 'RAHMAN'), [aiman]);
+      expect(filterUsers(all, 'mail.my'), [siti]);
+      expect(filterUsers(all, '0123456'), [aiman]);
+      expect(filterUsers(all, 'johor'), [siti]);
     });
 
     test('no match is empty; null fields never match', () {
-      expect(filterAppUsers(all, 'perodua'), isEmpty);
-      expect(filterAppUsers([_user('c')], 'x'), isEmpty);
+      expect(filterUsers(all, 'perodua'), isEmpty);
+      expect(filterUsers([_user('c')], 'x'), isEmpty);
     });
   });
 
-  group('sortAppUsers', () {
+  group('sortUsers', () {
     final a = _user('a', created: DateTime.utc(2026, 1, 1), active: 1, sold: 9);
     final b = _user('b', created: DateTime.utc(2026, 2, 1), active: 5, sold: 2);
     final c = _user('c', created: DateTime.utc(2026, 3, 1), active: 5, sold: 0);
     final input = [a, b, c];
 
     test('newest orders by joined date descending', () {
-      expect(sortAppUsers(input, AdminSort.newest), [c, b, a]);
+      expect(sortUsers(input, AdminSort.newest), [c, b, a]);
     });
 
     test('listed orders by active count, newest breaks ties', () {
-      expect(sortAppUsers(input, AdminSort.listed), [c, b, a]);
-      expect(
-        sortAppUsers([a, c, b], AdminSort.listed).map((u) => u.id).toList(),
-        ['c', 'b', 'a'],
-      );
+      expect(sortUsers(input, AdminSort.listed), [c, b, a]);
+      expect(sortUsers([a, c, b], AdminSort.listed).map((u) => u.id).toList(), [
+        'c',
+        'b',
+        'a',
+      ]);
     });
 
     test('sold orders by sold count descending', () {
-      expect(sortAppUsers(input, AdminSort.sold), [a, b, c]);
+      expect(sortUsers(input, AdminSort.sold), [a, b, c]);
     });
 
     test('does not mutate the input list', () {
       final copy = [...input];
-      sortAppUsers(input, AdminSort.sold);
+      sortUsers(input, AdminSort.sold);
       expect(input, copy);
     });
   });
