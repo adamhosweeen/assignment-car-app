@@ -18,8 +18,13 @@ class InboxScreen extends StatefulWidget {
 }
 
 class _InboxScreenState extends State<InboxScreen> {
-  late Future<List<InboxMessage>> _items;
-  List<InboxMessage>? _last;
+  // The list is held directly rather than read out of a FutureBuilder. A
+  // FutureBuilder keeps serving the *previous* completed snapshot while the
+  // next future runs, so a just-deleted row would be rebuilt after Dismissible
+  // had already removed it — which reappears, then vanishes, and trips
+  // "A dismissed Dismissible widget is still part of the tree".
+  List<InboxMessage>? _messages;
+  String? _error;
 
   @override
   void initState() {
@@ -27,16 +32,34 @@ class _InboxScreenState extends State<InboxScreen> {
     _load();
   }
 
-  void _load() {
+  Future<void> _load() async {
     final inbox = context.read<InboxRepository>();
-    _items = fetchInbox(inbox).then((value) => _last = value);
+    try {
+      final value = await fetchInbox(inbox);
+      if (!mounted) return;
+      setState(() {
+        _messages = value;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e is InboxException
+            ? e.message
+            : 'We couldn’t load your inbox. Check your connection.';
+      });
+    }
   }
 
   Future<void> _open(InboxMessage message) async {
     if (!message.isRead) {
+      setState(() {
+        _messages = [
+          for (final m in _messages ?? const <InboxMessage>[])
+            if (m.id == message.id) m.copyWith(readAt: DateTime.now()) else m,
+        ];
+      });
       await context.read<InboxRepository>().markRead(message.id);
-      if (!mounted) return;
-      setState(_load);
     }
     final route = message.route;
     if (route != null && mounted) {
@@ -44,15 +67,28 @@ class _InboxScreenState extends State<InboxScreen> {
     }
   }
 
-  Future<void> _delete(InboxMessage message) async {
+  // Deletes before the row leaves the tree. Returning false makes Dismissible
+  // spring it back; restoring it afterwards instead would rebuild an
+  // already-dismissed widget and trip Flutter's assertion.
+  Future<bool> _confirmDelete(InboxMessage message) async {
     final res = await context.read<InboxRepository>().delete(message.id);
-    if (!mounted) return;
+    if (!mounted) return false;
     if (res case Err(:final message)) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
+      return false;
     }
-    setState(_load);
+    return true;
+  }
+
+  void _forget(InboxMessage message) {
+    setState(() {
+      _messages = [
+        for (final m in _messages ?? const <InboxMessage>[])
+          if (m.id != message.id) m,
+      ];
+    });
   }
 
   @override
@@ -60,22 +96,16 @@ class _InboxScreenState extends State<InboxScreen> {
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(title: const Text('Inbox')),
-      body: FutureBuilder<List<InboxMessage>>(
-        future: _items,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            final error = snapshot.error;
+      body: Builder(
+        builder: (context) {
+          final items = _messages;
+          if (_error != null && items == null) {
             return _Message(
               icon: Icons.error_outline,
-              text: error is InboxException
-                  ? error.message
-                  : 'We couldn’t load your inbox. Check your connection.',
-              onRetry: () => setState(_load),
+              text: _error!,
+              onRetry: _load,
             );
           }
-          // fall back to the last good list so marking read or
-          // deleting doesn't blank the screen while it refetches
-          final items = snapshot.data ?? _last;
           if (items == null) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -109,7 +139,8 @@ class _InboxScreenState extends State<InboxScreen> {
                           ),
                         ),
                       ),
-                      onDismissed: (_) => _delete(message),
+                      confirmDismiss: (_) => _confirmDelete(message),
+                      onDismissed: (_) => _forget(message),
                       child: _InboxRow(
                         message: message,
                         onTap: () => _open(message),

@@ -61,6 +61,7 @@ drop function if exists public.admin_user_stats()                cascade;
 drop function if exists public.admin_reports()                   cascade;
 drop function if exists public.admin_resolve_report(uuid)        cascade;
 drop function if exists public.admin_set_banned(uuid, boolean)   cascade;
+drop function if exists public.admin_delete_user(uuid)            cascade;
 drop function if exists public.delete_account()                  cascade;
 drop function if exists public.mark_conversation_read(uuid)      cascade;
 drop function if exists public.confirm_offer(uuid)               cascade;
@@ -762,6 +763,59 @@ end;
 $$;
 revoke all on function public.admin_set_banned(uuid, boolean) from public, anon;
 grant execute on function public.admin_set_banned(uuid, boolean) to authenticated;
+
+-- Permanently removes a user. Same guards as banning: never yourself, never
+-- another admin. Deletes in FK-safe order and then the auth user, which
+-- cascades public.users and everything hanging off it — including the reports
+-- filed against them and their own purchase history. A buyer's receipt for a
+-- car this user SOLD survives, because purchases.seller_id is `on delete set
+-- null` and make/model/year are snapshotted.
+--
+-- Returns the listing-media storage paths first: Postgres cannot delete from
+-- object storage, and once listing_media is gone those paths are unknowable.
+-- The caller removes them from the bucket (same split as delete_account()).
+create function public.admin_delete_user(target uuid)
+returns text[]
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  paths text[];
+begin
+  if not public.is_admin() then
+    raise exception 'admin only' using errcode = '42501';
+  end if;
+  if target = auth.uid() then
+    raise exception 'you cannot delete your own account here' using errcode = '42501';
+  end if;
+  if exists (
+    select 1 from public.users where id = target and role = 'admin'
+  ) then
+    raise exception 'admins cannot be deleted' using errcode = '42501';
+  end if;
+
+  select coalesce(array_agg(lm.storage_path), '{}')
+    into paths
+    from public.listing_media lm
+    join public.listings l on l.id = lm.listing_id
+   where l.seller_id = target;
+
+  delete from public.messages
+    where sender_id = target
+       or conversation_id in (
+         select id from public.conversations
+         where buyer_id = target or seller_id = target
+       );
+  delete from public.conversations
+    where buyer_id = target or seller_id = target;
+  delete from public.listings where seller_id = target;
+  delete from auth.users where id = target;
+
+  return paths;
+end;
+$$;
+revoke all on function public.admin_delete_user(uuid) from public, anon;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
 
 -- ═══ 8. Selling a car ════════════════════════════════════════════════════════
 -- Three routes sell a car and each records the purchase. All three guard

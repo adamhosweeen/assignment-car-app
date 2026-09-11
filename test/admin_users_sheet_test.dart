@@ -44,6 +44,14 @@ class _FakeAdmin implements AdminRepository {
   @override
   Future<Result<void>> setBanned(String userId, bool banned) async =>
       const Ok(null);
+
+  final deleted = <String>[];
+
+  @override
+  Future<Result<void>> deleteUser(String userId, {String? avatarUrl}) async {
+    deleted.add(userId);
+    return const Ok(null);
+  }
 }
 
 class _FakeAuth implements AuthRepository {
@@ -94,15 +102,18 @@ class _FakeAuth implements AuthRepository {
   Future<void> signOut() async {}
 }
 
-Widget _app() => MultiProvider(
+Widget _app({_FakeAdmin? admin, AppUser? user}) => MultiProvider(
   providers: [
-    Provider<AdminRepository>.value(value: _FakeAdmin()),
+    Provider<AdminRepository>.value(value: admin ?? _FakeAdmin()),
     Provider<AuthRepository>.value(value: _FakeAuth()),
   ],
   child: MaterialApp(
     theme: AppTheme.light,
     home: Scaffold(
-      body: AdminUsersTab(users: Future.value([_user]), onChanged: () {}),
+      body: AdminUsersTab(
+        users: Future.value([user ?? _user]),
+        onChanged: () {},
+      ),
     ),
   ),
 );
@@ -141,4 +152,76 @@ void main() {
 
     expect(find.text('Ban user'), findsOneWidget);
   });
+
+  testWidgets('deleting asks for the name to be typed first', (tester) async {
+    tester.view.physicalSize = const Size(360, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final admin = _FakeAdmin();
+
+    await tester.pumpWidget(_app(admin: admin));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nur Aisyah binti Abdullah'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Delete user'));
+    await tester.pumpAndSettle();
+
+    // Confirm is inert until the typed name matches exactly.
+    expect(tester.widget<TextButton>(_deleteButton).onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField).last, 'Nur Aisyah');
+    await tester.pump();
+    expect(
+      tester.widget<TextButton>(_deleteButton).onPressed,
+      isNull,
+      reason: 'a partial name must not arm the button',
+    );
+
+    await tester.enterText(
+      find.byType(TextField).last,
+      'Nur Aisyah binti Abdullah',
+    );
+    await tester.pump();
+    expect(tester.widget<TextButton>(_deleteButton).onPressed, isNotNull);
+
+    await tester.tap(_deleteButton);
+    await tester.pumpAndSettle();
+    expect(admin.deleted, ['u1']);
+  });
+
+  testWidgets('cancelling deletes nothing', (tester) async {
+    tester.view.physicalSize = const Size(360, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final admin = _FakeAdmin();
+
+    await tester.pumpWidget(_app(admin: admin));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nur Aisyah binti Abdullah'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete user'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(admin.deleted, isEmpty);
+  });
+
+  testWidgets('an admin cannot be deleted from the sheet', (tester) async {
+    tester.view.physicalSize = const Size(360, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final other = _user.copyWith(id: 'u2', role: UserRole.admin);
+    await tester.pumpWidget(_app(user: other));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nur Aisyah binti Abdullah'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ban user'), findsOneWidget);
+    expect(find.text('Delete user'), findsNothing);
+  });
 }
+
+final Finder _deleteButton = find.widgetWithText(TextButton, 'Delete');

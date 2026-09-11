@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:assignment/control/user/admin/admin_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
+import 'package:assignment/control/user/auth/supabase_auth_repository.dart'
+    show avatarObjectPath;
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/model/user/report.dart';
 import 'package:assignment/utils/result.dart';
@@ -61,6 +63,35 @@ class SupabaseAdminRepository implements AdminRepository {
             params: {'target': userId, 'ban': banned},
           )
           .timeout(_fetchTimeout);
+      return const Ok(null);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteUser(String userId, {String? avatarUrl}) async {
+    try {
+      // The RPC hands back the listing-media paths before deleting the rows —
+      // Postgres cannot reach object storage, and once listing_media is gone
+      // those paths are unknowable.
+      final paths = await _client
+          .rpc<List<dynamic>>('admin_delete_user', params: {'target': userId})
+          .timeout(_fetchTimeout);
+
+      // Best effort: the account is already gone, so a storage failure here
+      // leaves orphaned files but must not report the delete as failed.
+      try {
+        final media = [for (final p in paths) p as String];
+        if (media.isNotEmpty) {
+          await _client.storage.from('listing-media').remove(media);
+        }
+        final avatar = avatarObjectPath(avatarUrl);
+        if (avatar != null) {
+          await _client.storage.from('avatars').remove([avatar]);
+        }
+      } catch (_) {}
+
       return const Ok(null);
     } catch (e) {
       return Err(mapError(e));

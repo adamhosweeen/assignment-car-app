@@ -89,6 +89,34 @@ class _AppUsersTabState extends State<AdminUsersTab> {
     }
   }
 
+  // Irreversible, so it asks for the name to be typed rather than a plain
+  // yes/no — a mis-tap here destroys an account and everything attached to it.
+  Future<void> _confirmDelete(AppUser user) async {
+    final admin = context.read<AdminRepository>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ConfirmDeleteDialog(user: user),
+    );
+    if (confirmed != true || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final res = await admin.deleteUser(user.id, avatarUrl: user.avatarUrl);
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    switch (res) {
+      case Ok():
+        widget.onChanged();
+      case Err(:final message):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   void _showDetails(AppUser user) {
     showModalBottomSheet<void>(
       context: context,
@@ -169,6 +197,19 @@ class _AppUsersTabState extends State<AdminUsersTab> {
                   },
                   child: Text(user.banned ? 'Unban user' : 'Ban user'),
                 ),
+                if (!user.isAdmin) ...[
+                  const SizedBox(height: AppSpacing.space8),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.destructive,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _confirmDelete(user);
+                    },
+                    child: const Text('Delete user'),
+                  ),
+                ],
               ],
               const SizedBox(height: AppSpacing.space8),
             ],
@@ -398,6 +439,73 @@ class _UserRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Owns its TextEditingController: disposing one from the caller the moment
+// showDialog returns tears it down while the exit animation is still
+// rebuilding the field.
+class _ConfirmDeleteDialog extends StatefulWidget {
+  const _ConfirmDeleteDialog({required this.user});
+
+  final AppUser user;
+
+  @override
+  State<_ConfirmDeleteDialog> createState() => _ConfirmDeleteDialogState();
+}
+
+class _ConfirmDeleteDialogState extends State<_ConfirmDeleteDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final user = widget.user;
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Text('Delete ${user.name}?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This cannot be undone. Their listings, chats, bids and purchase '
+            'history are removed, along with any reports about them. Buyers '
+            'keep the receipts for cars this user sold.',
+            style: text.subhead.copyWith(color: AppColors.secondaryLabel),
+          ),
+          const SizedBox(height: AppSpacing.space16),
+          Text(
+            'Type ${user.name} to confirm.',
+            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          TextField(controller: _controller, autofocus: true),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _controller,
+          builder: (_, value, _) => TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
+            onPressed: value.text.trim() == user.name
+                ? () => Navigator.pop(context, true)
+                : null,
+            child: const Text('Delete'),
+          ),
+        ),
+      ],
     );
   }
 }
