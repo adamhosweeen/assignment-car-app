@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
   static Future<Database> open() async {
-    final path = join(await getDatabasesPath(), 'carsell.db');
+    final path = join(await getDatabasesPath(), 'carsell_v3.db');
     return openDatabase(
       path,
       version: 1,
@@ -44,17 +44,19 @@ class AppDatabase {
           )
         ''');
         await db.execute('''
-          CREATE TABLE profile_cache (
+          CREATE TABLE user_cache (
             id TEXT PRIMARY KEY,
             email TEXT NOT NULL,
             first_name TEXT,
             last_name TEXT,
+            display_name TEXT,
             dob TEXT,
             phone TEXT,
             state TEXT,
             interests_json TEXT,
             avatar_url TEXT,
             role TEXT,
+            banned INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
           )
         ''');
@@ -135,11 +137,36 @@ class AppDatabase {
             ON message_cache (conversation_id)
         ''');
         await db.execute('''
-          CREATE TABLE public_profile_cache (
+          CREATE TABLE inbox_cache (
             id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            listing_id TEXT,
+            route TEXT,
+            read_at TEXT,
+            created_at TEXT NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE INDEX inbox_cache_user_idx
+            ON inbox_cache (user_id, created_at DESC)
+        ''');
+        await db.execute('''
+          CREATE TABLE other_user_cache (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            first_name TEXT,
+            last_name TEXT,
             display_name TEXT,
-            avatar_url TEXT,
+            dob TEXT,
+            phone TEXT,
             state TEXT,
+            interests_json TEXT,
+            avatar_url TEXT,
+            role TEXT,
+            banned INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
           )
         ''');

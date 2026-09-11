@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/registration_controller.dart';
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/registration_controller.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -63,7 +63,12 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
     final res = await context.read<AuthRepository>().signUp(
       email: s.email.trim(),
       password: s.password,
-      data: registration.buildData(),
+      firstName: s.firstName.trim(),
+      lastName: s.lastName.trim(),
+      dob: s.dob!,
+      phoneE164: nationalToE164(s.phoneInput)!,
+      state: s.stateName!,
+      interests: s.interests,
     );
     if (!mounted) return;
     switch (res) {

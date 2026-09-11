@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';

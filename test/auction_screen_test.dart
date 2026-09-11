@@ -4,30 +4,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
-import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_auction.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/views/bid/auction_screen.dart';
 
 final _now = DateTime.utc(2026, 9, 5, 12);
 
-final _buyer = Profile(
+final _buyer = AppUser(
   id: 'buyer-1',
   email: 'b@example.com',
   createdAt: DateTime.utc(2026, 1, 1),
 );
 
-final _seller = Profile(
+final _seller = AppUser(
   id: 'seller-1',
   email: 's@example.com',
   createdAt: DateTime.utc(2026, 1, 1),
@@ -85,29 +84,34 @@ Bid _bid(int amount) => Bid(
 class _FakeAuth implements AuthRepository {
   _FakeAuth(this.user);
 
-  final Profile user;
+  final AppUser user;
 
   @override
-  Profile? get currentUser => user;
+  AppUser? get currentUser => user;
 
   @override
-  Stream<Profile?> authState() => Stream.value(user);
+  Stream<AppUser?> authState() => Stream.value(user);
 
   @override
-  Future<Result<Profile>> signIn({
+  Future<Result<AppUser>> signIn({
     required String email,
     required String password,
   }) async => Ok(user);
 
   @override
-  Future<Result<Profile>> signUp({
+  Future<Result<AppUser>> signUp({
     required String email,
     required String password,
-    required RegistrationData data,
+    required String firstName,
+    required String lastName,
+    required DateTime dob,
+    required String phoneE164,
+    required String state,
+    required CarInterests interests,
   }) async => Ok(user);
 
   @override
-  Future<Result<Profile>> updateProfile({
+  Future<Result<AppUser>> updateProfile({
     String? firstName,
     String? lastName,
     String? phone,
@@ -117,10 +121,10 @@ class _FakeAuth implements AuthRepository {
   }) async => Ok(user);
 
   @override
-  Future<Result<Profile>> updateAvatar(String localPath) async => Ok(user);
+  Future<Result<AppUser>> updateAvatar(String localPath) async => Ok(user);
 
   @override
-  Future<Result<Profile>> removeAvatar() async => Ok(user);
+  Future<Result<AppUser>> removeAvatar() async => Ok(user);
 
   @override
   Future<Result<void>> deleteAccount() async => const Ok(null);
@@ -213,7 +217,7 @@ class _FakeBids implements BidsRepository {
   }
 }
 
-Widget _app(_FakeBids bids, {Profile? as}) => MultiProvider(
+Widget _app(_FakeBids bids, {AppUser? as}) => MultiProvider(
   providers: [
     Provider<AuthRepository>.value(value: _FakeAuth(as ?? _buyer)),
     Provider<BidsRepository>.value(value: bids),
@@ -227,7 +231,7 @@ Widget _app(_FakeBids bids, {Profile? as}) => MultiProvider(
 String _fieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byKey(bidAmountFieldKey)).controller!.text;
 
-Future<void> _pump(WidgetTester tester, _FakeBids bids, {Profile? as}) async {
+Future<void> _pump(WidgetTester tester, _FakeBids bids, {AppUser? as}) async {
   tester.view.physicalSize = const Size(800, 2400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);

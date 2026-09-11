@@ -38,7 +38,7 @@ class AppStorage {
       photoPaths = [for (final p in photoRows) p['path'] as String];
     }
 
-    final profileRows = await db.query('profile_cache');
+    final profileRows = await db.query('user_cache');
     final profileRow = profileRows.isEmpty ? null : profileRows.first;
 
     final listingRows = await db.query(

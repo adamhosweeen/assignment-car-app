@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/app_navigation.dart';
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
-import 'package:assignment/control/profiles/profiles_providers.dart';
-import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/users_repository.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/profile.dart';
-import 'package:assignment/model/profile/public_profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -20,7 +19,7 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
-import 'package:assignment/widgets/profile/seller_row.dart';
+import 'package:assignment/widgets/user/seller_row.dart';
 
 class PurchaseScreen extends StatefulWidget {
   const PurchaseScreen({
@@ -147,7 +146,7 @@ class _Checkout extends StatelessWidget {
 
   final int priceMyr;
   final bool negotiated;
-  final Profile? buyer;
+  final AppUser? buyer;
   final bool submitting;
   final VoidCallback onConfirm;
 
@@ -202,7 +201,7 @@ class _Checkout extends StatelessWidget {
               GroupedSection(
                 header: 'Buyer',
                 children: [
-                  GroupedRow(label: 'Name', value: buyer?.displayName ?? '—'),
+                  GroupedRow(label: 'Name', value: buyer?.name ?? '—'),
                   GroupedRow(label: 'Phone', value: buyer?.phone ?? '—'),
                 ],
               ),
@@ -241,14 +240,14 @@ class _SellerCard extends StatefulWidget {
 }
 
 class _SellerCardState extends State<_SellerCard> {
-  late final Future<PublicProfile?> _profile = fetchPublicProfile(
-    context.read<ProfilesRepository>(),
+  late final Future<AppUser?> _profile = fetchAppUser(
+    context.read<UsersRepository>(),
     widget.sellerId,
   );
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PublicProfile?>(
+    return FutureBuilder<AppUser?>(
       future: _profile,
       builder: (context, snapshot) {
         if (snapshot.hasError) return const SizedBox.shrink();
@@ -272,7 +271,7 @@ class _SellerCardState extends State<_SellerCard> {
           header: 'Seller',
           children: [
             SellerRow(
-              profile: profile,
+              user: profile,
               onTap: () =>
                   Navigator.pushNamed(context, '/seller/${profile.id}'),
             ),

@@ -1,14 +1,14 @@
 import 'package:assignment/model/listing/listing.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 
-List<Listing> recommendedListings(Profile? profile, List<Listing>? listings) {
+List<Listing> recommendedListings(AppUser? profile, List<Listing>? listings) {
   if (profile == null) return const [];
   return rankRecommended(listings ?? const <Listing>[], profile);
 }
 
 List<Listing> rankRecommended(
   List<Listing> listings,
-  Profile profile, {
+  AppUser profile, {
   int limit = 10,
 }) {
   final interests = profile.interests;

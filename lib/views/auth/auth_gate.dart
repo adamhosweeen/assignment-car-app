@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/app_navigation.dart';
-import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/views/app_shell.dart';
 import 'package:assignment/views/auth/splash_screen.dart';
 import 'package:assignment/views/auth/welcome_screen.dart';
@@ -20,7 +20,7 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  StreamSubscription<Profile?>? _sub;
+  StreamSubscription<AppUser?>? _sub;
   bool _ready = false;
   bool _signedIn = false;
 
@@ -44,7 +44,7 @@ class _AuthGateState extends State<AuthGate> {
     if (mounted) setState(() => _ready = true);
   }
 
-  void _onAuthChanged(Profile? profile) {
+  void _onAuthChanged(AppUser? profile) {
     final signedIn = profile != null;
     if (signedIn == _signedIn || !mounted) return;
     final navigator = context.read<AppNavigator>();

@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:assignment/control/listings/recommendations_provider.dart';
-import 'package:assignment/model/profile/car_interests.dart';
+import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 
 Listing listing({
   required String id,
@@ -41,11 +41,11 @@ Listing listing({
   );
 }
 
-Profile profile({
+AppUser profile({
   String id = 'buyer-1',
   String? state,
   CarInterests interests = const CarInterests(),
-}) => Profile(
+}) => AppUser(
   id: id,
   email: 'buyer@example.com',
   state: state,

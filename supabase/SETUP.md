@@ -23,18 +23,17 @@ Two files, pasted in order into the SQL editor. Both are safe to re-run.
 
 ### 2b. Seed (`migrations/0002_seed.sql`)
 - SQL Editor → paste [`migrations/0002_seed.sql`](migrations/0002_seed.sql) → Run.
-- Publishes the market-insights snapshot (`car_popularity`). Every signed-up
-  user gets an "insights updated" notification when this runs.
+- Publishes the market-insights snapshot (`car_popularity`).
 - To refresh the data: `dart run tool/build_car_popularity.dart` (downloads
   ~12 monthly CSVs from data.gov.my into `build/data_gov_my/`, aggregates,
   and rewrites `0002_seed.sql`), then re-paste.
 
 ### 2c. Seed your first admin
-The app's Admin screen is gated on `profiles.role = 'admin'`, which users can't
+The app's Admin screen is gated on `users.role = 'admin'`, which users can't
 set themselves. Seed it once from the SQL editor after signing up in the app:
 
 ```sql
-update public.profiles set role = 'admin' where email = 'you@example.com';
+update public.users set role = 'admin' where email = 'you@example.com';
 ```
 
 ### 2d. Optional: punctual auction settlement
@@ -58,8 +57,7 @@ select cron.schedule('settle-auctions', '* * * * *',
 4. Seller A cannot mark the car sold or delete it while bidding runs.
 5. Expire it: `update public.auctions set ends_at = now() where id = '<id>';`
    then reopen the Bid tab. The car is **Sold** at the winning amount, a
-   `purchases` row exists for B with `method = 'bid'`, and the won / outbid /
-   ended notifications arrive.
+   `purchases` row exists for B with `method = 'bid'`.
 6. `delete from public.listings where id = '<sold id>';` as the seller → 0 rows.
 
 ## 3. Enable email + password auth

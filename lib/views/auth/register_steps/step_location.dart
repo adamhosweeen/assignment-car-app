@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/registration_controller.dart';
+import 'package:assignment/control/user/auth/registration_controller.dart';
 import 'package:assignment/model/malaysian_states.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';

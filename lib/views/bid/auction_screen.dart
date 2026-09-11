@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';

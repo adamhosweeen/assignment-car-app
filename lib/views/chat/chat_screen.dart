@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_providers.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
-import 'package:assignment/control/profiles/profiles_providers.dart';
-import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/users_repository.dart';
 import 'package:assignment/model/chat/conversation_thread.dart';
 import 'package:assignment/model/chat/message.dart';
 import 'package:assignment/model/listing/listing.dart';
-import 'package:assignment/model/profile/public_profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
-import 'package:assignment/widgets/profile/profile_avatar.dart';
+import 'package:assignment/widgets/user/profile_avatar.dart';
 
 class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
@@ -107,7 +107,7 @@ class _ConversationRow extends StatefulWidget {
 }
 
 class _ConversationRowState extends State<_ConversationRow> {
-  late Future<PublicProfile?> _profile;
+  late Future<AppUser?> _profile;
   late Future<Listing> _listing;
 
   @override
@@ -130,7 +130,7 @@ class _ConversationRowState extends State<_ConversationRow> {
     final otherId = widget.thread.conversation.otherParticipantId(
       widget.currentUserId,
     );
-    _profile = fetchPublicProfile(context.read<ProfilesRepository>(), otherId);
+    _profile = fetchAppUser(context.read<UsersRepository>(), otherId);
     _listing = fetchListingById(
       context.read<ListingsRepository>(),
       widget.thread.conversation.listingId,
@@ -148,7 +148,7 @@ class _ConversationRowState extends State<_ConversationRow> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PublicProfile?>(
+    return FutureBuilder<AppUser?>(
       future: _profile,
       builder: (context, profile) => FutureBuilder<Listing>(
         future: _listing,
@@ -158,7 +158,7 @@ class _ConversationRowState extends State<_ConversationRow> {
     );
   }
 
-  Widget _row(BuildContext context, PublicProfile? profile, Listing? listing) {
+  Widget _row(BuildContext context, AppUser? profile, Listing? listing) {
     final thread = widget.thread;
     final onTap = widget.onTap;
     final text = Theme.of(context).textTheme;

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
-import 'package:assignment/control/profiles/profiles_repository.dart';
-import 'package:assignment/model/profile/public_profile.dart';
+import 'package:assignment/control/user/users_repository.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
@@ -19,11 +19,11 @@ import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/listing/listing_media.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
-import 'package:assignment/control/profiles/profiles_providers.dart';
+import 'package:assignment/control/user/user_providers.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
 import 'package:assignment/widgets/listing/status_badge.dart';
-import 'package:assignment/widgets/profile/seller_row.dart';
+import 'package:assignment/widgets/user/seller_row.dart';
 
 class ListingDetailScreen extends StatefulWidget {
   const ListingDetailScreen({super.key, required this.id});
@@ -270,14 +270,14 @@ class _SellerSection extends StatefulWidget {
 }
 
 class _SellerSectionState extends State<_SellerSection> {
-  late final Future<PublicProfile?> _profile = fetchPublicProfile(
-    context.read<ProfilesRepository>(),
+  late final Future<AppUser?> _profile = fetchAppUser(
+    context.read<UsersRepository>(),
     widget.sellerId,
   );
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PublicProfile?>(
+    return FutureBuilder<AppUser?>(
       future: _profile,
       builder: (context, snapshot) {
         if (snapshot.hasError) return const SizedBox.shrink();
@@ -301,7 +301,7 @@ class _SellerSectionState extends State<_SellerSection> {
           header: 'Seller',
           children: [
             SellerRow(
-              profile: profile,
+              user: profile,
               onTap: () =>
                   Navigator.pushNamed(context, '/seller/${profile.id}'),
             ),

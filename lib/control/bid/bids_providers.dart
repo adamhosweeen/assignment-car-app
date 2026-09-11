@@ -1,4 +1,4 @@
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid_with_auction.dart';

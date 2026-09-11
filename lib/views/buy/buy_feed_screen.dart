@@ -8,7 +8,7 @@ import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/listings/recommendations_provider.dart';
 import 'package:assignment/model/listing/listing.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/widgets/common/search_field.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
@@ -95,7 +95,7 @@ class _BuyFeedScreenState extends State<BuyFeedScreen> {
           }
           if (_tab == 0) {
             final recommended = recommendedListings(
-              context.watch<Profile?>(),
+              context.watch<AppUser?>(),
               listings,
             );
             if (recommended.isEmpty) {

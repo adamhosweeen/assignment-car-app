@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/listings/sell_controller.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 
-Profile _user(String id) =>
-    Profile(id: id, email: '$id@example.com', createdAt: DateTime.utc(2026));
+AppUser _user(String id) =>
+    AppUser(id: id, email: '$id@example.com', createdAt: DateTime.utc(2026));
 
 ListingDraft _seededDraft() => ListingDraft(
   id: 'draft-A',
@@ -45,7 +45,7 @@ void main() {
     'draft survives the first auth emission (same session resume)',
     () async {
       final repo = _FakeDraftRepo(_seededDraft());
-      final auth = StreamController<Profile?>();
+      final auth = StreamController<AppUser?>();
       addTearDown(auth.close);
 
       final sut = SellController(repo, authChanges: auth.stream);
@@ -62,7 +62,7 @@ void main() {
 
   test('switching to another account drops the previous draft', () async {
     final repo = _FakeDraftRepo(_seededDraft());
-    final auth = StreamController<Profile?>();
+    final auth = StreamController<AppUser?>();
     addTearDown(auth.close);
 
     final sut = SellController(repo, authChanges: auth.stream);
@@ -83,7 +83,7 @@ void main() {
     'a null emission (sign-out / transient) does NOT drop the draft here',
     () async {
       final repo = _FakeDraftRepo(_seededDraft());
-      final auth = StreamController<Profile?>();
+      final auth = StreamController<AppUser?>();
       addTearDown(auth.close);
 
       final sut = SellController(repo, authChanges: auth.stream);
@@ -103,7 +103,7 @@ void main() {
     'a transient null before the first user is ignored (startup race)',
     () async {
       final repo = _FakeDraftRepo(_seededDraft());
-      final auth = StreamController<Profile?>();
+      final auth = StreamController<AppUser?>();
       addTearDown(auth.close);
 
       final sut = SellController(repo, authChanges: auth.stream);
@@ -121,7 +121,7 @@ void main() {
 
   test('re-emitting the same user does not touch the draft', () async {
     final repo = _FakeDraftRepo(_seededDraft());
-    final auth = StreamController<Profile?>();
+    final auth = StreamController<AppUser?>();
     addTearDown(auth.close);
 
     final sut = SellController(repo, authChanges: auth.stream);

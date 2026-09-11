@@ -4,24 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
-import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_auction.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
 
 final _now = DateTime.utc(2026, 9, 5, 12);
 
-final _user = Profile(
+final _user = AppUser(
   id: 'u1',
   email: 'u1@example.com',
   createdAt: DateTime.utc(2026, 1, 1),
@@ -64,26 +63,31 @@ final _auction = AuctionWithListing(
 
 class _FakeAuth implements AuthRepository {
   @override
-  Profile? get currentUser => _user;
+  AppUser? get currentUser => _user;
 
   @override
-  Stream<Profile?> authState() => Stream.value(_user);
+  Stream<AppUser?> authState() => Stream.value(_user);
 
   @override
-  Future<Result<Profile>> signIn({
+  Future<Result<AppUser>> signIn({
     required String email,
     required String password,
   }) async => Ok(_user);
 
   @override
-  Future<Result<Profile>> signUp({
+  Future<Result<AppUser>> signUp({
     required String email,
     required String password,
-    required RegistrationData data,
+    required String firstName,
+    required String lastName,
+    required DateTime dob,
+    required String phoneE164,
+    required String state,
+    required CarInterests interests,
   }) async => Ok(_user);
 
   @override
-  Future<Result<Profile>> updateProfile({
+  Future<Result<AppUser>> updateProfile({
     String? firstName,
     String? lastName,
     String? phone,
@@ -93,10 +97,10 @@ class _FakeAuth implements AuthRepository {
   }) async => Ok(_user);
 
   @override
-  Future<Result<Profile>> updateAvatar(String localPath) async => Ok(_user);
+  Future<Result<AppUser>> updateAvatar(String localPath) async => Ok(_user);
 
   @override
-  Future<Result<Profile>> removeAvatar() async => Ok(_user);
+  Future<Result<AppUser>> removeAvatar() async => Ok(_user);
 
   @override
   Future<Result<void>> deleteAccount() async => const Ok(null);

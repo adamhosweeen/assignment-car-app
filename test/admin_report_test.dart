@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/model/report/admin_report.dart';
+import 'package:assignment/model/user/report.dart';
 
 void main() {
-  group('AdminReport', () {
+  group('Report', () {
     test('round-trips through snake_case JSON', () {
       final json = {
         'id': 'r1',
@@ -17,16 +17,16 @@ void main() {
         'status': 'open',
         'created_at': '2026-08-30T02:00:00Z',
       };
-      final r = AdminReport.fromJson(json);
+      final r = Report.fromJson(json);
       expect(r.reporter, 'Aiman Rahman');
       expect(r.reported, 'Siti Nur');
       expect(r.reportedBanned, isTrue);
       expect(r.isOpen, isTrue);
-      expect(AdminReport.fromJson(r.toJson()), r);
+      expect(Report.fromJson(r.toJson()), r);
     });
 
     test('defaults and fallbacks', () {
-      final r = AdminReport.fromJson({
+      final r = Report.fromJson({
         'id': 'r2',
         'reporter_id': 'u1',
         'reported_id': 'u2',

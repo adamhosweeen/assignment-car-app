@@ -10,7 +10,7 @@ import 'package:assignment/model/purchase/purchase.dart';
 import 'package:assignment/model/purchase/purchase_with_listing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
-import 'package:assignment/views/profile/purchases_screen.dart';
+import 'package:assignment/views/purchases/purchases_screen.dart';
 
 Purchase _purchase({
   String id = 'p1',

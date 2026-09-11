@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
-import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/user/users_repository.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/profile.dart';
-import 'package:assignment/model/profile/public_profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/views/buy/purchase_screen.dart';
@@ -35,7 +34,7 @@ final _listing = Listing(
   updatedAt: DateTime.utc(2026, 3, 12),
 );
 
-final _buyer = Profile(
+final _buyer = AppUser(
   id: 'b1',
   email: 'buyer@example.com',
   firstName: 'Bob',
@@ -44,8 +43,9 @@ final _buyer = Profile(
   createdAt: DateTime.utc(2026, 1, 1),
 );
 
-final _seller = PublicProfile(
+final _seller = AppUser(
   id: 's1',
+  email: 'sally@example.com',
   displayName: 'Sally Seller',
   state: 'Penang',
   createdAt: DateTime.utc(2025, 1, 1),
@@ -71,18 +71,18 @@ class _FakeListingsRepo implements ListingsRepository {
 
 class _FakeAuth implements AuthRepository {
   @override
-  Profile? get currentUser => _buyer;
+  AppUser? get currentUser => _buyer;
 
   @override
-  Stream<Profile?> authState() => Stream.value(_buyer);
+  Stream<AppUser?> authState() => Stream.value(_buyer);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeProfiles implements ProfilesRepository {
+class _FakeProfiles implements UsersRepository {
   @override
-  Future<Result<PublicProfile?>> getById(String id) async => Ok(_seller);
+  Future<Result<AppUser?>> getById(String id) async => Ok(_seller);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -93,7 +93,7 @@ Widget _app(_FakeListingsRepo repo) {
     providers: [
       Provider<ListingsRepository>.value(value: repo),
       Provider<AuthRepository>.value(value: _FakeAuth()),
-      Provider<ProfilesRepository>.value(value: _FakeProfiles()),
+      Provider<UsersRepository>.value(value: _FakeProfiles()),
     ],
     child: MaterialApp(
       theme: AppTheme.light,

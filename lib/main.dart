@@ -10,7 +10,6 @@ import 'package:assignment/control/services/supabase_config.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/auth/auth_gate.dart';
-import 'package:assignment/widgets/notifications/notification_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,8 +94,6 @@ class AssignmentApp extends StatelessWidget {
       navigatorObservers: [navigator.tracker],
       onGenerateRoute: generateRoute,
       home: const AuthGate(),
-      builder: (context, child) =>
-          NotificationBannerHost(child: child ?? const SizedBox.shrink()),
     );
   }
 }

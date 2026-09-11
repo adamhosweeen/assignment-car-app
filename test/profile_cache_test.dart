@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/control/auth/profile_cache_repository.dart';
+import 'package:assignment/control/user/auth/user_cache_repository.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/app_user.dart';
 
 void main() {
   group('profile cache row mapping', () {
     test('full profile round-trips through a row', () {
-      final profile = Profile(
+      final profile = AppUser(
         id: 'user-1',
         email: 'aiman@example.com',
         firstName: 'Aiman',
@@ -25,20 +25,23 @@ void main() {
           budgetMaxMyr: 80000,
         ),
         avatarUrl: null,
+        displayName: 'Aiman Rahman',
+        role: UserRole.admin,
+        banned: true,
         createdAt: DateTime.utc(2026, 1, 1),
       );
 
-      expect(profileFromRow(profileToRow(profile)), profile);
+      expect(userFromRow(userToRow(profile)), profile);
     });
 
     test('minimal profile (all nullables null) round-trips', () {
-      final profile = Profile(
+      final profile = AppUser(
         id: 'user-2',
         email: 'min@example.com',
         createdAt: DateTime.utc(2026, 1, 1),
       );
 
-      expect(profileFromRow(profileToRow(profile)), profile);
+      expect(userFromRow(userToRow(profile)), profile);
     });
 
     test('corrupt interests_json decodes to empty interests, not a crash', () {

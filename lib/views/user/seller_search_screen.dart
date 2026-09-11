@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/users_repository.dart';
+import 'package:assignment/model/user/app_user.dart';
+import 'package:assignment/utils/app_spacing.dart';
+import 'package:assignment/widgets/common/grouped_section.dart';
+import 'package:assignment/widgets/common/search_scaffold.dart';
+import 'package:assignment/widgets/user/seller_row.dart';
+
+class SellerSearchScreen extends StatelessWidget {
+  const SellerSearchScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SearchScaffold(
+      hint: 'Search sellers',
+      idleText: 'Search sellers by name to see the cars they’re selling.',
+      resultsBuilder: (context, query) => _Results(query: query),
+    );
+  }
+}
+
+class _Results extends StatefulWidget {
+  const _Results({required this.query});
+
+  final String query;
+
+  @override
+  State<_Results> createState() => _ResultsState();
+}
+
+class _ResultsState extends State<_Results> {
+  late Future<List<AppUser>> _results;
+
+  @override
+  void initState() {
+    super.initState();
+    _search();
+  }
+
+  @override
+  void didUpdateWidget(_Results old) {
+    super.didUpdateWidget(old);
+    if (widget.query != old.query) _search();
+  }
+
+  void _search() =>
+      _results = searchSellers(context.read<UsersRepository>(), widget.query);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<AppUser>>(
+      future: _results,
+      builder: (context, snapshot) {
+        final error = snapshot.error;
+        if (error != null) {
+          return SearchMessage(
+            icon: Icons.error_outline,
+            text: error is UsersException
+                ? error.message
+                : 'We couldn’t search right now. Check your connection.',
+            onRetry: () => setState(_search),
+          );
+        }
+        final profiles = snapshot.data;
+        if (profiles == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (profiles.isEmpty) {
+          return SearchMessage(
+            icon: Icons.person_search_outlined,
+            text: 'No sellers match “${widget.query}”.',
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.all(AppSpacing.screenPadding),
+          children: [
+            GroupedSection(
+              children: [
+                for (final p in profiles)
+                  SellerRow(
+                    user: p,
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/seller/${p.id}'),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

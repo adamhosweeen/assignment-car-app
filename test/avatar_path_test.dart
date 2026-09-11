@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/control/auth/supabase_auth_repository.dart';
+import 'package:assignment/control/user/auth/supabase_auth_repository.dart';
 
 void main() {
   const base = 'https://abc.supabase.co/storage/v1/object/public/avatars/';

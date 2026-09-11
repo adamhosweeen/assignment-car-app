@@ -10,15 +10,15 @@
 --
 -- Contents, in dependency order:
 --   1. reset
---   2. profiles (+ role, banned), signup trigger, public_profiles view
+--   2. users (+ role, banned), signup trigger
 --   3. listings, listing_media, four-status model
 --   4. conversations, messages, read receipts, offer confirm
 --   5. auctions, bids
 --   6. purchases
 --   7. reports, admin RPCs, bans
---   8. notifications + every trigger that writes them
---   9. selling paths (buy now / chat offer / auction settlement)
---  10. account deletion
+--   8. selling paths (buy now / chat offer / auction settlement)
+--   9. account deletion
+--  10. inbox (welcome + listing-match triggers)
 --  11. market insights (car_popularity table; data comes from 0002_seed.sql)
 --  12. realtime + storage
 --
@@ -27,19 +27,23 @@
 -- DEFINER function; RLS on the tables is read-mostly and narrow.
 
 -- ═══ 1. Reset ════════════════════════════════════════════════════════════════
+-- legacy (renamed to public.users):
 drop view  if exists public.public_profiles;
+drop table if exists public.profiles      cascade;
 
 drop table if exists public.purchases     cascade;
 drop table if exists public.bids          cascade;
 drop table if exists public.auctions      cascade;
 drop table if exists public.reports       cascade;
+-- legacy (the notifications feature was removed):
 drop table if exists public.notifications cascade;
 drop table if exists public.car_popularity cascade;
 drop table if exists public.messages      cascade;
 drop table if exists public.conversations cascade;
 drop table if exists public.listing_media cascade;
 drop table if exists public.listings      cascade;
-drop table if exists public.profiles      cascade;
+drop table if exists public.users         cascade;
+drop table if exists public.inbox         cascade;
 
 drop trigger  if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user()                 cascade;
@@ -82,8 +86,8 @@ drop policy if exists "avatars_insert_own"       on storage.objects;
 drop policy if exists "avatars_update_own"       on storage.objects;
 drop policy if exists "avatars_delete_own"       on storage.objects;
 
--- ═══ 2. Profiles ═════════════════════════════════════════════════════════════
-create table public.profiles (
+-- ═══ 2. Users ════════════════════════════════════════════════════════════════
+create table public.users (
   id           uuid primary key references auth.users (id) on delete cascade,
   email        text,
   first_name   text,
@@ -92,9 +96,13 @@ create table public.profiles (
   phone        text,
   state        text,
   interests    jsonb   not null default '{}'::jsonb,
-  display_name text,
+  display_name text generated always as (
+                 nullif(trim(coalesce(first_name, '') || ' ' ||
+                             coalesce(last_name, '')), '')
+               ) stored,
   avatar_url   text,
-  role         text    not null default 'user' check (role in ('user', 'admin')),
+  role         text    not null default 'customer'
+                 check (role in ('customer', 'admin')),
   banned       boolean not null default false,
   created_at   timestamptz not null default now()
 );
@@ -108,8 +116,8 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles
-    (id, email, phone, first_name, last_name, dob, state, interests, display_name)
+  insert into public.users
+    (id, email, phone, first_name, last_name, dob, state, interests)
   values (
     new.id,
     new.email,
@@ -118,9 +126,7 @@ begin
     new.raw_user_meta_data->>'last_name',
     nullif(new.raw_user_meta_data->>'dob', '')::date,
     new.raw_user_meta_data->>'state',
-    coalesce(new.raw_user_meta_data->'interests', '{}'::jsonb),
-    nullif(trim(coalesce(new.raw_user_meta_data->>'first_name', '') || ' ' ||
-                coalesce(new.raw_user_meta_data->>'last_name', '')), '')
+    coalesce(new.raw_user_meta_data->'interests', '{}'::jsonb)
   )
   on conflict (id) do nothing;
   return new;
@@ -138,22 +144,23 @@ language sql stable
 security definer set search_path = public
 as $$
   select exists (
-    select 1 from public.profiles
+    select 1 from public.users
     where id = auth.uid() and role = 'admin'
   );
 $$;
 revoke all on function public.is_admin() from public, anon;
 grant execute on function public.is_admin() to authenticated;
 
--- "Is this user banned?" — SECURITY DEFINER because a plain subquery on
--- profiles inside a policy runs under the caller's own-row RLS and always
--- comes back empty for anyone else.
+-- "Is this user banned?" — MUST stay SECURITY DEFINER. users_select below
+-- hides banned rows from everyone else, so an inline subquery here would find
+-- no row for a banned seller, coalesce to false, and make their listings
+-- visible again — the exact opposite of a ban.
 create function public.is_banned(uid uuid)
 returns boolean
 language sql stable
 security definer set search_path = public
 as $$
-  select coalesce((select p.banned from public.profiles p where p.id = uid), false);
+  select coalesce((select u.banned from public.users u where u.id = uid), false);
 $$;
 revoke all on function public.is_banned(uuid) from public, anon;
 grant execute on function public.is_banned(uuid) to authenticated;
@@ -161,7 +168,7 @@ grant execute on function public.is_banned(uuid) to authenticated;
 -- Users may update their whole row, so without this they could promote
 -- themselves. auth.uid() is null for dashboard sessions — those may always
 -- change roles, which is how the first admin is seeded:
---   update public.profiles set role = 'admin' where email = 'you@example.com';
+--   update public.users set role = 'admin' where email = 'you@example.com';
 create function public.protect_role()
 returns trigger
 language plpgsql
@@ -177,32 +184,32 @@ begin
 end;
 $$;
 
-create trigger profiles_protect_role
-  before update on public.profiles
+create trigger users_protect_role
+  before update on public.users
   for each row execute function public.protect_role();
 
-alter table public.profiles enable row level security;
+alter table public.users enable row level security;
 
--- Own row only: email, phone and DOB never leave the owner.
-create policy "profiles_select_own" on public.profiles
-  for select to authenticated using (id = auth.uid());
-create policy "profiles_update_own" on public.profiles
-  for update to authenticated using (id = auth.uid());
-
--- What any signed-in user may see about another: name, photo, state, member
--- since. Owner-rights view, so it bypasses profiles RLS on purpose and exposes
--- only these columns. Banned users vanish from it.
-create view public.public_profiles as
-  select id, display_name, avatar_url, state, created_at
-  from public.profiles
-  where not banned;
-revoke all on public.public_profiles from anon, public;
-grant select on public.public_profiles to authenticated;
+-- Any signed-in user may read any user who is not banned — this is what backs
+-- seller search and the public seller page. NOTE: this returns the whole row,
+-- so email, phone, dob and interests are readable by other signed-in users.
+-- To narrow it without reintroducing a view, add column-level grants:
+--   revoke select on public.users from authenticated;
+--   grant select (id, display_name, first_name, last_name, avatar_url,
+--                 state, created_at, role, banned) on public.users
+--     to authenticated;
+-- (the app would then need an explicit column list in its select()).
+create policy "users_select" on public.users
+  for select to authenticated
+  using (id = auth.uid() or not banned);
+create policy "users_update_own" on public.users
+  for update to authenticated
+  using (id = auth.uid()) with check (id = auth.uid());
 
 -- ═══ 3. Listings ═════════════════════════════════════════════════════════════
 create table public.listings (
   id                   uuid primary key default gen_random_uuid(),
-  seller_id            uuid not null references public.profiles (id),
+  seller_id            uuid not null references public.users (id),
   status               text not null default 'hidden'
                          check (status in ('selling', 'bidding', 'hidden', 'sold')),
   make                 text not null,
@@ -309,8 +316,8 @@ create policy "listing_media_write_own" on public.listing_media
 create table public.conversations (
   id              uuid primary key default gen_random_uuid(),
   listing_id      uuid not null references public.listings (id) on delete cascade,
-  buyer_id        uuid not null references public.profiles (id),
-  seller_id       uuid not null references public.profiles (id),
+  buyer_id        uuid not null references public.users (id),
+  seller_id       uuid not null references public.users (id),
   created_at      timestamptz not null default now(),
   last_message_at timestamptz,
   unique (listing_id, buyer_id)
@@ -319,7 +326,7 @@ create table public.conversations (
 create table public.messages (
   id                 uuid primary key default gen_random_uuid(),
   conversation_id    uuid not null references public.conversations (id) on delete cascade,
-  sender_id          uuid not null references public.profiles (id),
+  sender_id          uuid not null references public.users (id),
   body               text,
   message_type       text not null default 'text' check (message_type in ('text', 'offer')),
   offer_amount_myr   int,
@@ -457,7 +464,7 @@ grant execute on function public.confirm_offer(uuid) to authenticated;
 create table public.auctions (
   id                 uuid primary key default gen_random_uuid(),
   listing_id         uuid not null references public.listings (id) on delete cascade,
-  seller_id          uuid not null references public.profiles (id) on delete cascade,
+  seller_id          uuid not null references public.users (id) on delete cascade,
   starting_price_myr integer not null check (starting_price_myr > 0),
   min_increment_myr  integer not null check (min_increment_myr > 0),
   ends_at            timestamptz not null,
@@ -480,7 +487,7 @@ create table public.bids (
   id          uuid primary key default gen_random_uuid(),
   listing_id  uuid not null references public.listings (id) on delete cascade,
   auction_id  uuid not null references public.auctions (id) on delete cascade,
-  bidder_id   uuid not null references public.profiles (id) on delete cascade,
+  bidder_id   uuid not null references public.users (id) on delete cascade,
   amount_myr  int  not null check (amount_myr > 0),
   status      text not null default 'placed' check (status in ('placed', 'won', 'lost')),
   created_at  timestamptz not null default now(),
@@ -540,8 +547,8 @@ create trigger listings_reject_pending_bids
 -- receipt survives the listing being edited or removed (listing_id goes null).
 create table public.purchases (
   id          uuid primary key default gen_random_uuid(),
-  buyer_id    uuid not null references public.profiles (id) on delete cascade,
-  seller_id   uuid not null references public.profiles (id) on delete cascade,
+  buyer_id    uuid not null references public.users (id) on delete cascade,
+  seller_id   uuid not null references public.users (id) on delete cascade,
   listing_id  uuid references public.listings (id) on delete set null,
   price_myr   integer not null check (price_myr > 0),
   method      text not null check (method in ('buy_now', 'chat_offer', 'bid')),
@@ -613,8 +620,8 @@ revoke all on function public.record_purchase(uuid, uuid, integer, text)
 -- ═══ 7. Reports, admin, bans ═════════════════════════════════════════════════
 create table public.reports (
   id           uuid primary key default gen_random_uuid(),
-  reporter_id  uuid not null references public.profiles (id) on delete cascade,
-  reported_id  uuid not null references public.profiles (id) on delete cascade,
+  reporter_id  uuid not null references public.users (id) on delete cascade,
+  reported_id  uuid not null references public.users (id) on delete cascade,
   title        text not null check (char_length(trim(title)) between 1 and 80),
   description  text not null check (char_length(trim(description)) between 1 and 500),
   status       text not null default 'open' check (status in ('open', 'resolved')),
@@ -631,8 +638,11 @@ create policy "reports_insert_own" on public.reports
   for insert to authenticated
   with check (reporter_id = auth.uid() and reporter_id <> reported_id);
 
--- Every user with their listing counts. Returns a full profiles row so the
--- app decodes it with the ordinary Profile model.
+-- Every user with their listing counts. Returns a full users row so the app
+-- decodes it with the ordinary AppUser model — this column list must stay in
+-- sync with AppUser.fromJson. It is also the ONLY way the admin screen sees
+-- BANNED users: users_select hides them, this SECURITY DEFINER function does
+-- not. Do not "simplify" the admin list to a plain select on users.
 create function public.admin_user_stats()
 returns table (
   id           uuid,
@@ -663,7 +673,7 @@ begin
       p.phone, p.dob, p.state, p.role, p.banned, p.created_at,
       count(l.id) filter (where l.status in ('selling', 'bidding')) as active_count,
       count(l.id) filter (where l.status = 'sold')                  as sold_count
-    from public.profiles p
+    from public.users p
     left join public.listings l on l.seller_id = p.id
     group by p.id
     order by p.created_at desc;
@@ -697,8 +707,8 @@ begin
            pr.display_name, pd.display_name, pd.banned,
            r.title, r.description, r.status, r.created_at
     from public.reports r
-    left join public.profiles pr on pr.id = r.reporter_id
-    left join public.profiles pd on pd.id = r.reported_id
+    left join public.users pr on pr.id = r.reporter_id
+    left join public.users pd on pd.id = r.reported_id
     order by r.created_at desc;
 end;
 $$;
@@ -736,162 +746,20 @@ begin
     raise exception 'you cannot ban yourself' using errcode = '42501';
   end if;
   if ban and exists (
-    select 1 from public.profiles where id = target and role = 'admin'
+    select 1 from public.users where id = target and role = 'admin'
   ) then
     raise exception 'admins cannot be banned' using errcode = '42501';
   end if;
   update auth.users
     set banned_until = case when ban then 'infinity'::timestamptz end
     where id = target;
-  update public.profiles set banned = ban where id = target;
+  update public.users set banned = ban where id = target;
 end;
 $$;
 revoke all on function public.admin_set_banned(uuid, boolean) from public, anon;
 grant execute on function public.admin_set_banned(uuid, boolean) to authenticated;
 
--- ═══ 8. Notifications ════════════════════════════════════════════════════════
--- Rows are created only by the SECURITY DEFINER functions and triggers in
--- this file; clients read, mark read and delete their own.
-create table public.notifications (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references public.profiles (id) on delete cascade,
-  kind        text not null check (kind in (
-                'welcome', 'listing_match', 'insights_updated',
-                'bid_placed', 'bid_accepted', 'bid_rejected',
-                'bid_outbid', 'auction_won', 'auction_ended'
-              )),
-  title       text not null,
-  body        text not null,
-  listing_id  uuid references public.listings (id) on delete cascade,
-  route       text,
-  read_at     timestamptz,
-  created_at  timestamptz not null default now()
-);
-
-create index notifications_user_created_idx on public.notifications (user_id, created_at desc);
-
-alter table public.notifications enable row level security;
-
-create policy "notifications_select_own" on public.notifications
-  for select to authenticated using (user_id = auth.uid());
-create policy "notifications_update_own" on public.notifications
-  for update to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy "notifications_delete_own" on public.notifications
-  for delete to authenticated using (user_id = auth.uid());
-
--- welcome: one row on signup.
-create function public.notify_welcome()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-begin
-  insert into public.notifications (user_id, kind, title, body, route)
-  values (
-    new.id, 'welcome', 'Welcome to CarSell',
-    'Set your car interests and we''ll tell you when a matching car is listed.',
-    '/profile/interests'
-  );
-  return new;
-end;
-$$;
-create trigger profiles_notify_welcome
-  after insert on public.profiles
-  for each row execute function public.notify_welcome();
-
--- listing_match: when a car goes on sale, tell every other user whose saved
--- interests it satisfies — every set preference (brands, body types, budget)
--- must match. A user with no preferences at all hears nothing. Never twice
--- for the same user + listing.
-create function public.notify_listing_match()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  p           record;
-  makes       jsonb;
-  bodies      jsonb;
-  bmin        integer;
-  bmax        integer;
-  has_primary boolean;
-  ok          boolean;
-begin
-  if new.status <> 'selling' then return new; end if;
-  if tg_op = 'UPDATE' and old.status = 'selling' then return new; end if;
-
-  for p in
-    select id, state, interests from public.profiles where id <> new.seller_id
-  loop
-    makes  := coalesce(p.interests -> 'makes', '[]'::jsonb);
-    bodies := coalesce(p.interests -> 'body_types', '[]'::jsonb);
-    bmin   := (p.interests ->> 'budget_min_myr')::integer;
-    bmax   := (p.interests ->> 'budget_max_myr')::integer;
-    has_primary := jsonb_array_length(makes) > 0
-                or jsonb_array_length(bodies) > 0
-                or bmin is not null or bmax is not null;
-
-    if not has_primary then
-      continue;
-    end if;
-
-    ok := (jsonb_array_length(makes) = 0 or makes ? new.make)
-      and (jsonb_array_length(bodies) = 0 or bodies ? new.body_type)
-      and (bmin is null or new.price_myr >= bmin)
-      and (bmax is null or new.price_myr <= bmax);
-
-    if ok and not exists (
-      select 1 from public.notifications n
-      where n.user_id = p.id and n.listing_id = new.id
-    ) then
-      insert into public.notifications (user_id, kind, title, body, listing_id, route)
-      values (
-        p.id, 'listing_match', 'New car that matches your interests',
-        new.year || ' ' || new.make || ' ' || new.model
-          || ' · RM ' || to_char(new.price_myr, 'FM999,999,999')
-          || ' · ' || new.state,
-        new.id, '/listing/' || new.id
-      );
-    end if;
-  end loop;
-  return new;
-end;
-$$;
-create trigger listings_notify_match
-  after insert or update of status on public.listings
-  for each row execute function public.notify_listing_match();
-
--- bid_placed: tell the seller a new bid landed on their car.
-create function public.notify_bid_placed()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  l record;
-begin
-  select seller_id, make, model, year into l
-    from public.listings where id = new.listing_id;
-  if not found then
-    return new;
-  end if;
-
-  insert into public.notifications (user_id, kind, title, body, listing_id, route)
-  values (
-    l.seller_id, 'bid_placed', 'New bid on your car',
-    'Someone bid RM' || to_char(new.amount_myr, 'FM999,999,999') ||
-      ' on your ' || l.year || ' ' || l.make || ' ' || l.model || '.',
-    new.listing_id, '/auction/' || new.auction_id
-  );
-  return new;
-end;
-$$;
-create trigger bids_notify_placed
-  after insert on public.bids
-  for each row execute function public.notify_bid_placed();
-
--- ═══ 9. Selling a car ════════════════════════════════════════════════════════
+-- ═══ 8. Selling a car ════════════════════════════════════════════════════════
 -- Three routes sell a car and each records the purchase. All three guard
 -- `status = 'selling'`: a car with a live auction cannot be bought outright.
 
@@ -1101,15 +969,6 @@ begin
          bid_count = bid_count + 1
    where id = p_auction_id;
 
-  if top.bidder_id is not null and top.bidder_id <> uid then
-    insert into public.notifications (user_id, kind, title, body, listing_id, route)
-    select top.bidder_id, 'bid_outbid', 'You have been outbid',
-           'Someone bid RM ' || to_char(p_amount, 'FM999,999,999')
-             || ' on the ' || l.year || ' ' || l.make || ' ' || l.model || '.',
-           l.id, '/auction/' || p_auction_id
-      from public.listings l where l.id = a.listing_id;
-  end if;
-
   return new_id;
 end;
 $$;
@@ -1126,7 +985,6 @@ as $$
 declare
   uid uuid := auth.uid();
   a   record;
-  car record;
 begin
   if uid is null then
     raise exception 'not signed in';
@@ -1145,9 +1003,6 @@ begin
     raise exception 'This auction has already ended.';
   end if;
 
-  select l.make, l.model, l.year into car
-    from public.listings l where l.id = a.listing_id;
-
   update public.auctions
      set status = 'cancelled', settled_at = now()
    where id = p_auction_id;
@@ -1156,15 +1011,6 @@ begin
      set status = 'lost'
    where auction_id = p_auction_id
      and status = 'placed';
-
-  insert into public.notifications (user_id, kind, title, body, listing_id, route)
-  select distinct b.bidder_id, 'auction_ended', 'Auction cancelled',
-         'The seller cancelled the auction on the '
-           || coalesce(car.year || ' ' || car.make || ' ' || car.model, 'car')
-           || '. Your bid no longer stands.',
-         a.listing_id, '/home/bid'
-    from public.bids b
-   where b.auction_id = p_auction_id;
 
   update public.listings set status = 'selling'
    where id = a.listing_id and status = 'bidding';
@@ -1225,7 +1071,6 @@ as $$
 declare
   a       record;
   winner  record;
-  car     record;
   settled integer := 0;
 begin
   for a in
@@ -1235,9 +1080,6 @@ begin
      order by ends_at
      for update skip locked
   loop
-    select l.make, l.model, l.year into car
-      from public.listings l where l.id = a.listing_id;
-
     select b.id, b.bidder_id, b.amount_myr into winner
       from public.bids b
      where b.auction_id = a.id and b.status = 'placed'
@@ -1250,14 +1092,6 @@ begin
        where id = a.id;
       update public.listings set status = 'hidden'
        where id = a.listing_id and status = 'bidding';
-
-      insert into public.notifications (user_id, kind, title, body, listing_id, route)
-      values (
-        a.seller_id, 'auction_ended', 'Your auction ended with no bids',
-        coalesce(car.year || ' ' || car.make || ' ' || car.model, 'Your car')
-          || ' is hidden now. Put it back on sale whenever you like.',
-        a.listing_id, '/home/sell'
-      );
     else
       -- Mark the winner first: flipping the listing fires
       -- reject_bids_on_closed_listing, which marks every still-'placed' bid lost.
@@ -1274,32 +1108,6 @@ begin
       perform public.record_purchase(
         a.listing_id, winner.bidder_id, winner.amount_myr, 'bid'
       );
-
-      insert into public.notifications (user_id, kind, title, body, listing_id, route)
-      values (
-        winner.bidder_id, 'auction_won', 'You won the auction',
-        'You won the '
-          || coalesce(car.year || ' ' || car.make || ' ' || car.model, 'car')
-          || ' at RM ' || to_char(winner.amount_myr, 'FM999,999,999') || '.',
-        a.listing_id, '/profile/purchases'
-      );
-
-      insert into public.notifications (user_id, kind, title, body, listing_id, route)
-      values (
-        a.seller_id, 'auction_ended', 'Your auction sold',
-        coalesce(car.year || ' ' || car.make || ' ' || car.model, 'Your car')
-          || ' sold for RM ' || to_char(winner.amount_myr, 'FM999,999,999') || '.',
-        a.listing_id, '/home/sell'
-      );
-
-      insert into public.notifications (user_id, kind, title, body, listing_id, route)
-      select distinct b.bidder_id, 'auction_ended', 'Auction ended',
-             'The '
-               || coalesce(car.year || ' ' || car.make || ' ' || car.model, 'car')
-               || ' went to a higher bid.',
-             a.listing_id, '/home/bid'
-        from public.bids b
-       where b.auction_id = a.id and b.bidder_id <> winner.bidder_id;
     end if;
 
     settled := settled + 1;
@@ -1311,7 +1119,7 @@ $$;
 revoke all on function public.settle_due_auctions() from public, anon;
 grant execute on function public.settle_due_auctions() to authenticated;
 
--- ═══ 10. Account deletion ════════════════════════════════════════════════════
+-- ═══ 9. Account deletion ════════════════════════════════════════════════════
 -- Clients cannot delete auth users (that needs the service role, which never
 -- ships in the app). Deletes the caller's rows in FK-safe order, then the auth
 -- user, which cascades the profile. Uploaded photos are removed by the app via
@@ -1341,7 +1149,123 @@ $$;
 revoke all on function public.delete_account() from public;
 grant execute on function public.delete_account() to authenticated;
 
--- ═══ 11. Market insights ═════════════════════════════════════════════════════
+-- ═══ 10. Inbox ═══════════════════════════════════════════════════════════════
+-- A small in-app message list. Rows are written ONLY by the two triggers
+-- below (SECURITY DEFINER, so they bypass RLS); the app reads them when the
+-- Inbox screen opens and may mark one read or delete it. Deliberately simple:
+-- no realtime, no unread badge, no pop-up banner.
+create table public.inbox (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.users (id) on delete cascade,
+  kind        text not null check (kind in ('welcome', 'listing_match')),
+  title       text not null,
+  body        text not null,
+  listing_id  uuid references public.listings (id) on delete cascade,
+  route       text,
+  read_at     timestamptz,
+  created_at  timestamptz not null default now()
+);
+
+create index inbox_user_created_idx on public.inbox (user_id, created_at desc);
+-- One message per user per car, so republishing a listing cannot spam anyone.
+-- Partial, so the welcome row (null listing_id) never collides.
+create unique index inbox_user_listing_idx
+  on public.inbox (user_id, listing_id) where listing_id is not null;
+
+alter table public.inbox enable row level security;
+
+create policy "inbox_select_own" on public.inbox
+  for select to authenticated using (user_id = auth.uid());
+create policy "inbox_update_own" on public.inbox
+  for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "inbox_delete_own" on public.inbox
+  for delete to authenticated using (user_id = auth.uid());
+-- No INSERT policy: only the triggers below write.
+
+-- welcome: one message when the account is created.
+create function public.notify_welcome()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.inbox (user_id, kind, title, body, route)
+  values (
+    new.id, 'welcome', 'Welcome to CarSell',
+    'Set your car interests and we''ll tell you when a matching car is listed.',
+    '/profile/interests'
+  );
+  return new;
+end;
+$$;
+
+create trigger users_notify_welcome
+  after insert on public.users
+  for each row execute function public.notify_welcome();
+
+-- listing_match: when a car goes on sale, tell every other user whose saved
+-- interests it satisfies — the same rule the app uses for "Recommended for
+-- you": every preference that is set must match. A user with no preferences
+-- at all hears nothing.
+create function public.notify_listing_match()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  u           record;
+  makes       jsonb;
+  bodies      jsonb;
+  bmin        integer;
+  bmax        integer;
+  has_primary boolean;
+  ok          boolean;
+begin
+  if new.status <> 'selling' then return new; end if;
+  if tg_op = 'UPDATE' and old.status = 'selling' then return new; end if;
+
+  for u in
+    select id, interests from public.users where id <> new.seller_id
+  loop
+    makes  := coalesce(u.interests -> 'makes', '[]'::jsonb);
+    bodies := coalesce(u.interests -> 'body_types', '[]'::jsonb);
+    bmin   := (u.interests ->> 'budget_min_myr')::integer;
+    bmax   := (u.interests ->> 'budget_max_myr')::integer;
+    has_primary := jsonb_array_length(makes) > 0
+                or jsonb_array_length(bodies) > 0
+                or bmin is not null or bmax is not null;
+
+    if not has_primary then
+      continue;
+    end if;
+
+    ok := (jsonb_array_length(makes) = 0 or makes ? new.make)
+      and (jsonb_array_length(bodies) = 0 or bodies ? new.body_type)
+      and (bmin is null or new.price_myr >= bmin)
+      and (bmax is null or new.price_myr <= bmax);
+
+    if ok then
+      insert into public.inbox (user_id, kind, title, body, listing_id, route)
+      values (
+        u.id, 'listing_match', 'New car that matches your interests',
+        new.year || ' ' || new.make || ' ' || new.model
+          || ' · RM ' || to_char(new.price_myr, 'FM999,999,999')
+          || ' · ' || new.state,
+        new.id, '/listing/' || new.id
+      )
+      on conflict (user_id, listing_id) do nothing;
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+create trigger listings_notify_match
+  after insert or update of status on public.listings
+  for each row execute function public.notify_listing_match();
+
+-- ═══ 11. Market insights ════════════════════════════════════════════════════
 -- One row ('latest') holding a precomputed snapshot of JPJ car registrations
 -- (data.gov.my, CC BY 4.0), built offline by tool/build_car_popularity.dart
 -- and published by 0002_seed.sql. Read-only for the app.
@@ -1359,32 +1283,13 @@ alter table public.car_popularity enable row level security;
 create policy "car_popularity_select" on public.car_popularity
   for select to authenticated using (true);
 
--- insights_updated: everyone hears when the snapshot is refreshed.
-create function public.notify_insights_updated()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-begin
-  insert into public.notifications (user_id, kind, title, body, route)
-  select id, 'insights_updated', 'Market insights updated',
-         'Fresh JPJ registration data for ' || new.period_label || ' is in.',
-         '/profile/insights'
-  from public.profiles;
-  return new;
-end;
-$$;
-create trigger car_popularity_notify
-  after insert or update on public.car_popularity
-  for each row execute function public.notify_insights_updated();
-
 -- ═══ 12. Realtime + storage ══════════════════════════════════════════════════
 -- `add table` errors if the table is already in the publication, so each one
 -- is guarded to keep this file re-runnable.
 do $$
 declare t text;
 begin
-  foreach t in array array['listings', 'notifications', 'conversations',
+  foreach t in array array['listings', 'conversations',
                            'messages', 'auctions', 'bids']
   loop
     if not exists (

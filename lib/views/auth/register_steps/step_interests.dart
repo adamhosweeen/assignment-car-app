@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/registration_controller.dart';
+import 'package:assignment/control/user/auth/registration_controller.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
-import 'package:assignment/widgets/profile/car_interest_fields.dart';
+import 'package:assignment/widgets/user/car_interest_fields.dart';
 
 class StepInterests extends StatelessWidget {
   const StepInterests({super.key});
@@ -40,7 +40,7 @@ class StepInterests extends StatelessWidget {
           const InlineNotice(
             text:
                 'Nothing picked — that’s fine. You can set preferences later '
-                'from Profile → Car Interests.',
+                'from AppUser → Car Interests.',
           )
         else
           const InlineNotice(

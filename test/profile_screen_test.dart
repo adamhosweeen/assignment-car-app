@@ -3,64 +3,58 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/app_navigation.dart';
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
-import 'package:assignment/model/auth/registration_data.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
-import 'package:assignment/model/notifications/app_notification.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
-import 'package:assignment/views/profile/profile_screen.dart';
+import 'package:assignment/views/user/profile_screen.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 
-Profile _profile({bool admin = false, String? state = 'Selangor'}) => Profile(
+AppUser _profile({bool admin = false, String? state = 'Selangor'}) => AppUser(
   id: 'u1',
   email: 'aiman@example.com',
   firstName: 'Aiman',
   lastName: 'Rahman',
   state: state,
-  role: admin ? 'admin' : 'user',
+  role: admin ? UserRole.admin : UserRole.customer,
   createdAt: DateTime.utc(2026, 3, 12),
-);
-
-AppNotification _unread(String id) => AppNotification(
-  id: id,
-  userId: 'u1',
-  kind: NotificationKind.welcome,
-  title: 't',
-  body: 'b',
-  createdAt: DateTime.utc(2026, 9, 1),
 );
 
 class _FakeAuth implements AuthRepository {
   _FakeAuth(this.user);
 
-  final Profile user;
+  final AppUser user;
   int signOuts = 0;
 
   @override
-  Profile? get currentUser => user;
+  AppUser? get currentUser => user;
 
   @override
-  Stream<Profile?> authState() => Stream.value(user);
+  Stream<AppUser?> authState() => Stream.value(user);
 
   @override
-  Future<Result<Profile>> signIn({
+  Future<Result<AppUser>> signIn({
     required String email,
     required String password,
   }) async => Ok(user);
 
   @override
-  Future<Result<Profile>> signUp({
+  Future<Result<AppUser>> signUp({
     required String email,
     required String password,
-    required RegistrationData data,
+    required String firstName,
+    required String lastName,
+    required DateTime dob,
+    required String phoneE164,
+    required String state,
+    required CarInterests interests,
   }) async => Ok(user);
 
   @override
-  Future<Result<Profile>> updateProfile({
+  Future<Result<AppUser>> updateProfile({
     String? firstName,
     String? lastName,
     String? phone,
@@ -70,10 +64,10 @@ class _FakeAuth implements AuthRepository {
   }) async => Ok(user);
 
   @override
-  Future<Result<Profile>> updateAvatar(String localPath) async => Ok(user);
+  Future<Result<AppUser>> updateAvatar(String localPath) async => Ok(user);
 
   @override
-  Future<Result<Profile>> removeAvatar() async => Ok(user);
+  Future<Result<AppUser>> removeAvatar() async => Ok(user);
 
   @override
   Future<Result<void>> deleteAccount() async => const Ok(null);
@@ -98,17 +92,14 @@ class _NoDraftRepo implements DraftRepository {
   Future<void> clear() async {}
 }
 
-Widget _app(Profile profile, {List<AppNotification> inbox = const []}) {
+Widget _app(AppUser profile) {
   final navigator = AppNavigator();
   return MultiProvider(
     providers: [
       Provider<AppNavigator>.value(value: navigator),
       Provider<AuthRepository>.value(value: _FakeAuth(profile)),
       Provider<DraftRepository>.value(value: _NoDraftRepo()),
-      Provider<Profile?>.value(value: profile),
-      Provider<AsyncSnapshot<List<AppNotification>>>.value(
-        value: AsyncSnapshot.withData(ConnectionState.active, inbox),
-      ),
+      Provider<AppUser?>.value(value: profile),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -172,11 +163,6 @@ void main() {
     expect(find.text('MODERATION'), findsOneWidget);
     expect(find.widgetWithText(GroupedRow, 'Admin'), findsOneWidget);
     expect(find.text('Admin'), findsNWidgets(2));
-  });
-
-  testWidgets('the inbox row shows the unread count', (tester) async {
-    await pump(tester, _app(_profile(), inbox: [_unread('a'), _unread('b')]));
-    expect(find.text('2 new'), findsOneWidget);
   });
 
   testWidgets('log out and delete sit together and both confirm first', (

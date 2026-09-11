@@ -2,45 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/admin/admin_repository.dart';
-import 'package:assignment/control/auth/auth_repository.dart';
-import 'package:assignment/model/admin/admin_user.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
-import 'package:assignment/model/auth/registration_data.dart';
-import 'package:assignment/model/report/admin_report.dart';
+import 'package:assignment/control/user/admin/admin_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
+import 'package:assignment/model/user/app_user.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/report.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
-import 'package:assignment/views/profile/admin_users_screen.dart';
+import 'package:assignment/views/user/admin_users_screen.dart';
 
-final _admin = Profile(
+final _admin = AppUser(
   id: 'admin-1',
   email: 'admin@example.com',
-  role: 'admin',
+  role: UserRole.admin,
   createdAt: DateTime.utc(2026, 1, 1),
 );
 
-final _user = AdminUser(
-  profile: Profile(
-    id: 'u1',
-    firstName: 'Nur Aisyah',
-    lastName: 'binti Abdullah',
-    email: 'nur.aisyah.abdullah@verylongdomainexample.com.my',
-    phone: '+60123456789',
-    dob: DateTime.utc(1999, 4, 12),
-    state: 'Wilayah Persekutuan Kuala Lumpur',
-    createdAt: DateTime.utc(2026, 2, 2),
-  ),
+final _user = AppUser(
+  id: 'u1',
+  firstName: 'Nur Aisyah',
+  lastName: 'binti Abdullah',
+  email: 'nur.aisyah.abdullah@verylongdomainexample.com.my',
+  phone: '+60123456789',
+  dob: DateTime.utc(1999, 4, 12),
+  state: 'Wilayah Persekutuan Kuala Lumpur',
+  createdAt: DateTime.utc(2026, 2, 2),
   activeCount: 3,
   soldCount: 2,
 );
 
 class _FakeAdmin implements AdminRepository {
   @override
-  Future<Result<List<AdminUser>>> listUsers() async => Ok([_user]);
+  Future<Result<List<AppUser>>> listUsers() async => Ok([_user]);
 
   @override
-  Future<Result<List<AdminReport>>> listReports() async => const Ok([]);
+  Future<Result<List<Report>>> listReports() async => const Ok([]);
 
   @override
   Future<Result<void>> resolveReport(String reportId) async => const Ok(null);
@@ -52,26 +48,31 @@ class _FakeAdmin implements AdminRepository {
 
 class _FakeAuth implements AuthRepository {
   @override
-  Profile? get currentUser => _admin;
+  AppUser? get currentUser => _admin;
 
   @override
-  Stream<Profile?> authState() => Stream.value(_admin);
+  Stream<AppUser?> authState() => Stream.value(_admin);
 
   @override
-  Future<Result<Profile>> signIn({
+  Future<Result<AppUser>> signIn({
     required String email,
     required String password,
   }) async => Ok(_admin);
 
   @override
-  Future<Result<Profile>> signUp({
+  Future<Result<AppUser>> signUp({
     required String email,
     required String password,
-    required RegistrationData data,
+    required String firstName,
+    required String lastName,
+    required DateTime dob,
+    required String phoneE164,
+    required String state,
+    required CarInterests interests,
   }) async => Ok(_admin);
 
   @override
-  Future<Result<Profile>> updateProfile({
+  Future<Result<AppUser>> updateProfile({
     String? firstName,
     String? lastName,
     String? phone,
@@ -81,10 +82,10 @@ class _FakeAuth implements AuthRepository {
   }) async => Ok(_admin);
 
   @override
-  Future<Result<Profile>> updateAvatar(String localPath) async => Ok(_admin);
+  Future<Result<AppUser>> updateAvatar(String localPath) async => Ok(_admin);
 
   @override
-  Future<Result<Profile>> removeAvatar() async => Ok(_admin);
+  Future<Result<AppUser>> removeAvatar() async => Ok(_admin);
 
   @override
   Future<Result<void>> deleteAccount() async => const Ok(null);
@@ -101,7 +102,7 @@ Widget _app() => MultiProvider(
   child: MaterialApp(
     theme: AppTheme.light,
     home: Scaffold(
-      body: AdminUsersTab(users: Future.value([_user]), onChanged: () {}),
+      body: AppUsersTab(users: Future.value([_user]), onChanged: () {}),
     ),
   ),
 );

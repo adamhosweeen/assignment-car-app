@@ -3,25 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_providers.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
-import 'package:assignment/control/profiles/profiles_providers.dart';
-import 'package:assignment/control/profiles/profiles_repository.dart';
+import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/users_repository.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/message.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_draft.dart' show kMaxPriceMyr;
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/public_profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
-import 'package:assignment/widgets/profile/profile_avatar.dart';
+import 'package:assignment/widgets/user/profile_avatar.dart';
 
 class ChatThreadScreen extends StatefulWidget {
   const ChatThreadScreen({super.key, required this.conversationId, this.seed});
@@ -45,7 +45,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   late final Stream<List<Message>> _messages;
 
   Future<Listing>? _listing;
-  Future<PublicProfile?>? _otherProfile;
+  Future<AppUser?>? _otherProfile;
 
   List<Message>? _seenMessages;
 
@@ -85,8 +85,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       conversation.listingId,
     );
     final uid = context.read<AuthRepository>().currentUser?.id;
-    _otherProfile = fetchPublicProfile(
-      context.read<ProfilesRepository>(),
+    _otherProfile = fetchAppUser(
+      context.read<UsersRepository>(),
       uid == null
           ? conversation.sellerId
           : conversation.otherParticipantId(uid),
@@ -188,7 +188,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       );
     }
 
-    return FutureBuilder<PublicProfile?>(
+    return FutureBuilder<AppUser?>(
       future: _otherProfile,
       builder: (context, profile) => FutureBuilder<Listing>(
         future: _listing,
@@ -201,7 +201,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   Widget _buildThread(
     BuildContext context,
     Conversation conversation,
-    PublicProfile? profile,
+    AppUser? profile,
     Listing? listing,
   ) {
     final text = Theme.of(context).textTheme;

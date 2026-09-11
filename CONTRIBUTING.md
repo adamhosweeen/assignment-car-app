@@ -52,9 +52,8 @@ plus its SQL block(s) and its section(s) in the docs.
 |---|---|---|---|---|---|---|
 | **auth / profile** | `auth/`, `admin/`, `reports/` | `profile/`, `auth/`, `admin/`, `report/` | `profile/` | `auth/`, `profile/` (hub, my_info, car_interests, edit_profile, admin_users, admin_reports) | `profiles`, `handle_new_user`, Public profiles, avatars bucket, Account deletion, `0002_admin_roles.sql`, `0003_reports_bans.sql` | V1_SPEC §1 profiles, §4.1–4.2, §4.8 |
 | **buy / listings** | `listings/` | `listing/` | `listing/` | `buy/`, `sell/` | `listings`, `listing_media`, listing-media bucket, Realtime (listings) | V1_SPEC §3, §4.4–4.7, §4.10 |
-| **profiles (public)** | `profiles/` | `profile/public_profile` | `profile/seller_row` | `profile/seller_search`, `profile/seller_profile` | Public profiles | V1_SPEC §4.10 |
+| **user** | `user/` (`auth/`, `admin/`, `inbox/`, `report/`) | `user/` (`app_user`, `car_interests`, `report`, `inbox_message`) | `user/` | `user/` (+ `auth/` for the signed-out flow) | §2 users, §7 reports/admin, §10 inbox | CLAUDE.md §2 |
 | **insights** | `insights/` | `insights/` | `insights/` | `profile/market_insights` | Market insights (`car_popularity`, §11) + `0002_seed.sql`, `tool/` | V1_SPEC §4.9 |
-| **notifications** | `notifications/` | `notifications/` | — | `profile/inbox` | Notifications (table + 3 triggers) + Realtime (notifications) | V1_SPEC §1 notifications, §4.11 |
 | **bid** | `bid/` | `bid/` | `bid/` | `bid/` | §5 auctions/bids, §9 auction functions | CLAUDE.md §2 (Bid module) |
 | **chat** | `chat/` | `chat/` | `chat/` | `chat/` | §4 chat (conversations, messages, read receipts, offers) | CLAUDE.md §2 |
 
@@ -103,8 +102,8 @@ their `State`, and render it through a `FutureBuilder` / `StreamBuilder`.
 - **Views never import Supabase, sqflite, or another module's views.** Navigate
   to other modules only through `context.push('/route')` (routes live in the
   shared router).
-- A module may *read* another module's **providers/models** (e.g. Inbox reads
-  `authStateProvider`; Seller page reads `sellerListingsProvider`). It must not
+- A module may *read* another module's **providers/models** (e.g. the Seller
+  page reads `sellerListingsProvider`). It must not
   *write* through another module's repository — ask the owner for a method.
 - Shared widgets go in `widgets/common/` only if two modules actually use them.
   Until then they stay in your module.
@@ -162,9 +161,10 @@ Rules for a schema change:
 Design rules that still apply inside the schema:
 
 - RLS on every table. Default to **own-row** policies; anything readable by other
-  users goes through a view exposing only safe columns (see `public_profiles`).
-- Server-side writes the client must not do (welcome notifications, cascades,
-  every listing/auction state transition) are `SECURITY DEFINER` functions and
+  users is read through a policy that must be justified in a comment (see
+  `users_select` in `0001_schema.sql`, which deliberately exposes whole rows).
+- Server-side writes the client must not do (cascades, every listing/auction
+  state transition) are `SECURITY DEFINER` functions and
   triggers, and they only ever act on `auth.uid()`'s data or on rows they
   create themselves. If RLS can't express a rule ("beat the highest bid by the
   increment"), that rule is a function, and the table has no client write policy.
@@ -200,12 +200,7 @@ Design rules that still apply inside the schema:
 4. Screens in `views/bid/`: the tab (my bids as buyer / bids on my cars as seller)
    replaces `BidScreen`'s placeholder; a "Place bid" sheet reached from Listing
    Detail (a shared edit — one button, call it out).
-5. Notifications for "new bid on your car" / "your bid was accepted" are a
-   **trigger in a migration**, inserting `kind = 'bid_*'` rows — extend the
-   `kind` check constraint there (`alter table … drop constraint … ; add
-   constraint …`) and the `NotificationKind` enum in the notifications module
-   (coordinate with its owner).
-6. Docs: V1_SPEC §1 `bids`, new §4.12; CLAUDE.md §2 moves Bid from placeholder to
+5. Docs: V1_SPEC §1 `bids`, new §4.12; CLAUDE.md §2 moves Bid from placeholder to
    built.
 
 ### Chat (`feature/chat-*`)
@@ -219,7 +214,7 @@ Design rules that still apply inside the schema:
 3. Screens in `views/chat/`: thread list replaces the placeholder; a thread screen
    `/chat/:conversationId`; "Chat with seller" on Listing Detail becomes live
    (shared edit — the button already exists, disabled).
-4. Unread badge on the Chat tab: same pattern as the inbox dot in `app_shell.dart`.
+4. Unread badge on the Chat tab: `chatBadge` in `app_shell.dart`.
 5. Docs: V1_SPEC §4.13; CLAUDE.md §2 moves Chat out of the NOT list.
 
 ---

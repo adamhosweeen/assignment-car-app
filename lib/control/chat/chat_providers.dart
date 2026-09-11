@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/model/chat/conversation_thread.dart';

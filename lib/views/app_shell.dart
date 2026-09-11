@@ -3,15 +3,13 @@ import 'package:provider/provider.dart';
 
 import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/chat/chat_providers.dart';
-import 'package:assignment/control/notifications/notifications_providers.dart';
 import 'package:assignment/model/chat/conversation_thread.dart';
-import 'package:assignment/model/notifications/app_notification.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
-import 'package:assignment/views/profile/profile_screen.dart';
+import 'package:assignment/views/user/profile_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -53,9 +51,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final unread = unreadCountOf(
-      context.watch<AsyncSnapshot<List<AppNotification>>>(),
-    );
     final chatUnread = unreadChatCountOf(
       context.watch<AsyncSnapshot<List<ConversationThread>>>(),
     );
@@ -70,7 +65,6 @@ class _AppShellState extends State<AppShell> {
       bottomNavigationBar: _BottomNav(
         index: _index,
         onSelect: _select,
-        profileBadge: unread > 0,
         chatBadge: chatUnread > 0,
       ),
     );
@@ -104,13 +98,11 @@ class _BottomNav extends StatelessWidget {
   const _BottomNav({
     required this.index,
     required this.onSelect,
-    required this.profileBadge,
     required this.chatBadge,
   });
 
   final int index;
   final ValueChanged<int> onSelect;
-  final bool profileBadge;
   final bool chatBadge;
 
   @override
@@ -136,9 +128,7 @@ class _BottomNav extends StatelessWidget {
                   child: _NavItem(
                     def: _tabs[i],
                     selected: i == index,
-                    badge:
-                        (profileBadge && i == homeTabProfile) ||
-                        (chatBadge && i == homeTabChat),
+                    badge: chatBadge && i == homeTabChat,
                     onTap: () => onSelect(i),
                   ),
                 ),

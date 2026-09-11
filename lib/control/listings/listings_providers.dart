@@ -1,4 +1,4 @@
-import 'package:assignment/control/auth/auth_repository.dart';
+import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/model/listing/listing.dart';

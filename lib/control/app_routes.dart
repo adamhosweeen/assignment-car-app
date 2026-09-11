@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/auth/registration_controller.dart';
+import 'package:assignment/control/user/auth/registration_controller.dart';
 import 'package:assignment/model/chat/conversation.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -14,15 +14,15 @@ import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
 import 'package:assignment/views/buy/purchase_screen.dart';
 import 'package:assignment/views/chat/chat_thread_screen.dart';
-import 'package:assignment/views/profile/admin_screen.dart';
-import 'package:assignment/views/profile/car_interests_screen.dart';
-import 'package:assignment/views/profile/edit_profile_screen.dart';
-import 'package:assignment/views/profile/inbox_screen.dart';
-import 'package:assignment/views/profile/market_insights_screen.dart';
-import 'package:assignment/views/profile/my_info_screen.dart';
-import 'package:assignment/views/profile/purchases_screen.dart';
-import 'package:assignment/views/profile/seller_profile_screen.dart';
-import 'package:assignment/views/profile/seller_search_screen.dart';
+import 'package:assignment/views/user/admin_screen.dart';
+import 'package:assignment/views/user/car_interests_screen.dart';
+import 'package:assignment/views/user/edit_profile_screen.dart';
+import 'package:assignment/views/user/inbox_screen.dart';
+import 'package:assignment/views/insights/market_insights_screen.dart';
+import 'package:assignment/views/user/my_info_screen.dart';
+import 'package:assignment/views/purchases/purchases_screen.dart';
+import 'package:assignment/views/user/seller_profile_screen.dart';
+import 'package:assignment/views/user/seller_search_screen.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) => MaterialPageRoute<void>(

@@ -7,10 +7,10 @@ import 'package:assignment/utils/ids.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/malaysian_states.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/app_user.dart';
 
 class SellController extends ChangeNotifier {
-  SellController(this._drafts, {Stream<Profile?>? authChanges})
+  SellController(this._drafts, {Stream<AppUser?>? authChanges})
     : _draft = _drafts.load() ?? _fresh() {
     _authSub = authChanges?.listen(_onAuthChanged);
   }
@@ -18,7 +18,7 @@ class SellController extends ChangeNotifier {
   final DraftRepository _drafts;
   ListingDraft _draft;
 
-  StreamSubscription<Profile?>? _authSub;
+  StreamSubscription<AppUser?>? _authSub;
   String? _ownerId;
 
   ListingDraft get draft => _draft;
@@ -28,7 +28,7 @@ class SellController extends ChangeNotifier {
   static ListingDraft _fresh() =>
       ListingDraft(id: newId(), updatedAt: DateTime.now().toUtc());
 
-  void _onAuthChanged(Profile? profile) {
+  void _onAuthChanged(AppUser? profile) {
     final id = profile?.id;
     if (id == null) return;
     if (_ownerId == null) {

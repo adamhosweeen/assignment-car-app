@@ -4,8 +4,8 @@ import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/listing/listing_media.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/app_user.dart';
 
 void main() {
   group('CarInterests JSON', () {
@@ -41,8 +41,8 @@ void main() {
     });
   });
 
-  group('Profile JSON', () {
-    final profile = Profile(
+  group('AppUser JSON', () {
+    final profile = AppUser(
       id: 'u1',
       email: 'aiman@example.com',
       firstName: 'Aiman',
@@ -52,12 +52,12 @@ void main() {
       state: 'Selangor',
       interests: const CarInterests(makes: ['Perodua']),
       avatarUrl: 'u1/avatar.jpg',
-      role: 'admin',
+      role: UserRole.admin,
       createdAt: DateTime.utc(2026, 1, 1),
     );
 
     test('round-trips with every field set', () {
-      expect(Profile.fromJson(profile.toJson()), profile);
+      expect(AppUser.fromJson(profile.toJson()), profile);
     });
 
     test('uses snake_case keys and nests interests', () {
@@ -70,13 +70,13 @@ void main() {
       expect((json['interests'] as Map)['makes'], ['Perodua']);
     });
 
-    test('role defaults to user and interests to empty', () {
-      final minimal = Profile.fromJson({
+    test('role defaults to customer and interests to empty', () {
+      final minimal = AppUser.fromJson({
         'id': 'u2',
         'email': 'b@c.my',
         'created_at': '2026-01-01T00:00:00.000Z',
       });
-      expect(minimal.role, 'user');
+      expect(minimal.role, UserRole.customer);
       expect(minimal.isAdmin, isFalse);
       expect(minimal.interests, const CarInterests());
       expect(minimal.dob, isNull);

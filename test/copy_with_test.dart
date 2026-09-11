@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/control/auth/registration_controller.dart';
+import 'package:assignment/control/user/auth/registration_controller.dart';
 import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
-import 'package:assignment/model/profile/car_interests.dart';
-import 'package:assignment/model/profile/profile.dart';
+import 'package:assignment/model/user/car_interests.dart';
+import 'package:assignment/model/user/app_user.dart';
 
 void main() {
   final now = DateTime.utc(2026, 9, 5);
@@ -80,15 +80,15 @@ void main() {
 
   group('value equality', () {
     test('two identically-built models are equal', () {
-      final a = Profile(id: 'u1', email: 'a@b.my', createdAt: now);
-      final b = Profile(id: 'u1', email: 'a@b.my', createdAt: now);
+      final a = AppUser(id: 'u1', email: 'a@b.my', createdAt: now);
+      final b = AppUser(id: 'u1', email: 'a@b.my', createdAt: now);
       expect(a, b);
       expect(a.hashCode, b.hashCode);
     });
 
     test('a copyWith that changes a field is not equal', () {
-      final a = Profile(id: 'u1', email: 'a@b.my', createdAt: now);
-      expect(a.copyWith(role: 'admin'), isNot(a));
+      final a = AppUser(id: 'u1', email: 'a@b.my', createdAt: now);
+      expect(a.copyWith(role: UserRole.admin), isNot(a));
     });
 
     test('collections compare by content, not identity', () {
