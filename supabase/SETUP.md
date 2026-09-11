@@ -21,12 +21,50 @@ Two files, pasted in order into the SQL editor. Both are safe to re-run.
 - Uploaded images can't be deleted from SQL. To wipe them too: Storage →
   `listing-media` → select all → Delete, and the same for `avatars`.
 
-### 2b. Seed (`migrations/0002_seed.sql`)
-- SQL Editor → paste [`migrations/0002_seed.sql`](migrations/0002_seed.sql) → Run.
-- Publishes the market-insights snapshot (`car_popularity`).
-- To refresh the data: `dart run tool/build_car_popularity.dart` (downloads
-  ~12 monthly CSVs from data.gov.my into `build/data_gov_my/`, aggregates,
-  and rewrites `0002_seed.sql`), then re-paste.
+### 2b. Market insights function (`functions/market-insights/index.ts`)
+
+`car_popularity` starts **empty** — there is no seed file. The Edge Function is
+the only thing that fills it, so until you do this, Market Insights shows
+"not published yet" while the rest of the app works normally.
+
+1. Dashboard → **Edge Functions** → **New function**, name it exactly
+   `market-insights`, paste
+   [`functions/market-insights/index.ts`](functions/market-insights/index.ts),
+   Deploy.
+2. **Invoke it once** to populate the table:
+   ```
+   curl -X POST https://<project-ref>.supabase.co/functions/v1/market-insights      -H "Authorization: Bearer <your-anon-key>"
+   ```
+   It replies with the row count, elapsed ms and the top 10 makers. If
+   `elapsed_ms` is anywhere near 2000 see the note at the end of this step.
+3. Schedule it monthly — Dashboard → **Integrations → Cron** → new job, or SQL:
+   ```sql
+   select cron.schedule(
+     'refresh-car-insights',
+     '0 18 11 * *',                       -- 11th, the day after JPJ publishes
+     $$
+     select net.http_post(
+       url := 'https://<project-ref>.supabase.co/functions/v1/market-insights',
+       headers := jsonb_build_object('Content-type', 'application/json',
+                                     'apikey', '<your-anon-key>')
+     );
+     $$
+   );
+   ```
+
+The function downloads the two most recent yearly **parquet** files (~1 MB total)
+rather than the CSVs (~83 MB): an Edge Function is killed at **2 seconds of CPU**,
+and parsing the CSVs costs 5–15s.
+
+Two things measured against the live project, worth knowing before you change it:
+
+- These files are **Brotli**-compressed, not Snappy, so `hyparquet-compressors`
+  is required — without it the read fails with
+  `parquet unsupported compression codec: BROTLI`.
+- It decodes **3 of the 7 columns** and that is close to the ceiling. Adding a
+  4th (`date_reg`, to filter by month) reliably returned **HTTP 546
+  `WORKER_RESOURCE_LIMIT`** — the CPU kill. If you need more columns or a third
+  year, split it into one invocation per year: the budget is per request.
 
 ### 2c. Seed your first admin
 The app's Admin screen is gated on `users.role = 'admin'`, which users can't

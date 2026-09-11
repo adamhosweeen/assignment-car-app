@@ -9,21 +9,9 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
-import 'package:assignment/widgets/common/segmented_control.dart';
 import 'package:assignment/widgets/insights/rank_bar_row.dart';
 
-const int _previewCount = 5;
-
-enum _Segment { brands, models, nearYou, trends }
-
-extension on _Segment {
-  String get label => switch (this) {
-    _Segment.brands => 'Brands',
-    _Segment.models => 'Models',
-    _Segment.nearYou => 'Near you',
-    _Segment.trends => 'Trends',
-  };
-}
+const int _listLength = 10;
 
 class MarketInsightsScreen extends StatefulWidget {
   const MarketInsightsScreen({super.key});
@@ -33,9 +21,6 @@ class MarketInsightsScreen extends StatefulWidget {
 }
 
 class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
-  _Segment _segment = _Segment.brands;
-  bool _showAll = false;
-
   late Future<CarPopularity?> _popularity;
 
   @override
@@ -44,12 +29,13 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
     _fetch();
   }
 
-  void _fetch() =>
-      _popularity = fetchCarPopularity(context.read<InsightsRepository>());
+  void _fetch() {
+    _popularity = fetchCarPopularity(context.read<InsightsRepository>());
+  }
 
   Future<void> _refresh() async {
     setState(_fetch);
-    await _popularity.catchError((Object _) => null);
+    await _popularity.catchError((_) => null);
   }
 
   @override
@@ -82,6 +68,18 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
                   'Check back after the next data refresh.',
             );
           }
+
+          // Show the user's own state when we have figures for it; otherwise
+          // the national picture, and say which it is.
+          final scoped = snapshot.hasDataFor(userState);
+          final scopeLabel = scoped ? userState! : 'Malaysia';
+          final models = scoped
+              ? snapshot.topModelsIn(userState!)
+              : snapshot.topModels;
+          final makers = scoped
+              ? snapshot.topMakersIn(userState!)
+              : snapshot.topMakers;
+
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
@@ -90,16 +88,19 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
               children: [
                 _SummaryCard(snapshot: snapshot),
                 const SizedBox(height: AppSpacing.space16),
-                SegmentedControl(
-                  labels: [for (final s in _Segment.values) s.label],
-                  selected: _segment.index,
-                  onChanged: (i) => setState(() {
-                    _segment = _Segment.values[i];
-                    _showAll = false;
-                  }),
+                _ModelList(
+                  title: 'Hottest cars in $scopeLabel',
+                  models: models,
                 ),
                 const SizedBox(height: AppSpacing.space16),
-                ..._segmentBody(context, snapshot, userState),
+                _MakerList(title: 'Top brands in $scopeLabel', makers: makers),
+                if (!scoped && userState != null) ...[
+                  const SizedBox(height: AppSpacing.space12),
+                  _Footnote(
+                    'JPJ has no state-level registrations for $userState in '
+                    'this period, so these are national figures.',
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.space24),
                 _Footnote(
                   'Source: JPJ car registrations via data.gov.my (CC BY 4.0). '
@@ -113,129 +114,65 @@ class _MarketInsightsScreenState extends State<MarketInsightsScreen> {
       ),
     );
   }
-
-  List<Widget> _segmentBody(
-    BuildContext context,
-    CarPopularity snapshot,
-    String? userState,
-  ) {
-    switch (_segment) {
-      case _Segment.brands:
-        return [
-          GroupedSection(
-            header: _showAll ? 'ALL BRANDS' : 'TOP $_previewCount BRANDS',
-            children: _rankedRows(snapshot.topMakers, expandable: true),
-          ),
-        ];
-      case _Segment.models:
-        final models = snapshot.topModels;
-        final shown = _showAll ? models : models.take(_previewCount).toList();
-        return [
-          GroupedSection(
-            header: _showAll ? 'ALL MODELS' : 'TOP $_previewCount MODELS',
-            children: [
-              if (models.isEmpty) const _EmptyRow(),
-              for (final (i, m) in shown.indexed)
-                RankBarRow(
-                  rank: i + 1,
-                  label: m.name,
-                  sublabel: m.maker,
-                  count: m.count,
-                  fraction: _fraction(m.count, models.first.count),
-                ),
-              if (models.length > _previewCount) _showAllRow(models.length),
-            ],
-          ),
-        ];
-      case _Segment.nearYou:
-        if (userState == null) {
-          return [
-            _Notice(
-              text:
-                  'Add your location in My Info to see what’s popular in '
-                  'your state.',
-              actionLabel: 'Open My Info',
-              onAction: () => Navigator.pushNamed(context, '/profile/info'),
-            ),
-          ];
-        }
-        final makers = snapshot.topMakersIn(userState);
-        if (makers.isEmpty) {
-          return [
-            _Notice(
-              text:
-                  'JPJ has no state-level registrations for $userState in '
-                  'this period.',
-            ),
-          ];
-        }
-        return [
-          GroupedSection(
-            header: 'POPULAR IN ${userState.toUpperCase()}',
-            children: _rankedRows(makers),
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          const _Footnote(
-            'Registrations made through dealer portals carry no state, so '
-            'state figures cover a smaller sample.',
-          ),
-        ];
-      case _Segment.trends:
-        return [
-          GroupedSection(
-            header: 'REGISTRATIONS BY MONTH',
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.space16),
-                child: snapshot.monthly.isEmpty
-                    ? const _EmptyRow()
-                    : MonthlyBars(
-                        months: [for (final m in snapshot.monthly) m.month],
-                        counts: [for (final m in snapshot.monthly) m.count],
-                      ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          GroupedSection(
-            header: 'FUEL TYPE',
-            children: _rankedRows(snapshot.fuelSplit),
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          GroupedSection(
-            header: 'VEHICLE TYPE',
-            children: _rankedRows(snapshot.typeSplit),
-          ),
-        ];
-    }
-  }
-
-  List<Widget> _rankedRows(List<RankedCount> items, {bool expandable = false}) {
-    if (items.isEmpty) return const [_EmptyRow()];
-    final top = items.first.count;
-    final shown = expandable && !_showAll
-        ? items.take(_previewCount).toList()
-        : items;
-    return [
-      for (final (i, item) in shown.indexed)
-        RankBarRow(
-          rank: i + 1,
-          label: item.name,
-          count: item.count,
-          fraction: _fraction(item.count, top),
-        ),
-      if (expandable && items.length > _previewCount) _showAllRow(items.length),
-    ];
-  }
-
-  Widget _showAllRow(int total) => GroupedRow(
-    label: _showAll ? 'Show top $_previewCount' : 'Show all $total',
-    labelColor: AppColors.primary,
-    onTap: () => setState(() => _showAll = !_showAll),
-  );
-
-  static double _fraction(int count, int top) => top == 0 ? 0 : count / top;
 }
+
+class _ModelList extends StatelessWidget {
+  const _ModelList({required this.title, required this.models});
+
+  final String title;
+  final List<RankedModel> models;
+
+  @override
+  Widget build(BuildContext context) {
+    if (models.isEmpty) {
+      return GroupedSection(header: title, children: const [_EmptyRow()]);
+    }
+    final top = models.take(_listLength).toList();
+    return GroupedSection(
+      header: title,
+      children: [
+        for (var i = 0; i < top.length; i++)
+          RankBarRow(
+            rank: i + 1,
+            label: top[i].name,
+            sublabel: top[i].maker,
+            count: top[i].count,
+            fraction: _fraction(top[i].count, top.first.count),
+          ),
+      ],
+    );
+  }
+}
+
+class _MakerList extends StatelessWidget {
+  const _MakerList({required this.title, required this.makers});
+
+  final String title;
+  final List<RankedCount> makers;
+
+  @override
+  Widget build(BuildContext context) {
+    if (makers.isEmpty) {
+      return GroupedSection(header: title, children: const [_EmptyRow()]);
+    }
+    final top = makers.take(_listLength).toList();
+    return GroupedSection(
+      header: title,
+      children: [
+        for (var i = 0; i < top.length; i++)
+          RankBarRow(
+            rank: i + 1,
+            label: top[i].name,
+            count: top[i].count,
+            fraction: _fraction(top[i].count, top.first.count),
+          ),
+      ],
+    );
+  }
+}
+
+double _fraction(int count, int top) =>
+    top <= 0 ? 0 : (count / top).clamp(0.0, 1.0);
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.snapshot});
@@ -285,6 +222,26 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
+class _EmptyRow extends StatelessWidget {
+  const _EmptyRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space16,
+        vertical: AppSpacing.space16,
+      ),
+      child: Text(
+        'No data for this period.',
+        style: Theme.of(
+          context,
+        ).textTheme.subhead.copyWith(color: AppColors.secondaryLabel),
+      ),
+    );
+  }
+}
+
 class _Footnote extends StatelessWidget {
   const _Footnote(this.text);
 
@@ -298,66 +255,7 @@ class _Footnote extends StatelessWidget {
         text,
         style: Theme.of(
           context,
-        ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
-      ),
-    );
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice({required this.text, this.actionLabel, this.onAction});
-
-  final String text;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-      child: ColoredBox(
-        color: AppColors.surface,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                text,
-                style: theme.body.copyWith(color: AppColors.secondaryLabel),
-              ),
-              if (actionLabel != null) ...[
-                const SizedBox(height: AppSpacing.space8),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onAction,
-                  child: Text(
-                    actionLabel!,
-                    style: theme.body.copyWith(color: AppColors.primary),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyRow extends StatelessWidget {
-  const _EmptyRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      child: Text(
-        'No data for this period.',
-        style: Theme.of(
-          context,
-        ).textTheme.subhead.copyWith(color: AppColors.secondaryLabel),
+        ).textTheme.footnote.copyWith(color: AppColors.tertiaryLabel),
       ),
     );
   }

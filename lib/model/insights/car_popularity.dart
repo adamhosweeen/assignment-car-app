@@ -51,6 +51,8 @@ class RankedModel {
     'count': count,
   };
 
+  String get title => '$maker $name';
+
   RankedModel copyWith({String? name, String? maker, int? count}) =>
       RankedModel(
         name: name ?? this.name,
@@ -73,30 +75,48 @@ class RankedModel {
   String toString() => 'RankedModel(name: $name, maker: $maker, count: $count)';
 }
 
-class MonthCount {
-  const MonthCount({required this.month, required this.count});
+class StateInsights {
+  const StateInsights({
+    this.makers = const <RankedCount>[],
+    this.models = const <RankedModel>[],
+  });
 
-  factory MonthCount.fromJson(Map<String, dynamic> json) =>
-      MonthCount(month: json['month'] as String, count: asInt(json['count']));
+  factory StateInsights.fromJson(Map<String, dynamic> json) => StateInsights(
+    makers: asModelList(json['makers'], RankedCount.fromJson),
+    models: asModelList(json['models'], RankedModel.fromJson),
+  );
 
-  final String month;
-  final int count;
+  final List<RankedCount> makers;
+  final List<RankedModel> models;
 
-  Map<String, dynamic> toJson() => {'month': month, 'count': count};
+  Map<String, dynamic> toJson() => {
+    'makers': [for (final m in makers) m.toJson()],
+    'models': [for (final m in models) m.toJson()],
+  };
 
-  MonthCount copyWith({String? month, int? count}) =>
-      MonthCount(month: month ?? this.month, count: count ?? this.count);
+  bool get isEmpty => makers.isEmpty && models.isEmpty;
+
+  StateInsights copyWith({
+    List<RankedCount>? makers,
+    List<RankedModel>? models,
+  }) => StateInsights(
+    makers: makers ?? this.makers,
+    models: models ?? this.models,
+  );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is MonthCount && month == other.month && count == other.count;
+      other is StateInsights &&
+          listEquals(makers, other.makers) &&
+          listEquals(models, other.models);
 
   @override
-  int get hashCode => Object.hash(month, count);
+  int get hashCode =>
+      Object.hash(Object.hashAll(makers), Object.hashAll(models));
 
   @override
-  String toString() => 'MonthCount(month: $month, count: $count)';
+  String toString() => 'StateInsights(makers: $makers, models: $models)';
 }
 
 class CarPopularity {
@@ -109,10 +129,7 @@ class CarPopularity {
     required this.totalRegistrations,
     this.topMakers = const <RankedCount>[],
     this.topModels = const <RankedModel>[],
-    this.byState = const <String, List<RankedCount>>{},
-    this.fuelSplit = const <RankedCount>[],
-    this.typeSplit = const <RankedCount>[],
-    this.monthly = const <MonthCount>[],
+    this.byState = const <String, StateInsights>{},
   });
 
   factory CarPopularity.fromJson(Map<String, dynamic> json) => CarPopularity(
@@ -126,13 +143,12 @@ class CarPopularity {
     topModels: asModelList(json['top_models'], RankedModel.fromJson),
     byState:
         (json['by_state'] as Map<String, dynamic>?)?.map(
-          (state, ranked) =>
-              MapEntry(state, asModelList(ranked, RankedCount.fromJson)),
+          (state, value) => MapEntry(
+            state,
+            StateInsights.fromJson(value as Map<String, dynamic>),
+          ),
         ) ??
-        <String, List<RankedCount>>{},
-    fuelSplit: asModelList(json['fuel_split'], RankedCount.fromJson),
-    typeSplit: asModelList(json['type_split'], RankedCount.fromJson),
-    monthly: asModelList(json['monthly'], MonthCount.fromJson),
+        const <String, StateInsights>{},
   );
 
   final String periodLabel;
@@ -143,11 +159,7 @@ class CarPopularity {
   final int totalRegistrations;
   final List<RankedCount> topMakers;
   final List<RankedModel> topModels;
-
-  final Map<String, List<RankedCount>> byState;
-  final List<RankedCount> fuelSplit;
-  final List<RankedCount> typeSplit;
-  final List<MonthCount> monthly;
+  final Map<String, StateInsights> byState;
 
   Map<String, dynamic> toJson() => {
     'period_label': periodLabel,
@@ -158,16 +170,17 @@ class CarPopularity {
     'total_registrations': totalRegistrations,
     'top_makers': [for (final m in topMakers) m.toJson()],
     'top_models': [for (final m in topModels) m.toJson()],
-    'by_state': byState.map(
-      (state, ranked) => MapEntry(state, [for (final r in ranked) r.toJson()]),
-    ),
-    'fuel_split': [for (final f in fuelSplit) f.toJson()],
-    'type_split': [for (final t in typeSplit) t.toJson()],
-    'monthly': [for (final m in monthly) m.toJson()],
+    'by_state': byState.map((state, v) => MapEntry(state, v.toJson())),
   };
 
   List<RankedCount> topMakersIn(String state) =>
-      byState[state] ?? const <RankedCount>[];
+      byState[state]?.makers ?? const <RankedCount>[];
+
+  List<RankedModel> topModelsIn(String state) =>
+      byState[state]?.models ?? const <RankedModel>[];
+
+  bool hasDataFor(String? state) =>
+      state != null && !(byState[state]?.isEmpty ?? true);
 
   CarPopularity copyWith({
     String? periodLabel,
@@ -178,10 +191,7 @@ class CarPopularity {
     int? totalRegistrations,
     List<RankedCount>? topMakers,
     List<RankedModel>? topModels,
-    Map<String, List<RankedCount>>? byState,
-    List<RankedCount>? fuelSplit,
-    List<RankedCount>? typeSplit,
-    List<MonthCount>? monthly,
+    Map<String, StateInsights>? byState,
   }) => CarPopularity(
     periodLabel: periodLabel ?? this.periodLabel,
     periodStart: periodStart ?? this.periodStart,
@@ -192,9 +202,6 @@ class CarPopularity {
     topMakers: topMakers ?? this.topMakers,
     topModels: topModels ?? this.topModels,
     byState: byState ?? this.byState,
-    fuelSplit: fuelSplit ?? this.fuelSplit,
-    typeSplit: typeSplit ?? this.typeSplit,
-    monthly: monthly ?? this.monthly,
   );
 
   @override
@@ -209,13 +216,10 @@ class CarPopularity {
           totalRegistrations == other.totalRegistrations &&
           listEquals(topMakers, other.topMakers) &&
           listEquals(topModels, other.topModels) &&
-          _byStateEquals(byState, other.byState) &&
-          listEquals(fuelSplit, other.fuelSplit) &&
-          listEquals(typeSplit, other.typeSplit) &&
-          listEquals(monthly, other.monthly);
+          _byStateEquals(byState, other.byState);
 
   @override
-  int get hashCode => Object.hashAll([
+  int get hashCode => Object.hash(
     periodLabel,
     periodStart,
     periodEnd,
@@ -224,31 +228,24 @@ class CarPopularity {
     totalRegistrations,
     Object.hashAll(topMakers),
     Object.hashAll(topModels),
-    Object.hashAllUnordered([
-      for (final e in byState.entries)
-        Object.hash(e.key, Object.hashAll(e.value)),
-    ]),
-    Object.hashAll(fuelSplit),
-    Object.hashAll(typeSplit),
-    Object.hashAll(monthly),
-  ]);
+    Object.hashAll(byState.keys),
+  );
 
   @override
   String toString() =>
       'CarPopularity(periodLabel: $periodLabel, '
       'totalRegistrations: $totalRegistrations, '
-      'generatedAt: $generatedAt)';
-}
+      'topMakers: ${topMakers.length}, topModels: ${topModels.length}, '
+      'states: ${byState.length})';
 
-bool _byStateEquals(
-  Map<String, List<RankedCount>> a,
-  Map<String, List<RankedCount>> b,
-) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (final entry in a.entries) {
-    final other = b[entry.key];
-    if (other == null || !listEquals(entry.value, other)) return false;
+  static bool _byStateEquals(
+    Map<String, StateInsights> a,
+    Map<String, StateInsights> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      if (entry.value != b[entry.key]) return false;
+    }
+    return true;
   }
-  return true;
 }
