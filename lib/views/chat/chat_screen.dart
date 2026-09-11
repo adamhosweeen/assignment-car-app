@@ -15,7 +15,7 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
-import 'package:assignment/widgets/user/profile_avatar.dart';
+import 'package:assignment/widgets/user/user_avatar.dart';
 
 class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
@@ -130,7 +130,7 @@ class _ConversationRowState extends State<_ConversationRow> {
     final otherId = widget.thread.conversation.otherParticipantId(
       widget.currentUserId,
     );
-    _profile = fetchAppUser(context.read<UsersRepository>(), otherId);
+    _profile = fetchUser(context.read<UsersRepository>(), otherId);
     _listing = fetchListingById(
       context.read<ListingsRepository>(),
       widget.thread.conversation.listingId,
@@ -180,7 +180,7 @@ class _ConversationRowState extends State<_ConversationRow> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProfileAvatar(
+            UserAvatar(
               name: name,
               avatarUrl: avatarUrl,
               size: AppSpacing.avatarSm,

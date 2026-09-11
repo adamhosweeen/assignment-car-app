@@ -240,7 +240,7 @@ class _SellerCard extends StatefulWidget {
 }
 
 class _SellerCardState extends State<_SellerCard> {
-  late final Future<AppUser?> _profile = fetchAppUser(
+  late final Future<AppUser?> _profile = fetchUser(
     context.read<UsersRepository>(),
     widget.sellerId,
   );

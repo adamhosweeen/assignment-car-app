@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:assignment/control/user/inbox/inbox_providers.dart';
 import 'package:assignment/control/user/inbox/inbox_repository.dart';
 import 'package:assignment/model/user/inbox_message.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -28,12 +29,7 @@ class _InboxScreenState extends State<InboxScreen> {
 
   void _load() {
     final inbox = context.read<InboxRepository>();
-    _items = inbox.list().then(
-      (res) => switch (res) {
-        Ok(:final value) => _last = value,
-        Err(:final message) => throw InboxException(message),
-      },
-    );
+    _items = fetchInbox(inbox).then((value) => _last = value);
   }
 
   Future<void> _open(InboxMessage message) async {
@@ -139,15 +135,6 @@ class _InboxScreenState extends State<InboxScreen> {
       ),
     );
   }
-}
-
-class InboxException implements Exception {
-  const InboxException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
 }
 
 class _InboxRow extends StatelessWidget {

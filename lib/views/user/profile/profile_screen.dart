@@ -12,7 +12,7 @@ import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
-import 'package:assignment/widgets/user/profile_avatar.dart';
+import 'package:assignment/widgets/user/user_avatar.dart';
 
 enum _PhotoAction { camera, gallery, remove }
 
@@ -171,7 +171,7 @@ class ProfileScreen extends StatelessWidget {
         Center(
           child: Column(
             children: [
-              ProfileAvatar.fromUser(
+              UserAvatar.fromUser(
                 profile,
                 onTap: () => _changePhoto(context, profile),
               ),

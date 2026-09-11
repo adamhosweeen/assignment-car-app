@@ -6,7 +6,7 @@ import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/user/user_providers.dart';
 import 'package:assignment/control/user/users_repository.dart';
-import 'package:assignment/control/user/report/reports_repository.dart';
+import 'package:assignment/control/user/report/report_repository.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -20,7 +20,7 @@ import 'package:assignment/widgets/common/section_header.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 import 'package:assignment/widgets/listing/listing_card.dart';
-import 'package:assignment/widgets/user/profile_avatar.dart';
+import 'package:assignment/widgets/user/user_avatar.dart';
 
 class SellerProfileScreen extends StatefulWidget {
   const SellerProfileScreen({super.key, required this.id});
@@ -41,7 +41,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   void _fetch() =>
-      _profile = fetchAppUser(context.read<UsersRepository>(), widget.id);
+      _profile = fetchUser(context.read<UsersRepository>(), widget.id);
 
   void _openReportSheet(BuildContext context) {
     showModalBottomSheet<void>(
@@ -137,7 +137,7 @@ class _BodyState extends State<_Body> {
         Center(
           child: Column(
             children: [
-              ProfileAvatar(name: profile.name, avatarUrl: profile.avatarUrl),
+              UserAvatar(name: profile.name, avatarUrl: profile.avatarUrl),
               const SizedBox(height: AppSpacing.space16),
               Text(
                 profile.name,
@@ -231,7 +231,7 @@ class _ReportSheetState extends State<_ReportSheet> {
       _submitting = true;
       _error = null;
     });
-    final res = await context.read<ReportsRepository>().submit(
+    final res = await context.read<ReportRepository>().submit(
       reportedId: widget.reportedId,
       title: _title.text,
       description: _description.text,

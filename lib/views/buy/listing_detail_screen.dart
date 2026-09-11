@@ -270,7 +270,7 @@ class _SellerSection extends StatefulWidget {
 }
 
 class _SellerSectionState extends State<_SellerSection> {
-  late final Future<AppUser?> _profile = fetchAppUser(
+  late final Future<AppUser?> _profile = fetchUser(
     context.read<UsersRepository>(),
     widget.sellerId,
   );

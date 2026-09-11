@@ -31,8 +31,8 @@ import 'package:assignment/control/user/users_repository.dart';
 import 'package:assignment/control/purchases/purchases_repository.dart';
 import 'package:assignment/control/purchases/supabase_purchases_repository.dart';
 import 'package:assignment/control/user/supabase_users_repository.dart';
-import 'package:assignment/control/user/report/reports_repository.dart';
-import 'package:assignment/control/user/report/supabase_reports_repository.dart';
+import 'package:assignment/control/user/report/report_repository.dart';
+import 'package:assignment/control/user/report/supabase_report_repository.dart';
 import 'package:assignment/model/user/app_user.dart';
 
 List<SingleChildWidget> appProviders(AppStorage storage) {
@@ -69,11 +69,11 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
   final listings = SupabaseListingsRepository(client, listingsCache);
   final chat = SupabaseChatRepository(client, chatCache);
   final bids = SupabaseBidsRepository(client);
-  final profiles = SupabaseProfilesRepository(client, profilesCache);
+  final profiles = SupabaseUsersRepository(client, profilesCache);
   final insights = SupabaseInsightsRepository(client);
   final purchases = SupabasePurchasesRepository(client);
   final admin = SupabaseAdminRepository(client);
-  final reports = SupabaseReportsRepository(client);
+  final reports = SupabaseReportRepository(client);
   final inbox = SupabaseInboxRepository(client, inboxCache);
 
   return [
@@ -100,7 +100,7 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
 
     Provider<AdminRepository>.value(value: admin),
 
-    Provider<ReportsRepository>.value(value: reports),
+    Provider<ReportRepository>.value(value: reports),
 
     Provider<InboxRepository>.value(value: inbox),
 

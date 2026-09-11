@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/admin/admin_providers.dart';
 import 'package:assignment/control/user/admin/admin_repository.dart';
 import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/model/user/app_user.dart';
@@ -12,7 +12,7 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/search_field.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
-import 'package:assignment/widgets/user/profile_avatar.dart';
+import 'package:assignment/widgets/user/user_avatar.dart';
 
 class AdminUsersTab extends StatefulWidget {
   const AdminUsersTab({
@@ -108,7 +108,7 @@ class _AppUsersTabState extends State<AdminUsersTab> {
             children: [
               Row(
                 children: [
-                  ProfileAvatar(
+                  UserAvatar(
                     name: user.name,
                     avatarUrl: user.avatarUrl,
                     size: AppSpacing.avatarSm,
@@ -304,7 +304,7 @@ class _UserRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ProfileAvatar(
+            UserAvatar(
               name: user.name,
               avatarUrl: user.avatarUrl,
               size: AppSpacing.avatarSm,

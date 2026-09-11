@@ -15,10 +15,10 @@ class UserCacheRepository {
 
   AppUser? get cached => _cached;
 
-  Future<void> save(AppUser profile) async {
-    _cached = profile;
+  Future<void> save(AppUser user) async {
+    _cached = user;
     await _db.delete('user_cache');
-    await _db.insert('user_cache', userToRow(profile));
+    await _db.insert('user_cache', userToRow(user));
   }
 
   Future<void> clear() async {
@@ -27,20 +27,20 @@ class UserCacheRepository {
   }
 }
 
-Map<String, Object?> userToRow(AppUser profile) => {
-  'id': profile.id,
-  'email': profile.email,
-  'first_name': profile.firstName,
-  'last_name': profile.lastName,
-  'dob': profile.dob?.toIso8601String(),
-  'phone': profile.phone,
-  'state': profile.state,
-  'interests_json': jsonEncode(profile.interests.toJson()),
-  'avatar_url': profile.avatarUrl,
-  'display_name': profile.displayName,
-  'role': profile.role.name,
-  'banned': profile.banned ? 1 : 0,
-  'created_at': profile.createdAt.toIso8601String(),
+Map<String, Object?> userToRow(AppUser user) => {
+  'id': user.id,
+  'email': user.email,
+  'first_name': user.firstName,
+  'last_name': user.lastName,
+  'dob': user.dob?.toIso8601String(),
+  'phone': user.phone,
+  'state': user.state,
+  'interests_json': jsonEncode(user.interests.toJson()),
+  'avatar_url': user.avatarUrl,
+  'display_name': user.displayName,
+  'role': user.role.name,
+  'banned': user.banned ? 1 : 0,
+  'created_at': user.createdAt.toIso8601String(),
 };
 
 AppUser userFromRow(Map<String, Object?> row) => AppUser(

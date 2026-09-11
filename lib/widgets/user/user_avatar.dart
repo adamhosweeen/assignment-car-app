@@ -5,8 +5,8 @@ import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/listing/media_image.dart';
 
-class ProfileAvatar extends StatelessWidget {
-  const ProfileAvatar({
+class UserAvatar extends StatelessWidget {
+  const UserAvatar({
     super.key,
     required this.name,
     this.avatarUrl,
@@ -14,7 +14,7 @@ class ProfileAvatar extends StatelessWidget {
     this.onTap,
   });
 
-  ProfileAvatar.fromUser(
+  UserAvatar.fromUser(
     AppUser user, {
     super.key,
     this.size = AppSpacing.avatarLg,

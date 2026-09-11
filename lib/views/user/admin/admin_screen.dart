@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/admin/admin_providers.dart';
 import 'package:assignment/control/user/admin/admin_repository.dart';
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/model/user/report.dart';

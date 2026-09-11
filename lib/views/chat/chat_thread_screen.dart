@@ -21,7 +21,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
-import 'package:assignment/widgets/user/profile_avatar.dart';
+import 'package:assignment/widgets/user/user_avatar.dart';
 
 class ChatThreadScreen extends StatefulWidget {
   const ChatThreadScreen({super.key, required this.conversationId, this.seed});
@@ -85,7 +85,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       conversation.listingId,
     );
     final uid = context.read<AuthRepository>().currentUser?.id;
-    _otherProfile = fetchAppUser(
+    _otherProfile = fetchUser(
       context.read<UsersRepository>(),
       uid == null
           ? conversation.sellerId
@@ -219,7 +219,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ProfileAvatar(
+              UserAvatar(
                 name: displayName,
                 avatarUrl: profile?.avatarUrl,
                 size: AppSpacing.avatarSm,

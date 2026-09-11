@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/control/user/user_providers.dart';
+import 'package:assignment/control/user/admin/admin_providers.dart';
 import 'package:assignment/model/user/app_user.dart';
 
 AppUser _user(

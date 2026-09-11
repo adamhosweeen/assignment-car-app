@@ -7,8 +7,8 @@ import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/utils/search.dart';
 
-class SupabaseProfilesRepository implements UsersRepository {
-  SupabaseProfilesRepository(this._client, this._cache);
+class SupabaseUsersRepository implements UsersRepository {
+  SupabaseUsersRepository(this._client, this._cache);
 
   final SupabaseClient _client;
   final OtherUsersCacheRepository _cache;

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
-import 'package:assignment/widgets/user/profile_avatar.dart';
+import 'package:assignment/widgets/user/user_avatar.dart';
 
 class SellerRow extends StatelessWidget {
   const SellerRow({super.key, required this.user, this.onTap});
@@ -24,7 +24,7 @@ class SellerRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ProfileAvatar(
+            UserAvatar(
               name: user.name,
               avatarUrl: user.avatarUrl,
               size: AppSpacing.avatarSm,

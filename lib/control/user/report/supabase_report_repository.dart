@@ -1,11 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:assignment/control/user/report/reports_repository.dart';
+import 'package:assignment/control/user/report/report_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
 import 'package:assignment/utils/result.dart';
 
-class SupabaseReportsRepository implements ReportsRepository {
-  SupabaseReportsRepository(this._client);
+class SupabaseReportRepository implements ReportRepository {
+  SupabaseReportRepository(this._client);
 
   final SupabaseClient _client;
   static const Duration _writeTimeout = Duration(seconds: 8);
