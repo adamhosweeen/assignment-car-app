@@ -9,7 +9,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
 import 'package:assignment/views/buy/buy_feed_screen.dart';
 import 'package:assignment/views/chat/chat_screen.dart';
-import 'package:assignment/views/user/profile_screen.dart';
+import 'package:assignment/views/user/profile/profile_screen.dart';
 import 'package:assignment/views/sell/sell_home_screen.dart';
 
 class AppShell extends StatefulWidget {

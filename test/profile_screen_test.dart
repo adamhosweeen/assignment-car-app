@@ -10,7 +10,7 @@ import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
-import 'package:assignment/views/user/profile_screen.dart';
+import 'package:assignment/views/user/profile/profile_screen.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 
 AppUser _profile({bool admin = false, String? state = 'Selangor'}) => AppUser(

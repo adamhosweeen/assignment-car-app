@@ -9,7 +9,7 @@ import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/model/user/report.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
-import 'package:assignment/views/user/admin_users_screen.dart';
+import 'package:assignment/views/user/admin/admin_users_screen.dart';
 
 final _admin = AppUser(
   id: 'admin-1',

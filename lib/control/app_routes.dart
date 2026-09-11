@@ -14,15 +14,15 @@ import 'package:assignment/views/buy/car_search_screen.dart';
 import 'package:assignment/views/buy/listing_detail_screen.dart';
 import 'package:assignment/views/buy/purchase_screen.dart';
 import 'package:assignment/views/chat/chat_thread_screen.dart';
-import 'package:assignment/views/user/admin_screen.dart';
-import 'package:assignment/views/user/car_interests_screen.dart';
-import 'package:assignment/views/user/edit_profile_screen.dart';
-import 'package:assignment/views/user/inbox_screen.dart';
+import 'package:assignment/views/user/admin/admin_screen.dart';
+import 'package:assignment/views/user/profile/car_interests_screen.dart';
+import 'package:assignment/views/user/profile/edit_profile_screen.dart';
+import 'package:assignment/views/user/inbox/inbox_screen.dart';
 import 'package:assignment/views/insights/market_insights_screen.dart';
-import 'package:assignment/views/user/my_info_screen.dart';
+import 'package:assignment/views/user/profile/my_info_screen.dart';
 import 'package:assignment/views/purchases/purchases_screen.dart';
-import 'package:assignment/views/user/seller_profile_screen.dart';
-import 'package:assignment/views/user/seller_search_screen.dart';
+import 'package:assignment/views/user/seller/seller_profile_screen.dart';
+import 'package:assignment/views/user/seller/seller_search_screen.dart';
 import 'package:assignment/views/sell/sell_flow_screen.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) => MaterialPageRoute<void>(

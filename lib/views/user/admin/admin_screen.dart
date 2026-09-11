@@ -7,8 +7,8 @@ import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/model/user/report.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
-import 'package:assignment/views/user/admin_reports_screen.dart';
-import 'package:assignment/views/user/admin_users_screen.dart';
+import 'package:assignment/views/user/admin/admin_reports_screen.dart';
+import 'package:assignment/views/user/admin/admin_users_screen.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 
 class AdminScreen extends StatefulWidget {

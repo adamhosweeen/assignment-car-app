@@ -99,6 +99,33 @@ void main() {
       expect(p.listingId, isNull);
       expect(p.title, '2020 Perodua Myvi');
     });
+
+    test('a seller who closed their account leaves sellerId null', () {
+      // purchases.seller_id is `on delete set null`, so the buyer keeps the
+      // receipt; the snapshot is what still renders it.
+      final p = Purchase.fromJson({
+        'id': 'p9',
+        'buyer_id': 'b1',
+        'seller_id': null,
+        'listing_id': null,
+        'price_myr': 42000,
+        'method': 'buy_now',
+        'make': 'Perodua',
+        'model': 'Myvi',
+        'year': 2020,
+        'created_at': '2026-09-01T00:00:00.000Z',
+      });
+      expect(p.sellerId, isNull);
+      expect(p.title, '2020 Perodua Myvi');
+      expect(p.priceMyr, 42000);
+      expect(Purchase.fromJson(p.toJson()), p);
+    });
+
+    test('copyWith can clear sellerId, and omitting it keeps the value', () {
+      final p = _purchase();
+      expect(p.copyWith(sellerId: null).sellerId, isNull);
+      expect(p.copyWith(priceMyr: 1).sellerId, 's1');
+    });
   });
 
   group('totalSpentMyr', () {

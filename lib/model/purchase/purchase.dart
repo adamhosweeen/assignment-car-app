@@ -31,7 +31,7 @@ class Purchase {
   const Purchase({
     required this.id,
     required this.buyerId,
-    required this.sellerId,
+    this.sellerId,
     this.listingId,
     required this.priceMyr,
     required this.method,
@@ -44,7 +44,7 @@ class Purchase {
   factory Purchase.fromJson(Map<String, dynamic> json) => Purchase(
     id: json['id'] as String,
     buyerId: json['buyer_id'] as String,
-    sellerId: json['seller_id'] as String,
+    sellerId: json['seller_id'] as String?,
     listingId: json['listing_id'] as String?,
     priceMyr: asInt(json['price_myr']),
     method: purchaseMethodFromValue(json['method']),
@@ -56,7 +56,7 @@ class Purchase {
 
   final String id;
   final String buyerId;
-  final String sellerId;
+  final String? sellerId;
   final String? listingId;
   final int priceMyr;
   final PurchaseMethod method;
@@ -83,7 +83,7 @@ class Purchase {
   Purchase copyWith({
     String? id,
     String? buyerId,
-    String? sellerId,
+    Object? sellerId = _unset,
     Object? listingId = _unset,
     int? priceMyr,
     PurchaseMethod? method,
@@ -94,7 +94,7 @@ class Purchase {
   }) => Purchase(
     id: id ?? this.id,
     buyerId: buyerId ?? this.buyerId,
-    sellerId: sellerId ?? this.sellerId,
+    sellerId: identical(sellerId, _unset) ? this.sellerId : sellerId as String?,
     listingId: identical(listingId, _unset)
         ? this.listingId
         : listingId as String?,
