@@ -207,7 +207,7 @@ class _AppUsersTabState extends State<AdminUsersTab> {
                       Navigator.pop(sheetContext);
                       _confirmDelete(user);
                     },
-                    child: const Text('Delete user'),
+                    child: Center(child: const Text('Delete user')),
                   ),
                 ],
               ],
