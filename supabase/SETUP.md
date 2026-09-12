@@ -11,7 +11,7 @@ backend).
 
 ## 2. Apply the schema
 
-Two files, pasted in order into the SQL editor. Both are safe to re-run.
+Pasted into the SQL editor. All of these are safe to re-run.
 
 ### 2a. Schema (`migrations/0001_schema.sql`)
 - SQL Editor → paste all of [`migrations/0001_schema.sql`](migrations/0001_schema.sql) → Run.
@@ -20,6 +20,20 @@ Two files, pasted in order into the SQL editor. Both are safe to re-run.
   and storage buckets. Only ever run it on a dev project.
 - Uploaded images can't be deleted from SQL. To wipe them too: Storage →
   `listing-media` → select all → Delete, and the same for `avatars`.
+
+### 2a-bis. Incremental patches (`migrations/0002_*.sql` onwards)
+
+Anything numbered above `0001` is a **patch**: it only adds or replaces
+functions, so it keeps every row and every account. Run these on a project that
+already has data instead of re-running `0001`.
+
+- `0002_extend_auction.sql` — adds `extend_auction(uuid, timestamptz)`, the RPC
+  behind **Extend auction** on the auction screen. Without it that button
+  fails with *"This feature is not available on the server yet."* (PostgREST
+  answers `PGRST202` — the function is not in its schema cache.)
+
+A fresh project that has just run `0001` already contains all of them; running
+the patches anyway changes nothing.
 
 ### 2b. Market insights function (`functions/market-insights/index.ts`)
 
@@ -93,10 +107,14 @@ select cron.schedule('settle-auctions', '* * * * *',
 3. Buyer B: bid below the minimum → refused with the required amount; bid the
    starting price → accepted; raise it → accepted.
 4. Seller A cannot mark the car sold or delete it while bidding runs.
-5. Expire it: `update public.auctions set ends_at = now() where id = '<id>';`
+5. Seller A: **Extend auction** → pick `+1 hour` → the snackbar confirms the
+   new time and the **Time left** row jumps by an hour without a reload. The
+   sheet never offers an option that would push the run past 7 days from
+   `created_at`.
+6. Expire it: `update public.auctions set ends_at = now() where id = '<id>';`
    then reopen the Bid tab. The car is **Sold** at the winning amount, a
    `purchases` row exists for B with `method = 'bid'`.
-6. `delete from public.listings where id = '<sold id>';` as the seller → 0 rows.
+7. `delete from public.listings where id = '<sold id>';` as the seller → 0 rows.
 
 ## 3. Enable email + password auth
 - Authentication → Sign In / Providers → **Email** → enable.

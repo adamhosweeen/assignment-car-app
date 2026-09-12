@@ -10,6 +10,7 @@ import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_auction.dart';
+import 'package:assignment/model/bid/bids_sync_status.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/user/car_interests.dart';
@@ -54,21 +55,24 @@ final _listing = Listing(
   updatedAt: _now,
 );
 
+// `createdAt` and `endsAt` hang off the real clock, not [_now]: liveness and
+// the 7-day extension cap are both measured against DateTime.now().
 Auction _auction({
   int? highestBidMyr,
   int bidCount = 0,
   AuctionStatus status = AuctionStatus.running,
+  Duration runsFor = const Duration(hours: 2),
 }) => Auction(
   id: 'a1',
   listingId: 'l1',
   sellerId: 'seller-1',
   startingPriceMyr: 30000,
   minIncrementMyr: 500,
-  endsAt: DateTime.now().toUtc().add(const Duration(hours: 2)),
+  endsAt: DateTime.now().toUtc().add(runsFor),
   highestBidMyr: highestBidMyr,
   bidCount: bidCount,
   status: status,
-  createdAt: _now,
+  createdAt: DateTime.now().toUtc(),
 );
 
 Bid _bid(int amount) => Bid(
@@ -134,6 +138,12 @@ class _FakeAuth implements AuthRepository {
 }
 
 class _FakeBids implements BidsRepository {
+  /// Settable so a test can put the screen offline without a network.
+  @override
+  final ValueNotifier<BidsSyncStatus> syncStatus = ValueNotifier(
+    const BidsSyncStatus.unknown(),
+  );
+
   _FakeBids({required Auction auction, List<Bid> bids = const []})
     : _auctionCtrl = StreamController<AuctionWithListing>.broadcast(),
       _bidsCtrl = StreamController<List<Bid>>.broadcast() {
@@ -204,6 +214,17 @@ class _FakeBids implements BidsRepository {
   @override
   Future<Result<void>> cancelAuction(String auctionId) async => const Ok(null);
 
+  final List<DateTime> extendedTo = [];
+  Result<void> extendResult = const Ok(null);
+
+  @override
+  Future<Result<void>> extendAuction(String auctionId, DateTime endsAt) async {
+    if (extendResult case Err()) return extendResult;
+    extendedTo.add(endsAt);
+    push(auction: _auction.copyWith(endsAt: endsAt));
+    return const Ok(null);
+  }
+
   @override
   Future<Result<String?>> latestAuctionIdForListing(String listingId) async =>
       const Ok(null);
@@ -227,6 +248,9 @@ Widget _app(_FakeBids bids, {AppUser? as}) => MultiProvider(
     home: const AuctionScreen(id: 'a1'),
   ),
 );
+
+bool _buttonEnabled(WidgetTester tester, Key key) =>
+    tester.widget<FilledButton>(find.byKey(key)).onPressed != null;
 
 String _fieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byKey(bidAmountFieldKey)).controller!.text;
@@ -355,6 +379,42 @@ void main() {
     });
   });
 
+  group('when the two streams disagree', () {
+    // watchAuction settles before it fetches and watchBidsForAuction does not,
+    // so after place_bid the bid row lands a round trip ahead of the auction
+    // row. For that moment the screen holds a bid with no highest bid reported
+    // — the state that used to throw on `highestBidMyr!` and flash the red
+    // ErrorWidget. _FakeBids reproduces it because push(bids:) re-emits the
+    // auction it already has.
+    testWidgets('a bid arriving before the auction row does not crash', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      bids.push(bids: [_bid(30000)]);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reads as leading, not as outbid', (tester) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      bids.push(bids: [_bid(30000)]);
+      await tester.pumpAndSettle();
+
+      // place_bid only accepts a bid that beats the current highest, so a bid
+      // of mine with nothing higher reported is winning — claiming otherwise
+      // would flash a false "you've been outbid" on the way to the truth.
+      expect(find.textContaining('highest bidder at RM 30,000'), findsWidgets);
+      expect(find.textContaining('You’ve been outbid'), findsNothing);
+    });
+  });
+
   group('after being outbid', () {
     testWidgets('says so and offers the form again', (tester) async {
       final bids = _FakeBids(
@@ -407,6 +467,8 @@ void main() {
       addTearDown(bids.close);
       await _pump(tester, bids, as: _seller);
 
+      expect(find.byKey(extendAuctionButtonKey), findsNothing);
+
       await tester.tap(find.byKey(deleteAuctionButtonKey));
       await tester.pumpAndSettle();
       expect(find.text('Delete this auction?'), findsOneWidget);
@@ -425,6 +487,168 @@ void main() {
       await _pump(tester, bids, as: _seller);
 
       expect(find.byKey(deleteAuctionButtonKey), findsNothing);
+    });
+  });
+
+  group('offline', () {
+    // The cache can keep an auction on screen, but the price and the clock it
+    // shows are a snapshot. place_bid re-validates against the live highest
+    // bid, so a bid composed against that snapshot is one the server would
+    // refuse — better to withhold the button and say why.
+    testWidgets('says the data is stale and will not take a bid', (
+      tester,
+    ) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      expect(find.textContaining('You’re offline'), findsNothing);
+      expect(_buttonEnabled(tester, placeBidButtonKey), isTrue);
+
+      bids.syncStatus.value = BidsSyncStatus(
+        online: false,
+        lastSyncedAt: DateTime.now().toUtc().subtract(
+          const Duration(minutes: 5),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('You’re offline'), findsOneWidget);
+      expect(find.textContaining('Last updated 5m'), findsOneWidget);
+      expect(_buttonEnabled(tester, placeBidButtonKey), isFalse);
+    });
+
+    testWidgets('a seller cannot extend or cancel either', (tester) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      expect(_buttonEnabled(tester, extendAuctionButtonKey), isTrue);
+
+      bids.syncStatus.value = const BidsSyncStatus(online: false);
+      await tester.pumpAndSettle();
+
+      expect(_buttonEnabled(tester, extendAuctionButtonKey), isFalse);
+      // No lastSyncedAt: this session never reached the server at all.
+      expect(find.textContaining('Showing saved auctions'), findsOneWidget);
+    });
+
+    testWidgets('coming back online restores the page', (tester) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      bids.syncStatus.value = const BidsSyncStatus(online: false);
+      await tester.pumpAndSettle();
+      bids.syncStatus.value = BidsSyncStatus(
+        online: true,
+        lastSyncedAt: DateTime.now().toUtc(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('You’re offline'), findsNothing);
+      expect(_buttonEnabled(tester, placeBidButtonKey), isTrue);
+    });
+  });
+
+  group('extending', () {
+    testWidgets('picking an amount pushes the deadline back by it', (
+      tester,
+    ) async {
+      final auction = _auction(highestBidMyr: 33000, bidCount: 2);
+      final bids = _FakeBids(auction: auction);
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      await tester.tap(find.byKey(extendAuctionButtonKey));
+      await tester.pumpAndSettle();
+      expect(find.text('Add how much time?'), findsOneWidget);
+
+      await tester.tap(find.textContaining('+1 day'));
+      await tester.pumpAndSettle();
+
+      expect(bids.extendedTo, [auction.endsAt.add(const Duration(days: 1))]);
+      expect(find.textContaining('Time updated to'), findsOneWidget);
+      expect(find.textContaining('successfully'), findsOneWidget);
+    });
+
+    testWidgets('backing out of the sheet changes nothing', (tester) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      await tester.tap(find.byKey(extendAuctionButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      expect(bids.extendedTo, isEmpty);
+    });
+
+    testWidgets('an auction already running the full 7 days cannot move', (
+      tester,
+    ) async {
+      final bids = _FakeBids(
+        auction: _auction(runsFor: const Duration(days: 7)),
+      );
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      final button = tester.widget<FilledButton>(
+        find.byKey(extendAuctionButtonKey),
+      );
+      expect(button.onPressed, isNull);
+      expect(
+        find.textContaining('already running the full 7 days'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a refusal by rule says which rule', (tester) async {
+      final bids = _FakeBids(auction: _auction())
+        ..extendResult = const Err('This auction has already ended.');
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      await tester.tap(find.byKey(extendAuctionButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('+1 hour'));
+      await tester.pumpAndSettle();
+
+      expect(bids.extendedTo, isEmpty);
+      expect(find.textContaining('Failed to extend or update'), findsOneWidget);
+      expect(find.textContaining('already ended'), findsOneWidget);
+    });
+
+    testWidgets('a generic failure does not apologise twice', (tester) async {
+      // Exactly what the device saw while extend_auction was undeployed.
+      final bids = _FakeBids(auction: _auction())
+        ..extendResult = const Err(
+          'Something went wrong saving that. Please try again.',
+        );
+      addTearDown(bids.close);
+      await _pump(tester, bids, as: _seller);
+
+      await tester.tap(find.byKey(extendAuctionButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('+1 hour'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Failed to extend or update the time duration for this bidding.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('went wrong'), findsNothing);
+    });
+
+    testWidgets('a buyer is never offered it', (tester) async {
+      final bids = _FakeBids(auction: _auction());
+      addTearDown(bids.close);
+      await _pump(tester, bids);
+
+      expect(find.byKey(extendAuctionButtonKey), findsNothing);
     });
   });
 }

@@ -10,6 +10,7 @@ import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_with_auction.dart';
+import 'package:assignment/model/bid/bids_sync_status.dart';
 import 'package:assignment/model/listing/listing.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/user/car_interests.dart';
@@ -17,6 +18,7 @@ import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/views/bid/bid_screen.dart';
+import 'package:assignment/widgets/bid/bid_status_badge.dart';
 
 final _now = DateTime.utc(2026, 9, 5, 12);
 
@@ -59,6 +61,33 @@ final _auction = AuctionWithListing(
     createdAt: _now,
   ),
   listing: _listing,
+);
+
+/// One of [_user]'s bids on an auction that has finished the given way. The bid
+/// row is `lost` either way — that is what cancel_auction and settlement both
+/// write — so only the auction's status separates a withdrawal from a defeat.
+BidWithAuction _myBid(AuctionStatus status) => BidWithAuction(
+  bid: Bid(
+    id: 'b1',
+    listingId: 'l1',
+    auctionId: 'a1',
+    bidderId: _user.id,
+    amountMyr: 30000,
+    status: BidStatus.lost,
+    createdAt: _now,
+    updatedAt: _now,
+  ),
+  auction: AuctionWithListing(
+    auction: _auction.auction.copyWith(
+      status: status,
+      settledAt: _now,
+      // Cancelled: mine was the top bid when the seller pulled it. Settled:
+      // someone else went higher, which is a real loss.
+      highestBidMyr: status == AuctionStatus.cancelled ? 30000 : 35000,
+      bidCount: 1,
+    ),
+    listing: _listing,
+  ),
 );
 
 class _FakeAuth implements AuthRepository {
@@ -113,12 +142,23 @@ class _FakeAuth implements AuthRepository {
 /// listening to the same one twice throws "Stream has already been listened
 /// to", which is the bug this file pins.
 class _FakeBids implements BidsRepository {
-  _FakeBids({List<AuctionWithListing>? live, this.myAuctions = const []}) {
+  /// Settable so a test can put the screen offline without a network.
+  @override
+  final ValueNotifier<BidsSyncStatus> syncStatus = ValueNotifier(
+    const BidsSyncStatus.unknown(),
+  );
+
+  _FakeBids({
+    List<AuctionWithListing>? live,
+    this.myAuctions = const [],
+    this.myBids = const [],
+  }) {
     _live = live;
   }
 
   late final List<AuctionWithListing>? _live;
   List<AuctionWithListing> myAuctions;
+  List<BidWithAuction> myBids;
   final List<String> deletedAuctions = [];
   final _myAuctionsCtrl =
       StreamController<List<AuctionWithListing>>.broadcast();
@@ -137,7 +177,7 @@ class _FakeBids implements BidsRepository {
   }
 
   @override
-  Stream<List<BidWithAuction>> watchMyBids() => _single(const []);
+  Stream<List<BidWithAuction>> watchMyBids() => _single(myBids);
 
   @override
   Stream<List<AuctionWithListing>> watchMyAuctions() async* {
@@ -177,6 +217,10 @@ class _FakeBids implements BidsRepository {
 
   @override
   Future<Result<void>> cancelAuction(String auctionId) async => const Ok(null);
+
+  @override
+  Future<Result<void>> extendAuction(String auctionId, DateTime endsAt) async =>
+      const Ok(null);
 
   @override
   Future<Result<String?>> latestAuctionIdForListing(String listingId) async =>
@@ -257,6 +301,49 @@ void main() {
 
     expect(bids.deletedAuctions, isEmpty);
     expect(find.text('2020 Perodua Myvi'), findsOneWidget);
+  });
+
+  group('a bid on a cancelled auction', () {
+    // cancel_auction writes `lost` on the row so the bid stops counting as
+    // live, but the seller withdrawing is not the bidder losing — nobody
+    // outbid them. "Cancelled" is the whole story.
+    testWidgets('shows no outcome badge, only Cancelled', (tester) async {
+      final bids = _FakeBids(myBids: [_myBid(AuctionStatus.cancelled)]);
+      await tester.pumpWidget(_app(bids));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('My bids'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cancelled'), findsOneWidget);
+      expect(find.text('Lost'), findsNothing);
+      expect(find.byType(BidStatusBadge), findsNothing);
+    });
+
+    testWidgets('still says what was bid', (tester) async {
+      final bids = _FakeBids(myBids: [_myBid(AuctionStatus.cancelled)]);
+      await tester.pumpWidget(_app(bids));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('My bids'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('You bid RM 30,000'), findsOneWidget);
+      expect(find.textContaining('leading'), findsNothing);
+    });
+  });
+
+  testWidgets('a genuine loss still shows the Lost badge', (tester) async {
+    // The guard is on cancellation alone — an auction that ran its course and
+    // was won by someone else must still tell the bidder they lost.
+    final bids = _FakeBids(myBids: [_myBid(AuctionStatus.settled)]);
+    await tester.pumpWidget(_app(bids));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('My bids'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lost'), findsOneWidget);
   });
 
   testWidgets('every segment renders its empty state', (tester) async {

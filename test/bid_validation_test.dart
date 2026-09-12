@@ -1,6 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/bid_validation.dart';
+
+final _now = DateTime.utc(2026, 9, 5, 12);
+
+Auction _auction({
+  Duration runsFor = const Duration(hours: 2),
+  AuctionStatus status = AuctionStatus.running,
+}) => Auction(
+  id: 'a1',
+  listingId: 'l1',
+  sellerId: 's1',
+  startingPriceMyr: 30000,
+  minIncrementMyr: 500,
+  endsAt: _now.add(runsFor),
+  status: status,
+  createdAt: _now,
+);
 
 void main() {
   group('parseBidAmount', () {
@@ -108,6 +125,65 @@ void main() {
       expect(formatCountdown(const Duration(seconds: 30)), 'Ending now');
       expect(formatCountdown(Duration.zero), 'Ended');
       expect(formatCountdown(const Duration(seconds: -5)), 'Ended');
+    });
+  });
+
+  group('extending an auction', () {
+    test('headroom is what is left of the 7-day run', () {
+      expect(
+        extensionHeadroom(_auction(runsFor: const Duration(days: 2))),
+        const Duration(days: 5),
+      );
+      expect(
+        extensionHeadroom(_auction(runsFor: kMaxAuctionRun)),
+        Duration.zero,
+      );
+    });
+
+    test('headroom never goes negative past the cap', () {
+      final over = _auction(runsFor: const Duration(days: 9));
+      expect(extensionHeadroom(over), Duration.zero);
+    });
+
+    test('only the extensions that fit are offered', () {
+      expect(extensionOptions(_auction()), kAuctionExtensions);
+      expect(
+        extensionOptions(_auction(runsFor: const Duration(days: 6, hours: 12))),
+        const [Duration(hours: 1), Duration(hours: 6), Duration(hours: 12)],
+      );
+      expect(extensionOptions(_auction(runsFor: kMaxAuctionRun)), isEmpty);
+    });
+
+    test('only the seller of a live auction with room left may extend', () {
+      expect(canExtendAuction(_auction(), 's1', now: _now), isTrue);
+      expect(canExtendAuction(_auction(), 'someone-else', now: _now), isFalse);
+      expect(
+        canExtendAuction(_auction(runsFor: kMaxAuctionRun), 's1', now: _now),
+        isFalse,
+        reason: 'already running the longest an auction may run',
+      );
+      expect(
+        canExtendAuction(
+          _auction(status: AuctionStatus.cancelled),
+          's1',
+          now: _now,
+        ),
+        isFalse,
+      );
+      expect(
+        canExtendAuction(
+          _auction(runsFor: const Duration(hours: -1)),
+          's1',
+          now: _now,
+        ),
+        isFalse,
+        reason: 'the clock ran out, even though it still reads running',
+      );
+    });
+
+    test('labels read as an addition', () {
+      expect(auctionExtensionLabel(const Duration(hours: 1)), '+1 hour');
+      expect(auctionExtensionLabel(const Duration(days: 3)), '+3 days');
     });
   });
 }
