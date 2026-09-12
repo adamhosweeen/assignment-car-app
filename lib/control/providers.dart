@@ -13,6 +13,7 @@ import 'package:assignment/control/services/signed_url_cache.dart';
 import 'package:assignment/control/user/auth/user_cache_repository.dart';
 import 'package:assignment/control/user/auth/supabase_auth_repository.dart';
 import 'package:assignment/control/user/auth/auth_repository.dart';
+import 'package:assignment/control/bid/bids_cache_repository.dart';
 import 'package:assignment/control/bid/bids_repository.dart';
 import 'package:assignment/control/bid/supabase_bids_repository.dart';
 import 'package:assignment/control/chat/chat_cache_repository.dart';
@@ -51,6 +52,7 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
   );
   final profilesCache = OtherUsersCacheRepository(storage.db);
   final inboxCache = InboxCacheRepository(storage.db);
+  final bidsCache = BidsCacheRepository(storage.db);
   final draftRepository = DraftRepository(
     storage.db,
     storage.initialDraftRow,
@@ -64,11 +66,12 @@ List<SingleChildWidget> appProviders(AppStorage storage) {
     profilesCache,
     inboxCache,
     chatCache,
+    bidsCache,
     draftRepository,
   );
   final listings = SupabaseListingsRepository(client, listingsCache);
   final chat = SupabaseChatRepository(client, chatCache);
-  final bids = SupabaseBidsRepository(client);
+  final bids = SupabaseBidsRepository(client, bidsCache);
   final profiles = SupabaseUsersRepository(client, profilesCache);
   final insights = SupabaseInsightsRepository(client);
   final purchases = SupabasePurchasesRepository(client);

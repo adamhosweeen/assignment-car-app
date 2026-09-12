@@ -10,6 +10,7 @@ import 'package:assignment/model/bid/auction.dart';
 import 'package:assignment/model/bid/auction_with_listing.dart';
 import 'package:assignment/model/bid/bid.dart';
 import 'package:assignment/model/bid/bid_validation.dart';
+import 'package:assignment/model/bid/bids_sync_status.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
@@ -18,11 +19,14 @@ import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/inline_notice.dart';
 import 'package:assignment/widgets/common/section_header.dart';
+import 'package:assignment/widgets/bid/bids_offline_banner.dart';
+import 'package:assignment/widgets/common/select_sheet.dart';
 import 'package:assignment/widgets/listing/cover_image.dart';
 
 const Key bidAmountFieldKey = Key('auction-bid-amount');
 const Key placeBidButtonKey = Key('auction-place-bid');
 const Key raiseBidButtonKey = Key('auction-raise-bid');
+const Key extendAuctionButtonKey = Key('auction-extend');
 const Key deleteAuctionButtonKey = Key('auction-delete');
 
 class AuctionScreen extends StatefulWidget {
@@ -42,6 +46,7 @@ class _AuctionScreenState extends State<AuctionScreen> {
   bool _touched = false;
   bool _raising = false;
   bool _submitting = false;
+  bool _extending = false;
   bool _submitted = false;
   String? _amountError;
   String? _serverError;
@@ -117,6 +122,59 @@ class _AuctionScreenState extends State<AuctionScreen> {
     }
   }
 
+  // A rule refusal from extend_auction reaches us verbatim (the repository's
+  // _passThrough list); every mapError fallback instead ends in "try again",
+  // and stacking one of those on our own sentence would apologise twice.
+  static String _extendFailure(String message) => message.contains('try again')
+      ? 'Failed to extend or update the time duration for this bidding.'
+      : 'Failed to extend or update the time duration for this bidding. '
+            '$message';
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _extend(Auction auction) async {
+    final options = extensionOptions(auction);
+    if (options.isEmpty) return;
+
+    // Cleared before the sheet opens, not after a pick: a leftover cancel or
+    // delete error would otherwise sit behind the sheet looking like a
+    // complaint about this extend.
+    setState(() => _serverError = null);
+
+    // The sheet spells out the resulting deadline for every choice, so it is
+    // the confirmation step — no second dialog on top of it.
+    final picked = await showSelectSheet<Duration>(
+      context: context,
+      title: 'Add how much time?',
+      options: options,
+      labelOf: (d) =>
+          '${auctionExtensionLabel(d)} · ends '
+          '${formatDateTime(auction.endsAt.add(d))}',
+    );
+    if (picked == null || !mounted) return;
+
+    final endsAt = auction.endsAt.add(picked);
+    setState(() => _extending = true);
+    final res = await context.read<BidsRepository>().extendAuction(
+      auction.id,
+      endsAt,
+    );
+    if (!mounted) return;
+    setState(() => _extending = false);
+    // Both outcomes are snackbars: an extend that failed says so and gets out
+    // of the way, rather than leaving a notice pinned to the page.
+    switch (res) {
+      case Ok():
+        _snack('Time updated to ${formatDateTime(endsAt)} successfully.');
+      case Err(:final message):
+        _snack(_extendFailure(message));
+    }
+  }
+
   Future<void> _cancel(Auction auction) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -127,9 +185,9 @@ class _AuctionScreenState extends State<AuctionScreen> {
           auction.bidCount == 0
               ? 'The car goes back on sale at its asking price. You can '
                     'start another auction later.'
-              : 'Every bid on it will be marked as lost and the bidders '
-                    'will be told. The car goes back on sale at its asking '
-                    'price.',
+              : 'The auction ends with no winner and every bid is '
+                    'released — nobody is outbid. The car goes back on sale '
+                    'at its asking price.',
         ),
         actions: [
           TextButton(
@@ -230,6 +288,7 @@ class _AuctionScreenState extends State<AuctionScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
       children: [
+        const BidsOfflineBanner(),
         ClipRRect(
           borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
           child: CoverImage(media: entry.listing.cover),
@@ -291,12 +350,15 @@ class _AuctionScreenState extends State<AuctionScreen> {
           InlineNotice(text: _serverError!, kind: NoticeKind.error),
         ],
         const SizedBox(height: AppSpacing.space20),
-        if (isSeller)
-          _sellerSection(context, auction, bids)
-        else if (live)
-          _buyerSection(context, auction, bids)
-        else
-          _outcome(context, auction, bids),
+        // Everything below can start a write, so it is rebuilt with the sync
+        // state rather than reading it once.
+        BidsSyncBuilder(
+          builder: (context, sync) {
+            if (isSeller) return _sellerSection(context, auction, bids, sync);
+            if (live) return _buyerSection(context, auction, bids, sync);
+            return _outcome(context, auction, bids);
+          },
+        ),
         const SizedBox(height: AppSpacing.space24),
         const SectionHeader('Car'),
         GroupedSection(
@@ -323,14 +385,24 @@ class _AuctionScreenState extends State<AuctionScreen> {
     );
   }
 
-  Widget _buyerSection(BuildContext context, Auction auction, List<Bid> bids) {
+  Widget _buyerSection(
+    BuildContext context,
+    Auction auction,
+    List<Bid> bids,
+    BidsSyncStatus sync,
+  ) {
     final text = Theme.of(context).textTheme;
     final mine = bids.isEmpty ? null : bids.first;
+    // The auction row and the bid rows arrive on separate streams, so a bid of
+    // mine can be on screen a round trip before the highest bid it set. Being
+    // outbid is its own claim, not merely "not leading": place_bid only accepts
+    // a bid that beats the current highest, so a bid with nothing higher yet
+    // reported is winning. Reading that gap as an outbid used to render the
+    // amount that is still null, which threw during build.
+    final highest = auction.highestBidMyr;
     final leading =
-        mine != null &&
-        auction.highestBidMyr != null &&
-        mine.amountMyr >= auction.highestBidMyr!;
-    final outbid = mine != null && !leading;
+        mine != null && (highest == null || mine.amountMyr >= highest);
+    final outbid = mine != null && highest != null && mine.amountMyr < highest;
 
     if (leading && !_raising) {
       return Column(
@@ -343,8 +415,12 @@ class _AuctionScreenState extends State<AuctionScreen> {
           ),
           const SizedBox(height: AppSpacing.space8),
           Text(
-            'If someone outbids you we’ll let you know. You can also raise '
-            'your bid now to stay ahead.',
+            // No promise of a notification: nothing writes a bid message to
+            // the inbox (only `welcome` and `listing_match` triggers exist),
+            // so telling a bidder they will hear about it would send them away
+            // to wait for something that never arrives.
+            'Someone can still outbid you before it ends — check back, or '
+            'raise your bid now to stay ahead.',
             style: text.footnote.copyWith(color: AppColors.secondaryLabel),
           ),
           const SizedBox(height: AppSpacing.space12),
@@ -379,7 +455,7 @@ class _AuctionScreenState extends State<AuctionScreen> {
             kind: NoticeKind.error,
             text:
                 'You’ve been outbid. Your ${formatPrice(mine.amountMyr)} is '
-                'below the current ${formatPrice(auction.highestBidMyr!)}.',
+                'below the current ${formatPrice(highest)}.',
           ),
           const SizedBox(height: AppSpacing.space12),
         ],
@@ -437,7 +513,9 @@ class _AuctionScreenState extends State<AuctionScreen> {
           width: double.infinity,
           child: FilledButton(
             key: placeBidButtonKey,
-            onPressed: _submitting || belowMinimum
+            // Offline, the minimum on screen may already be out of date, so
+            // the bid is refused here rather than by the server.
+            onPressed: _submitting || belowMinimum || !sync.online
                 ? null
                 : () => _placeBid(auction),
             child: _submitting
@@ -464,9 +542,15 @@ class _AuctionScreenState extends State<AuctionScreen> {
     );
   }
 
-  Widget _sellerSection(BuildContext context, Auction auction, List<Bid> bids) {
+  Widget _sellerSection(
+    BuildContext context,
+    Auction auction,
+    List<Bid> bids,
+    BidsSyncStatus sync,
+  ) {
     final text = Theme.of(context).textTheme;
     final uid = context.read<AuthRepository>().currentUser?.id ?? '';
+    final canExtend = canExtendAuction(auction, uid);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,18 +574,47 @@ class _AuctionScreenState extends State<AuctionScreen> {
                 backgroundColor: AppColors.groupedBackground,
                 foregroundColor: AppColors.destructive,
               ),
-              onPressed: () => _delete(auction),
+              onPressed: sync.online ? () => _delete(auction) : null,
               child: const Text('Delete auction'),
             ),
           ),
         ] else ...[
           Text('This is your auction', style: text.headline),
+          // Each action sits directly under the line that explains it.
           const SizedBox(height: AppSpacing.space8),
+          Text(
+            canExtend
+                ? 'Ends ${formatDateTime(auction.endsAt)}. You can give '
+                      'bidders more time, but you can’t cut it short.'
+                : 'Ends ${formatDateTime(auction.endsAt)}. It is already '
+                      'running the full 7 days, so the deadline can’t move.',
+            style: text.footnote.copyWith(color: AppColors.secondaryLabel),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: extendAuctionButtonKey,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.groupedBackground,
+                foregroundColor: canExtend
+                    ? AppColors.primary
+                    : AppColors.tertiaryLabel,
+              ),
+              onPressed: canExtend && !_extending && sync.online
+                  ? () => _extend(auction)
+                  : null,
+              child: _extending
+                  ? const ButtonSpinner()
+                  : const Text('Extend auction'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space20),
           Text(
             auction.bidCount == 0
                 ? 'Nobody has bid yet. You can cancel at any time.'
-                : 'Cancelling now marks every bid as lost and tells the '
-                      'bidders. The car goes back on sale.',
+                : 'Cancelling ends the auction with no winner and releases '
+                      'every bid. The car goes back on sale.',
             style: text.footnote.copyWith(color: AppColors.secondaryLabel),
           ),
           const SizedBox(height: AppSpacing.space12),
@@ -514,7 +627,9 @@ class _AuctionScreenState extends State<AuctionScreen> {
                     ? AppColors.destructive
                     : AppColors.tertiaryLabel,
               ),
-              onPressed: auction.canCancel(uid) ? () => _cancel(auction) : null,
+              onPressed: auction.canCancel(uid) && sync.online
+                  ? () => _cancel(auction)
+                  : null,
               child: const Text('Cancel auction'),
             ),
           ),

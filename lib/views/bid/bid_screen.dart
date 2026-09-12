@@ -13,6 +13,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/bid/auction_card.dart';
+import 'package:assignment/widgets/bid/bids_offline_banner.dart';
 import 'package:assignment/widgets/bid/bid_status_badge.dart';
 import 'package:assignment/widgets/common/segmented_control.dart';
 
@@ -85,17 +86,25 @@ class _BidScreenState extends State<BidScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'bid-start-auction-fab',
-        onPressed: () => Navigator.pushNamed(context, '/auction/new'),
-        elevation: 0,
-        focusElevation: 0,
-        hoverElevation: 0,
-        highlightElevation: 0,
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        icon: const Icon(Icons.gavel),
-        label: const Text('Start an auction'),
+      floatingActionButton: BidsSyncBuilder(
+        builder: (context, sync) => FloatingActionButton.extended(
+          heroTag: 'bid-start-auction-fab',
+          // Starting an auction is a write, so offline it is withheld rather
+          // than opened onto a form that cannot submit.
+          onPressed: sync.online
+              ? () => Navigator.pushNamed(context, '/auction/new')
+              : null,
+          elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          backgroundColor: sync.online
+              ? AppColors.primary
+              : AppColors.tertiaryLabel,
+          foregroundColor: AppColors.onPrimary,
+          icon: const Icon(Icons.gavel),
+          label: const Text('Start an auction'),
+        ),
       ),
       body: IndexedStack(
         index: _segment,
@@ -175,6 +184,7 @@ class _AuctionList extends StatelessWidget {
             AppSpacing.space32 * 2,
           ),
           children: [
+            const BidsOfflineBanner(),
             for (final entry in items) ...[
               _tile(context, entry),
               const SizedBox(height: AppSpacing.space12),
@@ -260,47 +270,51 @@ class _MyBidsList extends StatelessWidget {
                 'follow it here.',
           );
         }
-        return ListView.separated(
+        return ListView(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenPadding,
             AppSpacing.screenPadding,
             AppSpacing.screenPadding,
             AppSpacing.space32 * 2,
           ),
-          itemCount: items.length,
-          separatorBuilder: (_, _) =>
+          children: [
+            const BidsOfflineBanner(),
+            for (final entry in items) ...[
+              _card(context, text, entry),
               const SizedBox(height: AppSpacing.space12),
-          itemBuilder: (_, i) {
-            final entry = items[i];
-            final leading = entry.isWinning && entry.bid.status.isLive;
-            return AuctionCard(
-              entry: entry.auction,
-              onTap: () => Navigator.pushNamed(
-                context,
-                '/auction/${entry.bid.auctionId}',
-              ),
-              trailing: Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.space8),
-                child: BidStatusBadge(status: entry.bid.status),
-              ),
-              footer: Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.space12),
-                child: Text(
-                  leading
-                      ? 'Your ${formatPrice(entry.bid.amountMyr)} bid is '
-                            'leading.'
-                      : 'You bid ${formatPrice(entry.bid.amountMyr)}.',
-                  style: text.footnote.copyWith(
-                    color: leading
-                        ? AppColors.success
-                        : AppColors.secondaryLabel,
-                  ),
-                ),
-              ),
-            );
-          },
+            ],
+          ],
         );
       },
+    );
+  }
+
+  Widget _card(BuildContext context, TextTheme text, BidWithAuction entry) {
+    final leading = entry.isWinning && entry.bid.status.isLive;
+    return AuctionCard(
+      entry: entry.auction,
+      onTap: () =>
+          Navigator.pushNamed(context, '/auction/${entry.bid.auctionId}'),
+      // A cancelled auction already says "Cancelled" above; a badge
+      // under it would only add a verdict that was never reached.
+      trailing: entry.hasOutcome
+          ? Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.space8),
+              child: BidStatusBadge(status: entry.bid.status),
+            )
+          : null,
+      footer: Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.space12),
+        child: Text(
+          leading
+              ? 'Your ${formatPrice(entry.bid.amountMyr)} bid is '
+                    'leading.'
+              : 'You bid ${formatPrice(entry.bid.amountMyr)}.',
+          style: text.footnote.copyWith(
+            color: leading ? AppColors.success : AppColors.secondaryLabel,
+          ),
+        ),
+      ),
     );
   }
 }

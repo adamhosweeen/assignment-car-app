@@ -8,6 +8,7 @@ import 'package:assignment/utils/result.dart';
 import 'package:assignment/control/user/auth/user_cache_repository.dart';
 import 'package:assignment/control/user/inbox/inbox_cache_repository.dart';
 import 'package:assignment/control/user/other_users_cache_repository.dart';
+import 'package:assignment/control/bid/bids_cache_repository.dart';
 import 'package:assignment/control/chat/chat_cache_repository.dart';
 import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
@@ -22,6 +23,7 @@ class SupabaseAuthRepository implements AuthRepository {
     this._otherUsers,
     this._inboxCache,
     this._chatCache,
+    this._bidsCache,
     this._drafts,
   ) {
     _refreshEnriched();
@@ -33,6 +35,7 @@ class SupabaseAuthRepository implements AuthRepository {
   final OtherUsersCacheRepository _otherUsers;
   final InboxCacheRepository _inboxCache;
   final ChatCacheRepository _chatCache;
+  final BidsCacheRepository _bidsCache;
   final DraftRepository _drafts;
 
   static const String _profileColumns = '*';
@@ -297,6 +300,7 @@ class SupabaseAuthRepository implements AuthRepository {
       await _otherUsers.clear();
       await _inboxCache.clear();
       await _chatCache.clear();
+      await _bidsCache.clearForUser();
       await _drafts.clear();
       try {
         await _client.auth.signOut();
@@ -313,6 +317,9 @@ class SupabaseAuthRepository implements AuthRepository {
     await _otherUsers.clear();
     await _inboxCache.clear();
     await _chatCache.clear();
+    // Only this person's rows: the live-auction feed is public, the same
+    // reason listingsCache is not cleared here either.
+    await _bidsCache.clearForUser();
     await _drafts.clear();
     await _client.auth.signOut();
   }

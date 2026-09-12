@@ -32,6 +32,13 @@ String mapError(Object error) {
     return 'Sign-in failed. Please try again.';
   }
   if (error is PostgrestException) {
+    // PGRST202 is PostgREST saying the function isn't in its schema cache —
+    // the database is behind the app, not the user doing anything wrong.
+    // Folding it into the generic message hid a missing migration completely.
+    if (error.code == 'PGRST202') {
+      return 'This feature is not available on the server yet. The database '
+          'is missing an update.';
+    }
     return 'Something went wrong saving that. Please try again.';
   }
   if (error is StorageException) {

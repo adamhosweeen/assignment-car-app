@@ -6,7 +6,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'carsell_v3.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await db.execute('''
@@ -170,7 +170,67 @@ class AppDatabase {
             created_at TEXT NOT NULL
           )
         ''');
+        await _createBidTables(db);
+      },
+      // onCreate only runs when the file does not exist yet, so the bid tables
+      // would never reach a device that has already opened carsell_v3.db.
+      // Creating them here instead of renaming the file keeps the caches — and
+      // any half-finished sell draft, which lives in listing_draft.
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) await _createBidTables(db);
       },
     );
+  }
+
+  /// The bidding module's cache. Written by both paths above, so it must stay
+  /// idempotent: a device upgrading and a fresh install end up identical.
+  static Future<void> _createBidTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS auction_cache (
+        id TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        user_id TEXT,
+        sort_order INTEGER NOT NULL,
+        listing_id TEXT NOT NULL,
+        seller_id TEXT NOT NULL,
+        starting_price_myr INTEGER NOT NULL,
+        min_increment_myr INTEGER NOT NULL,
+        ends_at TEXT NOT NULL,
+        status TEXT NOT NULL,
+        highest_bid_myr INTEGER,
+        bid_count INTEGER NOT NULL,
+        winning_bid_id TEXT,
+        settled_at TEXT,
+        created_at TEXT NOT NULL,
+        listing_json TEXT NOT NULL,
+        cached_at TEXT NOT NULL,
+        PRIMARY KEY (id, scope)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS auction_cache_scope_idx
+        ON auction_cache (scope, user_id, sort_order)
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bid_cache (
+        id TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        user_id TEXT,
+        sort_order INTEGER NOT NULL,
+        listing_id TEXT NOT NULL,
+        auction_id TEXT NOT NULL,
+        bidder_id TEXT NOT NULL,
+        amount_myr INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        cached_at TEXT NOT NULL,
+        PRIMARY KEY (id, scope)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS bid_cache_scope_idx
+        ON bid_cache (scope, auction_id, user_id, sort_order)
+    ''');
   }
 }
