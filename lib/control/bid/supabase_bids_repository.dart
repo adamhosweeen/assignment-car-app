@@ -57,22 +57,33 @@ class SupabaseBidsRepository implements BidsRepository {
     return Listing.fromJson(map);
   }
 
-  AuctionWithListing _auctionFrom(Map<String, dynamic> row) {
+  /// Null when the embedded car did not come back. PostgREST answers an
+  /// unreadable one-to-one join with null rather than dropping the parent row,
+  /// so this is what RLS looks like from here — and an auction without its car
+  /// is nothing a card can draw.
+  ///
+  /// Returned rather than thrown: one such row used to take the whole feed
+  /// down as a fetch failure, which the UI reports as "check your connection"
+  /// on a working network. A row that cannot be built is dropped instead.
+  AuctionWithListing? _auctionFrom(Map<String, dynamic> row) {
     final map = Map<String, dynamic>.from(row);
-    final listingRow = map.remove('listings') as Map<String, dynamic>;
+    final listingRow = map.remove('listings');
+    if (listingRow is! Map<String, dynamic>) return null;
     return AuctionWithListing(
       auction: Auction.fromJson(map),
       listing: _listingFrom(listingRow),
     );
   }
 
-  BidWithAuction _bidFrom(Map<String, dynamic> row) {
+  /// Null when the bid's auction, or the car behind it, is unreadable. See
+  /// [_auctionFrom].
+  BidWithAuction? _bidFrom(Map<String, dynamic> row) {
     final map = Map<String, dynamic>.from(row);
-    final auctionRow = map.remove('auctions') as Map<String, dynamic>;
-    return BidWithAuction(
-      bid: Bid.fromJson(map),
-      auction: _auctionFrom(auctionRow),
-    );
+    final auctionRow = map.remove('auctions');
+    if (auctionRow is! Map<String, dynamic>) return null;
+    final auction = _auctionFrom(auctionRow);
+    if (auction == null) return null;
+    return BidWithAuction(bid: Bid.fromJson(map), auction: auction);
   }
 
   Future<List<AuctionWithListing>> _fetchLive() async {
@@ -82,7 +93,7 @@ class SupabaseBidsRepository implements BidsRepository {
         .eq('status', 'running')
         .order('ends_at', ascending: true)
         .limit(50);
-    return rows.map(_auctionFrom).toList();
+    return rows.map(_auctionFrom).nonNulls.toList();
   }
 
   Future<List<AuctionWithListing>> _fetchMyAuctions(String uid) async {
@@ -91,7 +102,7 @@ class SupabaseBidsRepository implements BidsRepository {
         .select(_auctionSelect)
         .eq('seller_id', uid)
         .order('created_at', ascending: false);
-    return rows.map(_auctionFrom).toList();
+    return rows.map(_auctionFrom).nonNulls.toList();
   }
 
   Future<List<BidWithAuction>> _fetchMyBids(String uid) async {
@@ -100,7 +111,7 @@ class SupabaseBidsRepository implements BidsRepository {
         .select(_bidSelect)
         .eq('bidder_id', uid)
         .order('created_at', ascending: false);
-    return rows.map(_bidFrom).toList();
+    return rows.map(_bidFrom).nonNulls.toList();
   }
 
   // An empty cache is no cache: emitting [] would paint a convincing "nothing
@@ -158,7 +169,11 @@ class SupabaseBidsRepository implements BidsRepository {
           .select(_auctionSelect)
           .eq('id', auctionId)
           .single();
-      return _auctionFrom(row);
+      final entry = _auctionFrom(row);
+      // The one place a missing car cannot be skipped: this stream carries a
+      // single auction, and the page is built out of the car.
+      if (entry == null) throw StateError('Auction $auctionId has no car.');
+      return entry;
     },
     'auction-$auctionId',
     readCache: () => _cache.getAuctionById(auctionId),

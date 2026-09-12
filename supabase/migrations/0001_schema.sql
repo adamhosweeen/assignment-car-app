@@ -76,6 +76,7 @@ drop function if exists public.extend_auction(uuid, timestamptz)  cascade;
 drop function if exists public.cancel_auction(uuid)              cascade;
 drop function if exists public.delete_auction(uuid)              cascade;
 drop function if exists public.settle_due_auctions()             cascade;
+drop function if exists public.has_bid_on_listing(uuid)          cascade;
 
 delete from auth.users;
 
@@ -522,6 +523,36 @@ create policy "bids_select_own_or_seller" on public.bids
       where l.id = listing_id and l.seller_id = auth.uid()
     )
   );
+
+-- A bidder keeps read access to the car they bid on, and to its photos.
+-- Settlement turns the listing 'sold' (or 'hidden', when nobody bid), and from
+-- that moment listings_select denies it to everyone but the seller and the
+-- winning buyer -- so a losing bidder's row in "My bids" came back as an
+-- auction with no car attached, which is nothing the card can draw.
+--
+-- The check goes through a SECURITY DEFINER function rather than naming
+-- public.bids here: bids_select_own_or_seller above already reads listings, so
+-- a policy on listings that reads bids would close the loop and Postgres would
+-- refuse the query with "infinite recursion detected in policy".
+create function public.has_bid_on_listing(p_listing_id uuid)
+returns boolean
+language sql stable
+security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.bids b
+    where b.listing_id = p_listing_id and b.bidder_id = auth.uid()
+  );
+$$;
+revoke all on function public.has_bid_on_listing(uuid) from public, anon;
+grant execute on function public.has_bid_on_listing(uuid) to authenticated;
+
+create policy "listings_select_bidder" on public.listings
+  for select to authenticated
+  using (public.has_bid_on_listing(listings.id));
+create policy "listing_media_select_bidder" on public.listing_media
+  for select to authenticated
+  using (public.has_bid_on_listing(listing_media.listing_id));
 
 -- When a car leaves the market by any route, its outstanding bids are lost.
 create function public.reject_bids_on_closed_listing()
