@@ -72,6 +72,7 @@ drop function if exists public.withdraw_bid(uuid)                cascade;
 drop function if exists public.respond_to_bid(uuid, boolean)     cascade;
 drop function if exists public.start_auction(uuid, integer, integer, timestamptz) cascade;
 drop function if exists public.place_bid(uuid, integer)          cascade;
+drop function if exists public.extend_auction(uuid, timestamptz)  cascade;
 drop function if exists public.cancel_auction(uuid)              cascade;
 drop function if exists public.delete_auction(uuid)              cascade;
 drop function if exists public.settle_due_auctions()             cascade;
@@ -460,8 +461,10 @@ grant execute on function public.confirm_offer(uuid) to authenticated;
 -- A seller puts one of their `selling` cars up for a timed auction. Buyers
 -- outbid each other; each bid must beat the highest by the increment (the
 -- first must reach the starting price). At the deadline the highest bid wins
--- automatically. RLS cannot express "beat the current highest", so every
--- write goes through a function and `bids` has no INSERT policy at all.
+-- automatically. The terms are fixed once it is running, with one exception:
+-- the seller may push `ends_at` further out (`extend_auction`), which can only
+-- ever help the bidders. RLS cannot express "beat the current highest", so
+-- every write goes through a function and `bids` has no INSERT policy at all.
 create table public.auctions (
   id                 uuid primary key default gen_random_uuid(),
   listing_id         uuid not null references public.listings (id) on delete cascade,
@@ -1033,8 +1036,62 @@ $$;
 revoke all on function public.place_bid(uuid, integer) from public, anon;
 grant execute on function public.place_bid(uuid, integer) to authenticated;
 
--- The seller may pull a running auction at any time. Every outstanding bid is
--- lost, each bidder is told, and the car goes back on sale.
+-- The one thing about a running auction the seller may change: its deadline,
+-- and only ever forwards. Bidders committed to a closing time, so pulling it
+-- earlier would cut them off; pushing it later only ever gives them more room,
+-- which is why this is safe with bids already on the table. The total run is
+-- still capped at 7 days from creation, so repeated extensions cannot keep a
+-- car in `bidding` indefinitely.
+create function public.extend_auction(p_auction_id uuid, p_ends_at timestamptz)
+returns timestamptz
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  a   record;
+begin
+  if uid is null then
+    raise exception 'not signed in';
+  end if;
+  if p_ends_at is null then
+    raise exception 'Pick a new end time.';
+  end if;
+
+  select au.id, au.seller_id, au.status, au.ends_at, au.created_at into a
+    from public.auctions au where au.id = p_auction_id for update;
+
+  if not found then
+    raise exception 'This auction is no longer available.';
+  end if;
+  if a.seller_id <> uid then
+    raise exception 'Only the seller can extend this auction.';
+  end if;
+  -- Both halves matter: a settled auction is done, and one whose clock ran
+  -- out is done too even if settle_due_auctions has not caught it yet.
+  if a.status <> 'running' or a.ends_at <= now() then
+    raise exception 'This auction has already ended.';
+  end if;
+  if p_ends_at <= a.ends_at then
+    raise exception 'Pick a time later than the current end.';
+  end if;
+  if p_ends_at > a.created_at + interval '7 days' then
+    raise exception 'An auction can run for at most 7 days.';
+  end if;
+
+  update public.auctions set ends_at = p_ends_at where id = p_auction_id;
+
+  return p_ends_at;
+end;
+$$;
+revoke all on function public.extend_auction(uuid, timestamptz) from public, anon;
+grant execute on function public.extend_auction(uuid, timestamptz) to authenticated;
+
+-- The seller may pull a running auction at any time. It ends with no winner
+-- and the car goes back on sale. Outstanding bids are written `lost` only
+-- because the status column has no fourth value and they must stop counting as
+-- live; nobody was actually beaten, so the bidder's view shows the auction as
+-- cancelled and no outcome for the bid.
 create function public.cancel_auction(p_auction_id uuid)
 returns void
 language plpgsql
