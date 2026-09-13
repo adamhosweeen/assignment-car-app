@@ -122,9 +122,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
     }
   }
 
-  // A rule refusal from extend_auction reaches us verbatim (the repository's
-  // _passThrough list); every mapError fallback instead ends in "try again",
-  // and stacking one of those on our own sentence would apologise twice.
   static String _extendFailure(String message) => message.contains('try again')
       ? 'Failed to extend or update the time duration for this bidding.'
       : 'Failed to extend or update the time duration for this bidding. '
@@ -140,13 +137,8 @@ class _AuctionScreenState extends State<AuctionScreen> {
     final options = extensionOptions(auction);
     if (options.isEmpty) return;
 
-    // Cleared before the sheet opens, not after a pick: a leftover cancel or
-    // delete error would otherwise sit behind the sheet looking like a
-    // complaint about this extend.
     setState(() => _serverError = null);
 
-    // The sheet spells out the resulting deadline for every choice, so it is
-    // the confirmation step — no second dialog on top of it.
     final picked = await showSelectSheet<Duration>(
       context: context,
       title: 'Add how much time?',
@@ -165,8 +157,7 @@ class _AuctionScreenState extends State<AuctionScreen> {
     );
     if (!mounted) return;
     setState(() => _extending = false);
-    // Both outcomes are snackbars: an extend that failed says so and gets out
-    // of the way, rather than leaving a notice pinned to the page.
+
     switch (res) {
       case Ok():
         _snack('Time updated to ${formatDateTime(endsAt)} successfully.');
@@ -324,15 +315,11 @@ class _AuctionScreenState extends State<AuctionScreen> {
               )
             else if (live)
               _Countdown(auction: auction)
-            // A cancelled auction stopped when the seller pulled it, so its
-            // ends_at never arrived; settled_at is the real stop time.
             else if (auction.status == AuctionStatus.cancelled)
               GroupedRow(
                 label: 'Cancelled',
                 value: formatDateTime(auction.settledAt ?? auction.endsAt),
               )
-            // ends_at, not settled_at: settlement is opportunistic and can run
-            // well after bidding actually closed.
             else
               GroupedRow(label: 'Ended', value: formatDateTime(auction.endsAt)),
           ],
@@ -350,8 +337,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
           InlineNotice(text: _serverError!, kind: NoticeKind.error),
         ],
         const SizedBox(height: AppSpacing.space20),
-        // Everything below can start a write, so it is rebuilt with the sync
-        // state rather than reading it once.
         BidsSyncBuilder(
           builder: (context, sync) {
             if (isSeller) return _sellerSection(context, auction, bids, sync);
@@ -393,12 +378,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
   ) {
     final text = Theme.of(context).textTheme;
     final mine = bids.isEmpty ? null : bids.first;
-    // The auction row and the bid rows arrive on separate streams, so a bid of
-    // mine can be on screen a round trip before the highest bid it set. Being
-    // outbid is its own claim, not merely "not leading": place_bid only accepts
-    // a bid that beats the current highest, so a bid with nothing higher yet
-    // reported is winning. Reading that gap as an outbid used to render the
-    // amount that is still null, which threw during build.
     final highest = auction.highestBidMyr;
     final leading =
         mine != null && (highest == null || mine.amountMyr >= highest);
@@ -415,10 +394,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
           ),
           const SizedBox(height: AppSpacing.space8),
           Text(
-            // No promise of a notification: nothing writes a bid message to
-            // the inbox (only `welcome` and `listing_match` triggers exist),
-            // so telling a bidder they will hear about it would send them away
-            // to wait for something that never arrives.
             'Someone can still outbid you before it ends — check back, or '
             'raise your bid now to stay ahead.',
             style: text.footnote.copyWith(color: AppColors.secondaryLabel),
@@ -513,8 +488,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
           width: double.infinity,
           child: FilledButton(
             key: placeBidButtonKey,
-            // Offline, the minimum on screen may already be out of date, so
-            // the bid is refused here rather than by the server.
             onPressed: _submitting || belowMinimum || !sync.online
                 ? null
                 : () => _placeBid(auction),
@@ -580,7 +553,6 @@ class _AuctionScreenState extends State<AuctionScreen> {
           ),
         ] else ...[
           Text('This is your auction', style: text.headline),
-          // Each action sits directly under the line that explains it.
           const SizedBox(height: AppSpacing.space8),
           Text(
             canExtend

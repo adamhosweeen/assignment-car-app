@@ -23,12 +23,8 @@ String auctionDurationLabel(Duration d) {
   return '$days day${days == 1 ? '' : 's'}';
 }
 
-/// The longest an auction may run, counted from when it started. Mirrors the
-/// 7-day cap enforced by `start_auction` and `extend_auction`.
 const Duration kMaxAuctionRun = Duration(days: 7);
 
-/// What a seller may add to a running auction's deadline. No 7-day entry:
-/// nothing can be extended by the whole cap.
 const List<Duration> kAuctionExtensions = [
   Duration(hours: 1),
   Duration(hours: 6),
@@ -37,16 +33,12 @@ const List<Duration> kAuctionExtensions = [
   Duration(days: 3),
 ];
 
-/// How much further this auction's deadline may still be pushed before the
-/// run hits [kMaxAuctionRun]. Zero once there is no room left.
 Duration extensionHeadroom(Auction auction) {
   final latest = auction.createdAt.add(kMaxAuctionRun);
   final room = latest.difference(auction.endsAt);
   return room.isNegative ? Duration.zero : room;
 }
 
-/// The extensions still on offer: those that fit inside [extensionHeadroom].
-/// Empty means the auction is already running for as long as it is allowed to.
 List<Duration> extensionOptions(Auction auction) {
   final room = extensionHeadroom(auction);
   return [
@@ -55,9 +47,6 @@ List<Duration> extensionOptions(Auction auction) {
   ];
 }
 
-/// Extending is the one change a seller may make to a running auction, and
-/// only forwards — see `extend_auction`. It needs a live auction with room
-/// left inside the 7-day cap.
 bool canExtendAuction(Auction auction, String userId, {DateTime? now}) =>
     auction.isSeller(userId) &&
     auction.isLive(now: now) &&

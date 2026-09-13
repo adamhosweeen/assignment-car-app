@@ -89,8 +89,6 @@ class _BidScreenState extends State<BidScreen> {
       floatingActionButton: BidsSyncBuilder(
         builder: (context, sync) => FloatingActionButton.extended(
           heroTag: 'bid-start-auction-fab',
-          // Starting an auction is a write, so offline it is withheld rather
-          // than opened onto a form that cannot submit.
           onPressed: sync.online
               ? () => Navigator.pushNamed(context, '/auction/new')
               : null,
@@ -295,8 +293,6 @@ class _MyBidsList extends StatelessWidget {
       entry: entry.auction,
       onTap: () =>
           Navigator.pushNamed(context, '/auction/${entry.bid.auctionId}'),
-      // A cancelled auction already says "Cancelled" above; a badge
-      // under it would only add a verdict that was never reached.
       trailing: entry.hasOutcome
           ? Padding(
               padding: const EdgeInsets.only(top: AppSpacing.space8),
