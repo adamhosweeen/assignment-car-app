@@ -362,7 +362,6 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final fg = isMine ? AppColors.onPrimary : AppColors.label;
     final isOffer =
         message.messageType == MessageType.offer &&
         message.offerAmountMyr != null;
@@ -370,6 +369,12 @@ class _MessageBubble extends StatelessWidget {
         !isOffer ||
         message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}';
     final confirmed = message.offerConfirmedAt != null;
+    // Once the seller confirms the buyer's own offer, show it like the
+    // seller's offer bubble (white block, black "Buy now" button) instead of
+    // the usual solid "mine" bubble.
+    final isConfirmedBuyNow = isOffer && isMine && iAmBuyer && confirmed;
+    final bubbleFilled = isMine && !isConfirmedBuyNow;
+    final fg = bubbleFilled ? AppColors.onPrimary : AppColors.label;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space12),
@@ -388,7 +393,9 @@ class _MessageBubble extends StatelessWidget {
                 vertical: AppSpacing.space12,
               ),
               decoration: BoxDecoration(
-                color: isMine ? AppColors.primary : AppColors.groupedBackground,
+                color: bubbleFilled
+                    ? AppColors.primary
+                    : AppColors.groupedBackground,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
               ),
               child: Column(
@@ -510,7 +517,10 @@ class _OfferActionRow extends StatelessWidget {
           onPressed: acting ? null : onPressed,
           child: acting
               ? const ButtonSpinner()
-              : Text(label, style: text.footnote),
+              : Text(
+                  label,
+                  style: text.footnote.copyWith(color: AppColors.onPrimary),
+                ),
         ),
       );
 }
