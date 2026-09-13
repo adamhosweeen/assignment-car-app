@@ -18,11 +18,6 @@ class InboxScreen extends StatefulWidget {
 }
 
 class _InboxScreenState extends State<InboxScreen> {
-  // The list is held directly rather than read out of a FutureBuilder. A
-  // FutureBuilder keeps serving the *previous* completed snapshot while the
-  // next future runs, so a just-deleted row would be rebuilt after Dismissible
-  // had already removed it — which reappears, then vanishes, and trips
-  // "A dismissed Dismissible widget is still part of the tree".
   List<InboxMessage>? _messages;
   String? _error;
 
@@ -67,9 +62,6 @@ class _InboxScreenState extends State<InboxScreen> {
     }
   }
 
-  // Deletes before the row leaves the tree. Returning false makes Dismissible
-  // spring it back; restoring it afterwards instead would rebuild an
-  // already-dismissed widget and trip Flutter's assertion.
   Future<bool> _confirmDelete(InboxMessage message) async {
     final res = await context.read<InboxRepository>().delete(message.id);
     if (!mounted) return false;

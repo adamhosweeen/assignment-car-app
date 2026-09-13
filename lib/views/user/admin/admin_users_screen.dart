@@ -89,8 +89,6 @@ class _AppUsersTabState extends State<AdminUsersTab> {
     }
   }
 
-  // Irreversible, so it asks for the name to be typed rather than a plain
-  // yes/no — a mis-tap here destroys an account and everything attached to it.
   Future<void> _confirmDelete(AppUser user) async {
     final admin = context.read<AdminRepository>();
     final confirmed = await showDialog<bool>(
@@ -443,9 +441,6 @@ class _UserRow extends StatelessWidget {
   }
 }
 
-// Owns its TextEditingController: disposing one from the caller the moment
-// showDialog returns tears it down while the exit animation is still
-// rebuilding the field.
 class _ConfirmDeleteDialog extends StatefulWidget {
   const _ConfirmDeleteDialog({required this.user});
 

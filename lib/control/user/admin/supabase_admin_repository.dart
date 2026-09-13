@@ -72,15 +72,10 @@ class SupabaseAdminRepository implements AdminRepository {
   @override
   Future<Result<void>> deleteUser(String userId, {String? avatarUrl}) async {
     try {
-      // The RPC hands back the listing-media paths before deleting the rows —
-      // Postgres cannot reach object storage, and once listing_media is gone
-      // those paths are unknowable.
       final paths = await _client
           .rpc<List<dynamic>>('admin_delete_user', params: {'target': userId})
           .timeout(_fetchTimeout);
 
-      // Best effort: the account is already gone, so a storage failure here
-      // leaves orphaned files but must not report the delete as failed.
       try {
         final media = [for (final p in paths) p as String];
         if (media.isNotEmpty) {

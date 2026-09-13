@@ -317,8 +317,6 @@ class SupabaseAuthRepository implements AuthRepository {
     await _otherUsers.clear();
     await _inboxCache.clear();
     await _chatCache.clear();
-    // Only this person's rows: the live-auction feed is public, the same
-    // reason listingsCache is not cleared here either.
     await _bidsCache.clearForUser();
     await _drafts.clear();
     await _client.auth.signOut();
