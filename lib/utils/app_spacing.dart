@@ -55,6 +55,8 @@ abstract final class AppSpacing {
 
   static const double thumbMd = 96;
 
+  static const double chatImageSize = 200;
+
   static const double coverHeight = 200;
 
   static const double galleryHeight = 300;

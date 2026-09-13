@@ -6,7 +6,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'carsell_v3.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await db.execute('''
@@ -128,6 +128,7 @@ class AppDatabase {
             body TEXT NOT NULL,
             message_type TEXT NOT NULL,
             offer_amount_myr INTEGER,
+            image_path TEXT,
             created_at TEXT NOT NULL,
             read_at TEXT,
             offer_confirmed_at TEXT,
@@ -181,6 +182,7 @@ class AppDatabase {
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createBidTables(db);
         if (oldVersion < 3) await _addChatRecallColumns(db);
+        if (oldVersion < 4) await _addChatImageColumn(db);
       },
     );
   }
@@ -192,6 +194,12 @@ class AppDatabase {
     await db.execute(
       'ALTER TABLE conversation_cache ADD COLUMN last_msg_recalled_at TEXT',
     );
+  }
+
+  /// Adds image-message support to a chat cache created before version 4.
+  /// A fresh install already has the column from onCreate above.
+  static Future<void> _addChatImageColumn(Database db) async {
+    await db.execute('ALTER TABLE message_cache ADD COLUMN image_path TEXT');
   }
 
   /// The bidding module's cache. Written by both paths above, so it must stay

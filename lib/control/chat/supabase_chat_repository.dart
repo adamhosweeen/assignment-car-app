@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,6 +20,8 @@ class SupabaseChatRepository implements ChatRepository {
   final ChatCacheRepository _cache;
   static const Duration _fetchTimeout = Duration(seconds: 8);
   static const int _messageLimit = 200;
+  static const String _mediaBucket = 'chat-media';
+  static const String _imagePlaceholderBody = '📷 Photo';
 
   Future<List<ConversationThread>> _fetchConversations(String uid) async {
     final rows = await _client
@@ -285,6 +288,45 @@ class SupabaseChatRepository implements ChatRepository {
             'body': body,
             'message_type': offerAmountMyr != null ? 'offer' : 'text',
             'offer_amount_myr': ?offerAmountMyr,
+          })
+          .select()
+          .single()
+          .timeout(_fetchTimeout);
+      return Ok(Message.fromJson(row));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<Message>> sendImage(
+    String conversationId,
+    String localImagePath,
+  ) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const Err('You need to be signed in.');
+    try {
+      // Path convention mirrors listing-media's {seller_id}/{listing_id}/...,
+      // but keyed by conversation so chat_media_read/insert can check
+      // participancy with a join instead of a plain uid match — a chat photo
+      // is private to the two people in the thread, not "anyone signed in".
+      final objectPath = '$conversationId/${newId()}.jpg';
+      await _client.storage
+          .from(_mediaBucket)
+          .upload(
+            objectPath,
+            File(localImagePath),
+            fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          )
+          .timeout(_fetchTimeout);
+      final row = await _client
+          .from('messages')
+          .insert({
+            'conversation_id': conversationId,
+            'sender_id': uid,
+            'body': _imagePlaceholderBody,
+            'message_type': 'image',
+            'image_path': objectPath,
           })
           .select()
           .single()

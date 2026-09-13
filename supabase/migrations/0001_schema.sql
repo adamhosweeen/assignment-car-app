@@ -6,7 +6,8 @@
 -- every function the app ever had (including ones from older layouts that no
 -- longer exist), then rebuilds the final schema from scratch. Only ever point
 -- it at a dev project. Uploaded images cannot be deleted from SQL — empty the
--- listing-media and avatars buckets in the dashboard if you want them gone.
+-- listing-media, chat-media and avatars buckets in the dashboard if you want
+-- them gone.
 --
 -- Contents, in dependency order:
 --   1. reset
@@ -87,6 +88,8 @@ drop policy if exists "listing_media_read"       on storage.objects;
 drop policy if exists "listing_media_insert_own" on storage.objects;
 drop policy if exists "listing_media_update_own" on storage.objects;
 drop policy if exists "listing_media_delete_own" on storage.objects;
+drop policy if exists "chat_media_read"              on storage.objects;
+drop policy if exists "chat_media_insert_participant" on storage.objects;
 drop policy if exists "avatars_read"             on storage.objects;
 drop policy if exists "avatars_insert_own"       on storage.objects;
 drop policy if exists "avatars_update_own"       on storage.objects;
@@ -340,14 +343,18 @@ create table public.messages (
   conversation_id    uuid not null references public.conversations (id) on delete cascade,
   sender_id          uuid not null references public.users (id),
   body               text,
-  message_type       text not null default 'text' check (message_type in ('text', 'offer')),
+  message_type       text not null default 'text'
+                       check (message_type in ('text', 'offer', 'image')),
   offer_amount_myr   int,
   offer_confirmed_at timestamptz,
+  -- Object path in the chat-media bucket for an image message (see §12);
+  -- null for text/offer messages.
+  image_path         text,
   created_at         timestamptz not null default now(),
   read_at            timestamptz,
   -- Set by recall_message() within its 2-minute window. The row (and its
-  -- body/offer_amount_myr) is kept, not erased — the client swaps in a
-  -- "Message recalled" placeholder whenever this is non-null.
+  -- body/offer_amount_myr/image_path) is kept, not erased — the client swaps
+  -- in a "Message recalled" placeholder whenever this is non-null.
   recalled_at        timestamptz
 );
 
@@ -1594,6 +1601,33 @@ create policy "listing_media_update_own" on storage.objects
 create policy "listing_media_delete_own" on storage.objects
   for delete to authenticated using (
     bucket_id = 'listing-media' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- A chat image, unlike a listing photo, is private between two people — not
+-- anyone signed in — so this checks conversation participancy (a join
+-- against public.conversations) rather than listing-media's plain "does the
+-- first path segment match my own uid". Path: {conversation_id}/{uuid}.jpg.
+-- No update/delete policy: a sent image isn't editable, and recall_message()
+-- never touches storage, only recalled_at.
+insert into storage.buckets (id, name, public)
+values ('chat-media', 'chat-media', false)
+on conflict (id) do nothing;
+
+create policy "chat_media_read" on storage.objects
+  for select to authenticated using (
+    bucket_id = 'chat-media' and exists (
+      select 1 from public.conversations c
+      where c.id = ((storage.foldername(name))[1])::uuid
+        and (c.buyer_id = auth.uid() or c.seller_id = auth.uid())
+    )
+  );
+create policy "chat_media_insert_participant" on storage.objects
+  for insert to authenticated with check (
+    bucket_id = 'chat-media' and exists (
+      select 1 from public.conversations c
+      where c.id = ((storage.foldername(name))[1])::uuid
+        and (c.buyer_id = auth.uid() or c.seller_id = auth.uid())
+    )
   );
 
 -- Public profile photos, so avatar_url can be a plain URL. Path: {user_id}/{uuid}.jpg

@@ -18,6 +18,12 @@ abstract interface class ChatRepository {
     int? offerAmountMyr,
   });
 
+  /// Uploads [localImagePath] to chat-media and sends it as an image message.
+  Future<Result<Message>> sendImage(
+    String conversationId,
+    String localImagePath,
+  );
+
   Future<Result<void>> markRead(String conversationId);
 
   Future<Result<void>> confirmOffer(String messageId);

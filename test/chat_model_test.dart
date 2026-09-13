@@ -76,6 +76,22 @@ void main() {
       expect(back.messageType, MessageType.offer);
     });
 
+    test('round-trips an image message through JSON', () {
+      final m = Message(
+        id: 'm4',
+        conversationId: 'c1',
+        senderId: 'buyer',
+        body: '📷 Photo',
+        messageType: MessageType.image,
+        imagePath: 'c1/photo.jpg',
+        createdAt: DateTime.utc(2026, 8, 30, 9),
+      );
+      final json = m.toJson();
+      expect(json['message_type'], 'image');
+      expect(json['image_path'], 'c1/photo.jpg');
+      expect(Message.fromJson(json), m);
+    });
+
     test('isRecalled is false until recalledAt is set', () {
       final m = Message(
         id: 'm1',

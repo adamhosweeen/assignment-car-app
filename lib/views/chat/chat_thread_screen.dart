@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:assignment/control/user/auth/auth_repository.dart';
@@ -8,6 +9,7 @@ import 'package:assignment/control/chat/chat_providers.dart';
 import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
+import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/control/user/user_providers.dart';
 import 'package:assignment/control/user/users_repository.dart';
 import 'package:assignment/model/chat/conversation.dart';
@@ -21,6 +23,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
+import 'package:assignment/widgets/listing/media_image.dart';
 import 'package:assignment/widgets/user/user_avatar.dart';
 
 class ChatThreadScreen extends StatefulWidget {
@@ -142,6 +145,26 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     final amount = await _promptForOfferAmount(context);
     if (amount == null) return;
     await _send(offerAmountMyr: amount);
+  }
+
+  Future<void> _sendImage() async {
+    if (_sending) return;
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked == null || !mounted) return;
+    setState(() => _sending = true);
+    final compressed = await compressImage(picked.path);
+    if (!mounted) return;
+    final res = await context.read<ChatRepository>().sendImage(
+      widget.conversationId,
+      compressed,
+    );
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (res case Err(:final message)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   Future<void> _counterOffer(Message original) async {
@@ -380,6 +403,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 (listing?.negotiable ?? false) &&
                 listing?.status == ListingStatus.selling,
             onOffer: _makeOffer,
+            onImage: _sendImage,
           ),
         ],
       ),
@@ -461,9 +485,12 @@ class _MessageBubble extends StatelessWidget {
     final isOffer =
         message.messageType == MessageType.offer &&
         message.offerAmountMyr != null;
+    final isImage =
+        message.messageType == MessageType.image && message.imagePath != null;
     final showBody =
-        !isOffer ||
-        message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}';
+        !isImage &&
+        (!isOffer ||
+            message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}');
     final confirmed = message.offerConfirmedAt != null;
     // Once the seller confirms the buyer's own offer, show it like the
     // seller's offer bubble (white block, black "Buy now" button) instead of
@@ -500,6 +527,18 @@ class _MessageBubble extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (isImage)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusInput,
+                        ),
+                        child: MediaImage(
+                          path: message.imagePath,
+                          bucket: 'chat-media',
+                          width: AppSpacing.chatImageSize,
+                          height: AppSpacing.chatImageSize,
+                        ),
+                      ),
                     if (isOffer)
                       Padding(
                         padding: const EdgeInsets.only(
@@ -633,6 +672,7 @@ class _Composer extends StatelessWidget {
     required this.onSend,
     required this.negotiable,
     required this.onOffer,
+    required this.onImage,
   });
 
   final TextEditingController controller;
@@ -640,6 +680,7 @@ class _Composer extends StatelessWidget {
   final VoidCallback onSend;
   final bool negotiable;
   final VoidCallback onOffer;
+  final VoidCallback onImage;
 
   @override
   Widget build(BuildContext context) {
@@ -663,6 +704,14 @@ class _Composer extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              IconButton(
+                onPressed: sending ? null : onImage,
+                tooltip: 'Send a photo',
+                icon: const Icon(
+                  Icons.image_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
               if (negotiable)
                 IconButton(
                   onPressed: sending ? null : onOffer,

@@ -12,6 +12,7 @@ class MediaImage extends StatelessWidget {
   const MediaImage({
     super.key,
     required this.path,
+    this.bucket = 'listing-media',
     this.fit = BoxFit.cover,
     this.width,
     this.height,
@@ -19,6 +20,7 @@ class MediaImage extends StatelessWidget {
   });
 
   final String? path;
+  final String bucket;
   final BoxFit fit;
   final double? width;
   final double? height;
@@ -37,7 +39,7 @@ class MediaImage extends StatelessWidget {
     }
 
     return FutureBuilder<String?>(
-      future: context.read<SignedUrlCache>().resolve(p),
+      future: context.read<SignedUrlCache>().resolve(bucket, p),
       builder: (_, snapshot) {
         final url = snapshot.data;
         return url == null ? _placeholder() : _network(url);

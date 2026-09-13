@@ -5,17 +5,17 @@ import 'package:assignment/control/services/supabase_config.dart';
 class SignedUrlCache {
   final _urls = <String, Future<String?>>{};
 
-  Future<String?> resolve(String path) =>
-      _urls.putIfAbsent(path, () => _sign(path));
+  Future<String?> resolve(String bucket, String path) =>
+      _urls.putIfAbsent('$bucket/$path', () => _sign(bucket, path));
 
-  Future<String?> _sign(String path) async {
+  Future<String?> _sign(String bucket, String path) async {
     if (!SupabaseConfig.isConfigured) return null;
     try {
       return await Supabase.instance.client.storage
-          .from('listing-media')
+          .from(bucket)
           .createSignedUrl(path, 3600);
     } catch (_) {
-      _urls.remove(path);
+      _urls.remove('$bucket/$path');
       return null;
     }
   }

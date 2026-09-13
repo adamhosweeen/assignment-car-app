@@ -2,7 +2,7 @@ import 'package:assignment/utils/json.dart';
 
 const Object _unset = Object();
 
-enum MessageType { text, offer }
+enum MessageType { text, offer, image }
 
 class Message {
   const Message({
@@ -12,6 +12,7 @@ class Message {
     required this.body,
     this.messageType = MessageType.text,
     this.offerAmountMyr,
+    this.imagePath,
     required this.createdAt,
     this.readAt,
     this.offerConfirmedAt,
@@ -27,6 +28,7 @@ class Message {
         asEnumOrNull(MessageType.values, json['message_type']) ??
         MessageType.text,
     offerAmountMyr: asIntOrNull(json['offer_amount_myr']),
+    imagePath: json['image_path'] as String?,
     createdAt: asDate(json['created_at']),
     readAt: asDateOrNull(json['read_at']),
     offerConfirmedAt: asDateOrNull(json['offer_confirmed_at']),
@@ -39,6 +41,7 @@ class Message {
   final String body;
   final MessageType messageType;
   final int? offerAmountMyr;
+  final String? imagePath;
   final DateTime createdAt;
   final DateTime? readAt;
   final DateTime? offerConfirmedAt;
@@ -51,6 +54,7 @@ class Message {
     'body': body,
     'message_type': messageType.name,
     'offer_amount_myr': offerAmountMyr,
+    'image_path': imagePath,
     'created_at': createdAt.toIso8601String(),
     'read_at': readAt?.toIso8601String(),
     'offer_confirmed_at': offerConfirmedAt?.toIso8601String(),
@@ -68,6 +72,7 @@ class Message {
     String? body,
     MessageType? messageType,
     Object? offerAmountMyr = _unset,
+    Object? imagePath = _unset,
     DateTime? createdAt,
     Object? readAt = _unset,
     Object? offerConfirmedAt = _unset,
@@ -81,6 +86,9 @@ class Message {
     offerAmountMyr: identical(offerAmountMyr, _unset)
         ? this.offerAmountMyr
         : offerAmountMyr as int?,
+    imagePath: identical(imagePath, _unset)
+        ? this.imagePath
+        : imagePath as String?,
     createdAt: createdAt ?? this.createdAt,
     readAt: identical(readAt, _unset) ? this.readAt : readAt as DateTime?,
     offerConfirmedAt: identical(offerConfirmedAt, _unset)
@@ -101,6 +109,7 @@ class Message {
           body == other.body &&
           messageType == other.messageType &&
           offerAmountMyr == other.offerAmountMyr &&
+          imagePath == other.imagePath &&
           createdAt == other.createdAt &&
           readAt == other.readAt &&
           offerConfirmedAt == other.offerConfirmedAt &&
@@ -114,6 +123,7 @@ class Message {
     body,
     messageType,
     offerAmountMyr,
+    imagePath,
     createdAt,
     readAt,
     offerConfirmedAt,

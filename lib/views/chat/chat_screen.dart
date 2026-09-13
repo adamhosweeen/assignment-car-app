@@ -224,6 +224,7 @@ class _ConversationRowState extends State<_ConversationRow> {
     if (last.messageType == MessageType.offer && last.offerAmountMyr != null) {
       return 'Offer: ${formatPrice(last.offerAmountMyr!)}';
     }
+    if (last.messageType == MessageType.image) return '📷 Photo';
     return last.body;
   }
 

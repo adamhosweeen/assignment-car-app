@@ -38,6 +38,10 @@ already has data instead of re-running `0001`.
   reappears once a later message arrives. Without it, recall/hide fail the
   same way as above. If you already ran an earlier copy of this file (before
   the trigger existed), re-run it — it's still safe to re-run.
+- `0003_chat_images.sql` — adds `message_type = 'image'`, `messages.image_path`,
+  and a private `chat-media` storage bucket (scoped to the two people in the
+  conversation) for the "send a photo" button in a chat thread. Without it,
+  picking a photo fails to upload (storage bucket not found / RLS denies it).
 
 A fresh project that has just run `0001` already contains all of them; running
 the patches anyway changes nothing.
