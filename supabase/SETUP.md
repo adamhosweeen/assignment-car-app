@@ -31,6 +31,13 @@ already has data instead of re-running `0001`.
   behind **Extend auction** on the auction screen. Without it that button
   fails with *"This feature is not available on the server yet."* (PostgREST
   answers `PGRST202` — the function is not in its schema cache.)
+- `0002_chat_recall_and_hide.sql` — adds `recall_message(uuid)` (withdraw your
+  own chat message within 2 minutes), `hide_conversation(uuid)` (swipe a
+  thread away from your own Chat tab), and a trigger that keeps
+  `last_message_at` on the server's clock so a hidden thread reliably
+  reappears once a later message arrives. Without it, recall/hide fail the
+  same way as above. If you already ran an earlier copy of this file (before
+  the trigger existed), re-run it — it's still safe to re-run.
 
 A fresh project that has just run `0001` already contains all of them; running
 the patches anyway changes nothing.

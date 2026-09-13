@@ -12,7 +12,7 @@
 --   1. reset
 --   2. users (+ role, banned), signup trigger
 --   3. listings, listing_media, four-status model
---   4. conversations, messages, read receipts, offer confirm
+--   4. conversations, messages, read receipts, offer confirm, recall, hide
 --   5. auctions, bids
 --   6. purchases
 --   7. reports, admin RPCs, bans
@@ -65,6 +65,9 @@ drop function if exists public.admin_delete_user(uuid)            cascade;
 drop function if exists public.delete_account()                  cascade;
 drop function if exists public.mark_conversation_read(uuid)      cascade;
 drop function if exists public.confirm_offer(uuid)               cascade;
+drop function if exists public.recall_message(uuid)               cascade;
+drop function if exists public.hide_conversation(uuid)            cascade;
+drop function if exists public.touch_conversation_last_message() cascade;
 drop function if exists public.buy_at_offer(uuid)                cascade;
 drop function if exists public.buy_listing(uuid)                 cascade;
 drop function if exists public.record_purchase(uuid, uuid, integer, text) cascade;
@@ -317,12 +320,18 @@ create policy "listing_media_write_own" on public.listing_media
 
 -- ═══ 4. Chat ═════════════════════════════════════════════════════════════════
 create table public.conversations (
-  id              uuid primary key default gen_random_uuid(),
-  listing_id      uuid not null references public.listings (id) on delete cascade,
-  buyer_id        uuid not null references public.users (id),
-  seller_id       uuid not null references public.users (id),
-  created_at      timestamptz not null default now(),
-  last_message_at timestamptz,
+  id                 uuid primary key default gen_random_uuid(),
+  listing_id         uuid not null references public.listings (id) on delete cascade,
+  buyer_id           uuid not null references public.users (id),
+  seller_id          uuid not null references public.users (id),
+  created_at         timestamptz not null default now(),
+  last_message_at    timestamptz,
+  -- Per-user "hide this chat" (Chat tab swipe-to-delete). Never touched by
+  -- the other participant's side; a later message on either side naturally
+  -- brings the thread back since the app compares this against
+  -- last_message_at rather than deleting anything.
+  buyer_deleted_at   timestamptz,
+  seller_deleted_at  timestamptz,
   unique (listing_id, buyer_id)
 );
 
@@ -335,7 +344,11 @@ create table public.messages (
   offer_amount_myr   int,
   offer_confirmed_at timestamptz,
   created_at         timestamptz not null default now(),
-  read_at            timestamptz
+  read_at            timestamptz,
+  -- Set by recall_message() within its 2-minute window. The row (and its
+  -- body/offer_amount_myr) is kept, not erased — the client swaps in a
+  -- "Message recalled" placeholder whenever this is non-null.
+  recalled_at        timestamptz
 );
 
 create index conversations_buyer_idx   on public.conversations (buyer_id);
@@ -365,6 +378,29 @@ create policy "messages_participants" on public.messages
         and (c.buyer_id = auth.uid() or c.seller_id = auth.uid())
     )
   );
+
+-- last_message_at must come from the same clock as buyer_deleted_at /
+-- seller_deleted_at (both server-side `now()`), or hide_conversation's "a
+-- later message brings the thread back" check compares two different clocks:
+-- a message genuinely sent after a hide could still carry an earlier
+-- timestamp than the hide if the *sender's device* clock lags the server's,
+-- leaving the thread stuck hidden. So this is a trigger, not a client update.
+create function public.touch_conversation_last_message()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update public.conversations
+     set last_message_at = new.created_at
+   where id = new.conversation_id;
+  return new;
+end;
+$$;
+
+create trigger messages_touch_conversation
+  after insert on public.messages
+  for each row execute function public.touch_conversation_last_message();
 
 -- The two people in a conversation keep seeing the car (and its photos)
 -- after it is sold or hidden, so the thread never loses its subject.
@@ -457,6 +493,94 @@ end;
 $$;
 revoke all on function public.confirm_offer(uuid) from public;
 grant execute on function public.confirm_offer(uuid) to authenticated;
+
+-- The sender may withdraw their own message within 2 minutes, as long as it
+-- isn't an offer the other side has already confirmed (that's a real
+-- transaction in flight — see buy_at_offer below). Recalling never erases the
+-- row, it only flips `recalled_at`; the client swaps in a "Message recalled"
+-- placeholder instead of the original content.
+create function public.recall_message(p_message_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  msg record;
+begin
+  if uid is null then
+    raise exception 'not signed in';
+  end if;
+
+  select m.sender_id, m.message_type, m.offer_confirmed_at,
+         m.recalled_at, m.created_at
+    into msg
+    from public.messages m
+    join public.conversations c on c.id = m.conversation_id
+   where m.id = p_message_id
+     and (c.buyer_id = uid or c.seller_id = uid);
+
+  if not found then
+    raise exception 'Message not found.';
+  end if;
+  if msg.sender_id <> uid then
+    raise exception 'You can only recall your own messages.';
+  end if;
+  if msg.recalled_at is not null then
+    raise exception 'This message has already been recalled.';
+  end if;
+  if msg.created_at < now() - interval '2 minutes' then
+    raise exception 'This message can no longer be recalled.';
+  end if;
+  if msg.message_type = 'offer' and msg.offer_confirmed_at is not null then
+    raise exception 'This offer has already been confirmed and can no longer be recalled.';
+  end if;
+
+  update public.messages set recalled_at = now() where id = p_message_id;
+end;
+$$;
+revoke all on function public.recall_message(uuid) from public;
+grant execute on function public.recall_message(uuid) to authenticated;
+
+-- Hides the thread from the caller's own Chat tab only — the other
+-- participant's copy, and every message row, is untouched. A later message in
+-- either direction naturally brings it back (the app compares last_message_at
+-- against this timestamp), so there is deliberately no separate "unhide".
+create function public.hide_conversation(p_conversation_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  uid  uuid := auth.uid();
+  conv record;
+begin
+  if uid is null then
+    raise exception 'not signed in';
+  end if;
+
+  select buyer_id, seller_id into conv
+    from public.conversations
+   where id = p_conversation_id;
+
+  if not found then
+    raise exception 'Conversation not found.';
+  end if;
+  if uid <> conv.buyer_id and uid <> conv.seller_id then
+    raise exception 'not a participant';
+  end if;
+
+  if uid = conv.buyer_id then
+    update public.conversations set buyer_deleted_at = now()
+     where id = p_conversation_id;
+  else
+    update public.conversations set seller_deleted_at = now()
+     where id = p_conversation_id;
+  end if;
+end;
+$$;
+revoke all on function public.hide_conversation(uuid) from public;
+grant execute on function public.hide_conversation(uuid) to authenticated;
 
 -- ═══ 5. Auctions ═════════════════════════════════════════════════════════════
 -- A seller puts one of their `selling` cars up for a timed auction. Buyers

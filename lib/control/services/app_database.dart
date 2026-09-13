@@ -6,7 +6,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'carsell_v3.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await db.execute('''
@@ -116,7 +116,8 @@ class AppDatabase {
             last_msg_offer_amount_myr INTEGER,
             last_msg_created_at TEXT,
             last_msg_read_at TEXT,
-            last_msg_offer_confirmed_at TEXT
+            last_msg_offer_confirmed_at TEXT,
+            last_msg_recalled_at TEXT
           )
         ''');
         await db.execute('''
@@ -129,7 +130,8 @@ class AppDatabase {
             offer_amount_myr INTEGER,
             created_at TEXT NOT NULL,
             read_at TEXT,
-            offer_confirmed_at TEXT
+            offer_confirmed_at TEXT,
+            recalled_at TEXT
           )
         ''');
         await db.execute('''
@@ -178,7 +180,17 @@ class AppDatabase {
       // any half-finished sell draft, which lives in listing_draft.
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createBidTables(db);
+        if (oldVersion < 3) await _addChatRecallColumns(db);
       },
+    );
+  }
+
+  /// Adds message recall support to a chat cache created before version 3.
+  /// A fresh install already has both columns from onCreate above.
+  static Future<void> _addChatRecallColumns(Database db) async {
+    await db.execute('ALTER TABLE message_cache ADD COLUMN recalled_at TEXT');
+    await db.execute(
+      'ALTER TABLE conversation_cache ADD COLUMN last_msg_recalled_at TEXT',
     );
   }
 

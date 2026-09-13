@@ -23,4 +23,11 @@ abstract interface class ChatRepository {
   Future<Result<void>> confirmOffer(String messageId);
 
   Future<Result<void>> buyAtOffer(String messageId);
+
+  /// Withdraws the caller's own message within its 2-minute recall window.
+  Future<Result<void>> recallMessage(String messageId);
+
+  /// Hides this thread from the caller's own Chat tab only. A later message
+  /// from either side brings it back.
+  Future<Result<void>> hideConversation(String conversationId);
 }

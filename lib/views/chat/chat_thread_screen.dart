@@ -164,6 +164,75 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
   }
 
+  Future<void> _showMessageActions(Message message) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusSheet),
+        ),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(
+                Icons.undo_outlined,
+                color: AppColors.destructive,
+              ),
+              title: Text(
+                'Recall message',
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.body.copyWith(color: AppColors.destructive),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _recall(message);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _recall(Message target) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Recall this message?'),
+        content: const Text(
+          'The other person will no longer see what you sent. '
+          'You can’t undo this.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
+            child: const Text('Recall'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final res = await context.read<ChatRepository>().recallMessage(target.id);
+    if (!mounted) return;
+    if (res case Err(:final message)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   void _goToOfferCheckout(Message offer, String listingId) {
     Navigator.pushNamed(
       context,
@@ -282,9 +351,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   itemCount: msgs.length,
                   itemBuilder: (context, i) {
                     final m = msgs[i];
+                    final isMine = uid != null && m.isMine(uid);
                     return _MessageBubble(
                       message: m,
-                      isMine: uid != null && m.isMine(uid),
+                      isMine: isMine,
                       iAmBuyer: uid != null && uid == conversation.buyerId,
                       listingActive: listing?.status == ListingStatus.selling,
                       acting: _actingOnMessageId == m.id,
@@ -293,6 +363,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       onBuy: () =>
                           _goToOfferCheckout(m, conversation.listingId),
                       onCounter: () => _counterOffer(m),
+                      onLongPress: isMine && !m.isRecalled
+                          ? () => _showMessageActions(m)
+                          : null,
                     );
                   },
                 );
@@ -347,6 +420,7 @@ class _MessageBubble extends StatelessWidget {
     required this.onConfirm,
     required this.onBuy,
     required this.onCounter,
+    this.onLongPress,
   });
 
   final Message message;
@@ -358,11 +432,32 @@ class _MessageBubble extends StatelessWidget {
   final VoidCallback onConfirm;
   final VoidCallback onBuy;
   final VoidCallback onCounter;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final fg = isMine ? AppColors.onPrimary : AppColors.label;
+
+    if (message.isRecalled) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+        child: Row(
+          mainAxisAlignment: isMine
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          children: [
+            Text(
+              isMine ? 'You recalled a message' : 'Message recalled',
+              style: text.footnote.copyWith(
+                color: AppColors.tertiaryLabel,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isOffer =
         message.messageType == MessageType.offer &&
         message.offerAmountMyr != null;
@@ -370,6 +465,12 @@ class _MessageBubble extends StatelessWidget {
         !isOffer ||
         message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}';
     final confirmed = message.offerConfirmedAt != null;
+    // Once the seller confirms the buyer's own offer, show it like the
+    // seller's offer bubble (white block, black "Buy now" button) instead of
+    // the usual solid "mine" bubble.
+    final isConfirmedBuyNow = isOffer && isMine && iAmBuyer && confirmed;
+    final bubbleFilled = isMine && !isConfirmedBuyNow;
+    final fg = bubbleFilled ? AppColors.onPrimary : AppColors.label;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space12),
@@ -379,47 +480,54 @@ class _MessageBubble extends StatelessWidget {
             : MainAxisAlignment.start,
         children: [
           Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.75,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space16,
-                vertical: AppSpacing.space12,
-              ),
-              decoration: BoxDecoration(
-                color: isMine ? AppColors.primary : AppColors.groupedBackground,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isOffer)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.space4),
-                      child: Text(
-                        'Offer: ${formatPrice(message.offerAmountMyr!)}',
-                        style: text.headline.copyWith(color: fg),
+            child: GestureDetector(
+              onLongPress: onLongPress,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space16,
+                  vertical: AppSpacing.space12,
+                ),
+                decoration: BoxDecoration(
+                  color: bubbleFilled
+                      ? AppColors.primary
+                      : AppColors.groupedBackground,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isOffer)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: AppSpacing.space4,
+                        ),
+                        child: Text(
+                          'Offer: ${formatPrice(message.offerAmountMyr!)}',
+                          style: text.headline.copyWith(color: fg),
+                        ),
                       ),
-                    ),
-                  if (showBody)
-                    Text(message.body, style: text.body.copyWith(color: fg)),
-                  if (isOffer && listingActive) ...[
-                    const SizedBox(height: AppSpacing.space8),
-                    _OfferActionRow(
-                      isMine: isMine,
-                      iAmBuyer: iAmBuyer,
-                      confirmed: confirmed,
-                      countered: countered,
-                      acting: acting,
-                      fg: fg,
-                      onConfirm: onConfirm,
-                      onBuy: onBuy,
-                      onCounter: onCounter,
-                    ),
+                    if (showBody)
+                      Text(message.body, style: text.body.copyWith(color: fg)),
+                    if (isOffer && listingActive) ...[
+                      const SizedBox(height: AppSpacing.space8),
+                      _OfferActionRow(
+                        isMine: isMine,
+                        iAmBuyer: iAmBuyer,
+                        confirmed: confirmed,
+                        countered: countered,
+                        acting: acting,
+                        fg: fg,
+                        onConfirm: onConfirm,
+                        onBuy: onBuy,
+                        onCounter: onCounter,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -510,7 +618,10 @@ class _OfferActionRow extends StatelessWidget {
           onPressed: acting ? null : onPressed,
           child: acting
               ? const ButtonSpinner()
-              : Text(label, style: text.footnote),
+              : Text(
+                  label,
+                  style: text.footnote.copyWith(color: AppColors.onPrimary),
+                ),
         ),
       );
 }

@@ -75,5 +75,33 @@ void main() {
       expect(back, m);
       expect(back.messageType, MessageType.offer);
     });
+
+    test('isRecalled is false until recalledAt is set', () {
+      final m = Message(
+        id: 'm1',
+        conversationId: 'c1',
+        senderId: 'buyer',
+        body: 'Hi, still available?',
+        createdAt: DateTime.utc(2026, 8, 30, 9),
+      );
+      expect(m.isRecalled, isFalse);
+    });
+
+    test('round-trips a recalled message through JSON', () {
+      final m = Message(
+        id: 'm3',
+        conversationId: 'c1',
+        senderId: 'buyer',
+        body: 'Would you take RM10?',
+        messageType: MessageType.offer,
+        offerAmountMyr: 10,
+        createdAt: DateTime.utc(2026, 8, 30, 9),
+        recalledAt: DateTime.utc(2026, 8, 30, 9, 1),
+      );
+      expect(m.isRecalled, isTrue);
+      final json = m.toJson();
+      expect(json['recalled_at'], isNotNull);
+      expect(Message.fromJson(json), m);
+    });
   });
 }
