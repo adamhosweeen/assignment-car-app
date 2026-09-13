@@ -7,7 +7,6 @@ class BidsSyncStatus {
 
   final DateTime? lastSyncedAt;
 
-  /// Cached rows are worth labelling only once we know they are not live.
   bool get isStale => !online;
 
   BidsSyncStatus copyWith({bool? online, DateTime? lastSyncedAt}) =>
