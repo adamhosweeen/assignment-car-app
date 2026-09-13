@@ -528,15 +528,24 @@ class _MessageBubble extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isImage)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusInput,
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            fullscreenDialog: true,
+                            builder: (_) =>
+                                _FullscreenChatImage(path: message.imagePath!),
+                          ),
                         ),
-                        child: MediaImage(
-                          path: message.imagePath,
-                          bucket: 'chat-media',
-                          width: AppSpacing.chatImageSize,
-                          height: AppSpacing.chatImageSize,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusInput,
+                          ),
+                          child: MediaImage(
+                            path: message.imagePath,
+                            bucket: 'chat-media',
+                            width: AppSpacing.chatImageSize,
+                            height: AppSpacing.chatImageSize,
+                          ),
                         ),
                       ),
                     if (isOffer)
@@ -571,6 +580,38 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Mirrors listing_detail_screen.dart's _FullscreenGallery, minus paging —
+// a chat message carries exactly one photo.
+class _FullscreenChatImage extends StatelessWidget {
+  const _FullscreenChatImage({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.label,
+      appBar: AppBar(
+        backgroundColor: AppColors.label,
+        foregroundColor: AppColors.onPrimary,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: InteractiveViewer(
+        child: Center(
+          child: MediaImage(
+            path: path,
+            bucket: 'chat-media',
+            fit: BoxFit.contain,
+          ),
+        ),
       ),
     );
   }
