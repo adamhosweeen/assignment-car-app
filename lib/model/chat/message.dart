@@ -15,6 +15,7 @@ class Message {
     required this.createdAt,
     this.readAt,
     this.offerConfirmedAt,
+    this.recalledAt,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -29,6 +30,7 @@ class Message {
     createdAt: asDate(json['created_at']),
     readAt: asDateOrNull(json['read_at']),
     offerConfirmedAt: asDateOrNull(json['offer_confirmed_at']),
+    recalledAt: asDateOrNull(json['recalled_at']),
   );
 
   final String id;
@@ -40,6 +42,7 @@ class Message {
   final DateTime createdAt;
   final DateTime? readAt;
   final DateTime? offerConfirmedAt;
+  final DateTime? recalledAt;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -51,9 +54,12 @@ class Message {
     'created_at': createdAt.toIso8601String(),
     'read_at': readAt?.toIso8601String(),
     'offer_confirmed_at': offerConfirmedAt?.toIso8601String(),
+    'recalled_at': recalledAt?.toIso8601String(),
   };
 
   bool isMine(String currentUserId) => senderId == currentUserId;
+
+  bool get isRecalled => recalledAt != null;
 
   Message copyWith({
     String? id,
@@ -65,6 +71,7 @@ class Message {
     DateTime? createdAt,
     Object? readAt = _unset,
     Object? offerConfirmedAt = _unset,
+    Object? recalledAt = _unset,
   }) => Message(
     id: id ?? this.id,
     conversationId: conversationId ?? this.conversationId,
@@ -79,6 +86,9 @@ class Message {
     offerConfirmedAt: identical(offerConfirmedAt, _unset)
         ? this.offerConfirmedAt
         : offerConfirmedAt as DateTime?,
+    recalledAt: identical(recalledAt, _unset)
+        ? this.recalledAt
+        : recalledAt as DateTime?,
   );
 
   @override
@@ -93,7 +103,8 @@ class Message {
           offerAmountMyr == other.offerAmountMyr &&
           createdAt == other.createdAt &&
           readAt == other.readAt &&
-          offerConfirmedAt == other.offerConfirmedAt;
+          offerConfirmedAt == other.offerConfirmedAt &&
+          recalledAt == other.recalledAt;
 
   @override
   int get hashCode => Object.hash(
@@ -106,6 +117,7 @@ class Message {
     createdAt,
     readAt,
     offerConfirmedAt,
+    recalledAt,
   );
 
   @override

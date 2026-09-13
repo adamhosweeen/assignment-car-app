@@ -40,18 +40,35 @@ class SupabaseChatRepository implements ChatRepository {
       unreadCounts[id] = (unreadCounts[id] ?? 0) + 1;
     }
 
-    return rows.map((row) {
-      final map = Map<String, dynamic>.from(row);
-      final messages = (map.remove('messages') as List?) ?? const [];
-      final conversation = Conversation.fromJson(map);
-      return ConversationThread(
-        conversation: conversation,
-        lastMessage: messages.isEmpty
-            ? null
-            : Message.fromJson(messages.first as Map<String, dynamic>),
-        unreadCount: unreadCounts[conversation.id] ?? 0,
-      );
-    }).toList();
+    return rows
+        .map(Map<String, dynamic>.from)
+        .where((row) => !_isHiddenForMe(row, uid))
+        .map((map) {
+          final messages = (map.remove('messages') as List?) ?? const [];
+          final conversation = Conversation.fromJson(map);
+          return ConversationThread(
+            conversation: conversation,
+            lastMessage: messages.isEmpty
+                ? null
+                : Message.fromJson(messages.first as Map<String, dynamic>),
+            unreadCount: unreadCounts[conversation.id] ?? 0,
+          );
+        })
+        .toList();
+  }
+
+  // A conversation hidden by `uid` (swipe-to-delete on the Chat tab) stays
+  // hidden only until the other side's activity moves last_message_at past
+  // the moment it was hidden — there is no separate "unhide".
+  bool _isHiddenForMe(Map<String, dynamic> row, String uid) {
+    final isBuyer = row['buyer_id'] == uid;
+    final deletedAtRaw =
+        row[isBuyer ? 'buyer_deleted_at' : 'seller_deleted_at'] as String?;
+    if (deletedAtRaw == null) return false;
+    final deletedAt = DateTime.parse(deletedAtRaw);
+    final lastMessageAtRaw = row['last_message_at'] as String?;
+    if (lastMessageAtRaw == null) return true;
+    return !DateTime.parse(lastMessageAtRaw).isAfter(deletedAt);
   }
 
   @override
@@ -255,6 +272,11 @@ class SupabaseChatRepository implements ChatRepository {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const Err('You need to be signed in.');
     try {
+      // last_message_at is set server-side by the messages_touch_conversation
+      // trigger (on the same clock as buyer_deleted_at/seller_deleted_at) —
+      // see 0001_schema.sql §4. Setting it here from the device's clock would
+      // race hide_conversation's "later message" check against a different
+      // clock and could leave a hidden thread stuck hidden.
       final row = await _client
           .from('messages')
           .insert({
@@ -266,11 +288,6 @@ class SupabaseChatRepository implements ChatRepository {
           })
           .select()
           .single()
-          .timeout(_fetchTimeout);
-      await _client
-          .from('conversations')
-          .update({'last_message_at': DateTime.now().toUtc().toIso8601String()})
-          .eq('id', conversationId)
           .timeout(_fetchTimeout);
       return Ok(Message.fromJson(row));
     } catch (e) {
@@ -324,6 +341,47 @@ class SupabaseChatRepository implements ChatRepository {
           e.message.contains('Only the buyer') ||
           e.message.contains('Waiting for the seller') ||
           e.message.contains('not an offer')) {
+        return Err(e.message);
+      }
+      return Err(mapError(e));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> recallMessage(String messageId) async {
+    try {
+      await _client
+          .rpc('recall_message', params: {'p_message_id': messageId})
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } on PostgrestException catch (e) {
+      if (e.message.contains('own messages') ||
+          e.message.contains('already been recalled') ||
+          e.message.contains('no longer be recalled') ||
+          e.message.contains('already been confirmed')) {
+        return Err(e.message);
+      }
+      return Err(mapError(e));
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> hideConversation(String conversationId) async {
+    try {
+      await _client
+          .rpc(
+            'hide_conversation',
+            params: {'p_conversation_id': conversationId},
+          )
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } on PostgrestException catch (e) {
+      if (e.message.contains('not a participant') ||
+          e.message.contains('no longer available')) {
         return Err(e.message);
       }
       return Err(mapError(e));

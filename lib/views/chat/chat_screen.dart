@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:assignment/control/user/auth/auth_repository.dart';
 import 'package:assignment/control/chat/chat_providers.dart';
+import 'package:assignment/control/chat/chat_repository.dart';
 import 'package:assignment/control/listings/listings_providers.dart';
 import 'package:assignment/control/listings/listings_repository.dart';
 import 'package:assignment/control/user/user_providers.dart';
@@ -14,15 +15,60 @@ import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/utils/formatters.dart';
+import 'package:assignment/utils/result.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/user/user_avatar.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  // Ids hidden by a swipe whose server confirmation (the next realtime-driven
+  // refetch, which will simply stop including the row) hasn't landed yet.
+  // Once a thread genuinely drops out of `threads` this id is pruned, so a
+  // later message on the same conversation can bring it back.
+  final Set<String> _pendingHiddenIds = {};
 
   Future<void> _refresh(BuildContext context) async {
     context.read<ConversationsFeed>().restart();
     await Future<void>.delayed(const Duration(milliseconds: 400));
+  }
+
+  void _prunePendingHidden(List<ConversationThread> threads) {
+    if (_pendingHiddenIds.isEmpty) return;
+    final ids = threads.map((t) => t.conversation.id).toSet();
+    final stale = _pendingHiddenIds.difference(ids);
+    if (stale.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _pendingHiddenIds.removeAll(stale));
+    });
+  }
+
+  // Calls the RPC before the row leaves the tree; the local hide only happens
+  // in onDismissed. Returning false the other way around — hiding, then
+  // discovering the call failed — would need to un-hide an already-dismissed
+  // Dismissible, which trips Flutter's "still part of the tree" assertion.
+  Future<bool> _confirmHide(ConversationThread thread) async {
+    final res = await context.read<ChatRepository>().hideConversation(
+      thread.conversation.id,
+    );
+    if (!mounted) return false;
+    if (res case Err(:final message)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+      return false;
+    }
+    return true;
+  }
+
+  void _forgetHidden(ConversationThread thread) {
+    setState(() => _pendingHiddenIds.add(thread.conversation.id));
   }
 
   @override
@@ -54,10 +100,15 @@ class ChatScreen extends StatelessWidget {
         onRetry: () => context.read<ConversationsFeed>().restart(),
       );
     }
-    final threads = snapshot.data;
-    if (threads == null) {
+    final allThreads = snapshot.data;
+    if (allThreads == null) {
       return const Center(child: CircularProgressIndicator());
     }
+    _prunePendingHidden(allThreads);
+    final threads = [
+      for (final t in allThreads)
+        if (!_pendingHiddenIds.contains(t.conversation.id)) t,
+    ];
     if (threads.isEmpty) {
       return const _StateMessage(
         icon: Icons.chat_bubble_outline,
@@ -74,16 +125,45 @@ class ChatScreen extends StatelessWidget {
           GroupedSection(
             children: [
               for (final thread in threads)
-                _ConversationRow(
-                  thread: thread,
-                  currentUserId: uid,
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/chat/${thread.conversation.id}',
-                    arguments: thread.conversation,
+                Dismissible(
+                  key: ValueKey(thread.conversation.id),
+                  direction: DismissDirection.endToStart,
+                  background: const ColoredBox(
+                    color: AppColors.destructive,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: AppSpacing.space16),
+                        child: Icon(
+                          Icons.delete_outline,
+                          color: AppColors.onPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  confirmDismiss: (_) => _confirmHide(thread),
+                  onDismissed: (_) => _forgetHidden(thread),
+                  child: _ConversationRow(
+                    thread: thread,
+                    currentUserId: uid,
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      '/chat/${thread.conversation.id}',
+                      arguments: thread.conversation,
+                    ),
                   ),
                 ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+            child: Text(
+              'Swipe left to hide a chat.',
+              style: Theme.of(
+                context,
+              ).textTheme.footnote.copyWith(color: AppColors.secondaryLabel),
+            ),
           ),
         ],
       ),
@@ -140,6 +220,7 @@ class _ConversationRowState extends State<_ConversationRow> {
   String get _preview {
     final last = widget.thread.lastMessage;
     if (last == null) return 'No messages yet';
+    if (last.isRecalled) return 'Message recalled';
     if (last.messageType == MessageType.offer && last.offerAmountMyr != null) {
       return 'Offer: ${formatPrice(last.offerAmountMyr!)}';
     }
