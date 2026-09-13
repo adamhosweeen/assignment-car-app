@@ -1066,7 +1066,7 @@ $$;
 revoke all on function public.buy_at_offer(uuid) from public;
 grant execute on function public.buy_at_offer(uuid) to authenticated;
 
-create function public.start_auction(
+-- ═══ 9. Auction/Bid ════════════════════════════════════════════════════
   p_listing_id       uuid,
   p_starting_price   integer,
   p_min_increment    integer,
@@ -1389,7 +1389,7 @@ $$;
 revoke all on function public.settle_due_auctions() from public, anon;
 grant execute on function public.settle_due_auctions() to authenticated;
 
--- ═══ 9. Account deletion ════════════════════════════════════════════════════
+-- ═══ 10. Account deletion ════════════════════════════════════════════════════
 -- Clients cannot delete auth users (that needs the service role, which never
 -- ships in the app). Deletes the caller's rows in FK-safe order, then the auth
 -- user, which cascades the profile. Uploaded photos are removed by the app via
@@ -1419,7 +1419,7 @@ $$;
 revoke all on function public.delete_account() from public;
 grant execute on function public.delete_account() to authenticated;
 
--- ═══ 10. Inbox ═══════════════════════════════════════════════════════════════
+-- ═══ 11. Inbox ═══════════════════════════════════════════════════════════════
 -- A small in-app message list. Rows are written ONLY by the two triggers
 -- below (SECURITY DEFINER, so they bypass RLS); the app reads them when the
 -- Inbox screen opens and may mark one read or delete it. Deliberately simple:
@@ -1538,7 +1538,7 @@ create trigger listings_notify_match
   after insert or update of status on public.listings
   for each row execute function public.notify_listing_match();
 
--- ═══ 11. Market insights ════════════════════════════════════════════════════
+-- ═══ 12. Market insights ════════════════════════════════════════════════════
 -- One row ('latest') holding a precomputed snapshot of JPJ car registrations
 -- (data.gov.my, CC BY 4.0), built offline by tool/build_car_popularity.dart
 -- and published by 0002_seed.sql. Read-only for the app.
@@ -1556,7 +1556,7 @@ alter table public.car_popularity enable row level security;
 create policy "car_popularity_select" on public.car_popularity
   for select to authenticated using (true);
 
--- ═══ 12. Realtime + storage ══════════════════════════════════════════════════
+-- ═══ 13. Realtime + storage ══════════════════════════════════════════════════
 -- `add table` errors if the table is already in the publication, so each one
 -- is guarded to keep this file re-runnable.
 do $$
