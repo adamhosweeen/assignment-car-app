@@ -42,7 +42,11 @@ class SupabaseAuthRepository implements AuthRepository {
 
   static const String _avatarBucket = 'avatars';
 
+  static const Duration _timeout = Duration(seconds: 8);
+
   AppUser? _enriched;
+
+  int _generation = 0;
 
   final StreamController<AppUser?> _profileChanges =
       StreamController<AppUser?>.broadcast();
@@ -81,23 +85,44 @@ class SupabaseAuthRepository implements AuthRepository {
     return const CarInterests();
   }
 
-  Future<void> _refreshEnriched() async {
+  Future<void> _refreshEnriched({bool newSession = false}) async {
+    final generation = ++_generation;
     final user = _client.auth.currentUser;
     if (user == null) {
       _enriched = null;
-    } else {
-      try {
-        final row = await _client
-            .from('users')
-            .select(_profileColumns)
-            .eq('id', user.id)
-            .single();
-        _enriched = AppUser.fromJson(row);
-        await _cache.save(_enriched!);
-      } catch (_) {
-        _enriched = null;
-      }
+      _emit();
+      return;
     }
+    try {
+      final row = await _client
+          .from('users')
+          .select(_profileColumns)
+          .eq('id', user.id)
+          .single()
+          .timeout(_timeout);
+      if (generation != _generation) return;
+      await _adopt(
+        AppUser.fromJson(row),
+        newSession ? _cache.insert : _cache.update,
+      );
+    } catch (_) {
+      if (generation == _generation) _emit();
+    }
+  }
+
+  Future<void> _adopt(
+    AppUser user,
+    Future<void> Function(AppUser) writeCache,
+  ) async {
+    _generation++;
+    _enriched = user;
+    try {
+      await writeCache(user);
+    } catch (_) {}
+    _emit();
+  }
+
+  void _emit() {
     if (!_profileChanges.isClosed) _profileChanges.add(currentUser);
   }
 
@@ -120,7 +145,7 @@ class SupabaseAuthRepository implements AuthRepository {
         email: email,
         password: password,
       );
-      await _refreshEnriched();
+      await _refreshEnriched(newSession: true);
       final profile = _toAppUser(res.user);
       if (profile == null) {
         return const Err('Sign-in failed. Please try again.');
@@ -161,7 +186,7 @@ class SupabaseAuthRepository implements AuthRepository {
           'Check your inbox, then log in.',
         );
       }
-      await _refreshEnriched();
+      await _refreshEnriched(newSession: true);
       final profile = _toAppUser(res.user);
       if (profile == null) {
         return const Err('Sign-up failed. Please try again.');
@@ -193,13 +218,23 @@ class SupabaseAuthRepository implements AuthRepository {
       if (state != null) updates['state'] = state;
       if (interests != null) updates['interests'] = interests.toJson();
       if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
-      await _client.from('users').update(updates).eq('id', user.id);
-      await _refreshEnriched();
-      final profile = _toAppUser(user);
-      if (profile == null) {
-        return const Err('Could not save your profile. Please try again.');
-      }
-      return Ok(profile);
+      final row = updates.isEmpty
+          ? await _client
+                .from('users')
+                .select(_profileColumns)
+                .eq('id', user.id)
+                .single()
+                .timeout(_timeout)
+          : await _client
+                .from('users')
+                .update(updates)
+                .eq('id', user.id)
+                .select(_profileColumns)
+                .single()
+                .timeout(_timeout);
+      final updated = AppUser.fromJson(row);
+      await _adopt(updated, _cache.update);
+      return Ok(updated);
     } catch (e) {
       return Err(mapError(e));
     }
@@ -242,17 +277,17 @@ class SupabaseAuthRepository implements AuthRepository {
     }
     try {
       final previousUrl = _toAppUser(user)?.avatarUrl;
-      await _client
+      final row = await _client
           .from('users')
           .update({'avatar_url': null})
-          .eq('id', user.id);
+          .eq('id', user.id)
+          .select(_profileColumns)
+          .single()
+          .timeout(_timeout);
+      final updated = AppUser.fromJson(row);
+      await _adopt(updated, _cache.update);
       await _removeAvatarObject(previousUrl);
-      await _refreshEnriched();
-      final profile = _toAppUser(user);
-      if (profile == null) {
-        return const Err('Could not update your photo. Please try again.');
-      }
-      return Ok(profile);
+      return Ok(updated);
     } catch (e) {
       return Err(mapError(e));
     }
@@ -296,7 +331,8 @@ class SupabaseAuthRepository implements AuthRepository {
 
       await _client.rpc<void>('delete_account');
 
-      await _cache.clear();
+      _generation++;
+      await _cache.delete(user.id);
       await _otherUsers.clear();
       await _inboxCache.clear();
       await _chatCache.clear();
@@ -313,6 +349,7 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    _generation++;
     await _cache.clear();
     await _otherUsers.clear();
     await _inboxCache.clear();

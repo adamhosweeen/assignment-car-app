@@ -15,10 +15,32 @@ class UserCacheRepository {
 
   AppUser? get cached => _cached;
 
-  Future<void> save(AppUser user) async {
+  Future<void> insert(AppUser user) async {
     _cached = user;
-    await _db.delete('user_cache');
-    await _db.insert('user_cache', userToRow(user));
+    await _db.transaction((txn) async {
+      await txn.delete('user_cache', where: 'id <> ?', whereArgs: [user.id]);
+      await txn.insert(
+        'user_cache',
+        userToRow(user),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
+
+  Future<void> update(AppUser user) async {
+    _cached = user;
+    final changed = await _db.update(
+      'user_cache',
+      userToRow(user),
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+    if (changed == 0) await insert(user);
+  }
+
+  Future<void> delete(String id) async {
+    if (_cached?.id == id) _cached = null;
+    await _db.delete('user_cache', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> clear() async {
