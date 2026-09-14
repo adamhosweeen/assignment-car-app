@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 
 import 'package:assignment/control/app_navigation.dart';
 import 'package:assignment/control/user/auth/auth_repository.dart';
-import 'package:assignment/control/listings/draft_repository.dart';
-import 'package:assignment/model/listing/listing_draft.dart';
 import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_theme.dart';
@@ -78,27 +76,12 @@ class _FakeAuth implements AuthRepository {
   }
 }
 
-class _NoDraftRepo implements DraftRepository {
-  @override
-  bool get hasDraft => false;
-
-  @override
-  ListingDraft? load() => null;
-
-  @override
-  Future<void> save(ListingDraft draft) async {}
-
-  @override
-  Future<void> clear() async {}
-}
-
 Widget _app(AppUser profile) {
   final navigator = AppNavigator();
   return MultiProvider(
     providers: [
       Provider<AppNavigator>.value(value: navigator),
       Provider<AuthRepository>.value(value: _FakeAuth(profile)),
-      Provider<DraftRepository>.value(value: _NoDraftRepo()),
       Provider<AppUser?>.value(value: profile),
     ],
     child: MaterialApp(

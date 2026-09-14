@@ -2,8 +2,8 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:assignment/model/user/inbox_message.dart';
 
-class InboxCacheRepository {
-  InboxCacheRepository(this._db);
+class InboxCache {
+  InboxCache(this._db);
 
   final Database _db;
 

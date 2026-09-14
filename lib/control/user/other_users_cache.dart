@@ -1,10 +1,10 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:assignment/control/user/auth/user_cache_repository.dart';
+import 'package:assignment/control/user/auth/user_cache.dart';
 import 'package:assignment/model/user/app_user.dart';
 
-class OtherUsersCacheRepository {
-  OtherUsersCacheRepository(this._db);
+class OtherUsersCache {
+  OtherUsersCache(this._db);
 
   final Database _db;
 
