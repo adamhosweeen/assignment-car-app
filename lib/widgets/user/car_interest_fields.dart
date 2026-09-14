@@ -17,6 +17,8 @@ const String _noPreference = 'No preference';
 
 const int _budgetMaxDigits = 9;
 
+const int _minBudgetMyr = 1000;
+
 class CarInterestFields extends StatefulWidget {
   const CarInterestFields({
     super.key,
@@ -29,7 +31,9 @@ class CarInterestFields extends StatefulWidget {
 
   static String? _amountError(int? amount) {
     if (amount == null) return null;
-    if (amount <= 0) return 'Enter an amount more than RM 0.';
+    if (amount <= _minBudgetMyr) {
+      return 'Enter an amount more than ${formatPrice(_minBudgetMyr)}.';
+    }
     if (amount > kMaxPriceMyr) {
       return 'That’s too high. Enter an amount under ${formatPrice(kMaxPriceMyr)}.';
     }
