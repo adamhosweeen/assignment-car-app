@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/control/user/auth/user_cache_repository.dart';
+import 'package:assignment/control/user/auth/user_cache.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/model/user/app_user.dart';

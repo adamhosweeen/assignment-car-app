@@ -9,6 +9,8 @@ abstract interface class AdminRepository {
 
   Future<Result<void>> resolveReport(String reportId);
 
+  Future<Result<void>> deleteReport(String reportId);
+
   Future<Result<void>> setBanned(String userId, bool banned);
 
   Future<Result<void>> deleteUser(String userId, {String? avatarUrl});

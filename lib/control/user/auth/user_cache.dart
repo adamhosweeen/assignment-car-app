@@ -6,8 +6,8 @@ import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/utils/json.dart';
 import 'package:assignment/model/user/app_user.dart';
 
-class UserCacheRepository {
-  UserCacheRepository(this._db, Map<String, Object?>? initialRow)
+class UserCache {
+  UserCache(this._db, Map<String, Object?>? initialRow)
     : _cached = initialRow == null ? null : userFromRow(initialRow);
 
   final Database _db;

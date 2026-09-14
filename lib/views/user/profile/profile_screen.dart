@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:assignment/control/user/auth/auth_repository.dart';
-import 'package:assignment/control/listings/draft_repository.dart';
 import 'package:assignment/control/services/image_utils.dart';
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/utils/app_spacing.dart';
@@ -78,7 +77,6 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _confirmDeleteAccount(BuildContext context) async {
     final auth = context.read<AuthRepository>();
-    final drafts = context.read<DraftRepository>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -111,13 +109,10 @@ class ProfileScreen extends StatelessWidget {
     final res = await auth.deleteAccount();
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
-    switch (res) {
-      case Ok():
-        await drafts.clear();
-      case Err(:final message):
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(message)));
+    if (res case Err(:final message)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

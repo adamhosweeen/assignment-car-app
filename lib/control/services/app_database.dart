@@ -175,10 +175,6 @@ class AppDatabase {
         ''');
         await _createBidTables(db);
       },
-      // onCreate only runs when the file does not exist yet, so the bid tables
-      // would never reach a device that has already opened carsell_v3.db.
-      // Creating them here instead of renaming the file keeps the caches — and
-      // any half-finished sell draft, which lives in listing_draft.
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createBidTables(db);
         if (oldVersion < 3) await _addChatRecallColumns(db);
@@ -187,8 +183,6 @@ class AppDatabase {
     );
   }
 
-  /// Adds message recall support to a chat cache created before version 3.
-  /// A fresh install already has both columns from onCreate above.
   static Future<void> _addChatRecallColumns(Database db) async {
     await db.execute('ALTER TABLE message_cache ADD COLUMN recalled_at TEXT');
     await db.execute(
@@ -196,14 +190,10 @@ class AppDatabase {
     );
   }
 
-  /// Adds image-message support to a chat cache created before version 4.
-  /// A fresh install already has the column from onCreate above.
   static Future<void> _addChatImageColumn(Database db) async {
     await db.execute('ALTER TABLE message_cache ADD COLUMN image_path TEXT');
   }
 
-  /// The bidding module's cache. Written by both paths above, so it must stay
-  /// idempotent: a device upgrading and a fresh install end up identical.
   static Future<void> _createBidTables(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS auction_cache (

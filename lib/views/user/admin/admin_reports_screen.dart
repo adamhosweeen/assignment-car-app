@@ -80,6 +80,34 @@ class _ReportsTabState extends State<ReportsTab> {
     await _runAction(() => admin.setBanned(report.reportedId, ban));
   }
 
+  Future<void> _confirmDeleteReport(Report report) async {
+    final admin = context.read<AdminRepository>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete this report?'),
+        content: Text(
+          'It is removed for good. This does not ban or unban '
+          '${report.reported}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _runAction(() => admin.deleteReport(report.id));
+  }
+
   void _showDetails(Report report) {
     final text = Theme.of(context).textTheme;
     final admin = context.read<AdminRepository>();
@@ -146,6 +174,17 @@ class _ReportsTabState extends State<ReportsTab> {
                   child: const Text('Mark resolved'),
                 ),
               ],
+              const SizedBox(height: AppSpacing.space8),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.destructive,
+                ),
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  _confirmDeleteReport(report);
+                },
+                child: const Text('Delete report'),
+              ),
             ],
           ),
         ),

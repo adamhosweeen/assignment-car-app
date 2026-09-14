@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:assignment/control/user/inbox/inbox_cache_repository.dart';
+import 'package:assignment/control/user/inbox/inbox_cache.dart';
 import 'package:assignment/model/user/inbox_message.dart';
 
 void main() {

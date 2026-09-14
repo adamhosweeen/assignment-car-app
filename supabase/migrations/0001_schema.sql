@@ -61,6 +61,7 @@ drop function if exists public.is_banned(uuid)                   cascade;
 drop function if exists public.admin_user_stats()                cascade;
 drop function if exists public.admin_reports()                   cascade;
 drop function if exists public.admin_resolve_report(uuid)        cascade;
+drop function if exists public.admin_delete_report(uuid)         cascade;
 drop function if exists public.admin_set_banned(uuid, boolean)   cascade;
 drop function if exists public.admin_delete_user(uuid)            cascade;
 drop function if exists public.delete_account()                  cascade;
@@ -878,6 +879,21 @@ end;
 $$;
 revoke all on function public.admin_resolve_report(uuid) from public, anon;
 grant execute on function public.admin_resolve_report(uuid) to authenticated;
+
+create function public.admin_delete_report(report_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'admin only' using errcode = '42501';
+  end if;
+  delete from public.reports where id = report_id;
+end;
+$$;
+revoke all on function public.admin_delete_report(uuid) from public, anon;
+grant execute on function public.admin_delete_report(uuid) to authenticated;
 
 -- banned_until = 'infinity' makes GoTrue refuse logins and token refreshes,
 -- so the ban holds without the service-role key ever reaching the app.

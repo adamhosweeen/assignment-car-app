@@ -2,14 +2,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:assignment/control/user/admin/admin_repository.dart';
 import 'package:assignment/control/services/error_mapper.dart';
-import 'package:assignment/control/user/auth/supabase_auth_repository.dart'
+import 'package:assignment/control/user/auth/auth_remote.dart'
     show avatarObjectPath;
 import 'package:assignment/model/user/app_user.dart';
 import 'package:assignment/model/user/report.dart';
 import 'package:assignment/utils/result.dart';
 
-class SupabaseAdminRepository implements AdminRepository {
-  SupabaseAdminRepository(this._client);
+class AdminRepositoryImpl implements AdminRepository {
+  AdminRepositoryImpl(this._client);
 
   final SupabaseClient _client;
   static const Duration _fetchTimeout = Duration(seconds: 8);
@@ -47,6 +47,18 @@ class SupabaseAdminRepository implements AdminRepository {
     try {
       await _client
           .rpc<void>('admin_resolve_report', params: {'report_id': reportId})
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteReport(String reportId) async {
+    try {
+      await _client
+          .rpc<void>('admin_delete_report', params: {'report_id': reportId})
           .timeout(_fetchTimeout);
       return const Ok(null);
     } catch (e) {
