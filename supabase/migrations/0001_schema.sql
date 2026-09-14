@@ -342,7 +342,7 @@ create table public.messages (
   sender_id          uuid not null references public.users (id),
   body               text,
   message_type       text not null default 'text'
-                       check (message_type in ('text', 'offer', 'image')),
+                       check (message_type in ('text', 'offer', 'image', 'sold')),
   offer_amount_myr   int,
   offer_confirmed_at timestamptz,
   -- Storage object path for an image message.
@@ -515,6 +515,9 @@ begin
   end if;
   if msg.sender_id <> uid then
     raise exception 'You can only recall your own messages.';
+  end if;
+  if msg.message_type = 'sold' then
+    raise exception 'This message cannot be recalled.';
   end if;
   if msg.recalled_at is not null then
     raise exception 'This message has already been recalled.';
@@ -1027,8 +1030,8 @@ begin
     raise exception 'not signed in';
   end if;
 
-  select m.id, m.message_type, m.offer_amount_myr, m.sender_id,
-         m.offer_confirmed_at, c.buyer_id, c.listing_id
+  select m.id, m.conversation_id, m.message_type, m.offer_amount_myr,
+         m.sender_id, m.offer_confirmed_at, c.buyer_id, c.listing_id
     into msg
     from public.messages m
     join public.conversations c on c.id = m.conversation_id
@@ -1062,6 +1065,14 @@ begin
 
   perform public.record_purchase(
     msg.listing_id, uid, msg.offer_amount_myr, 'chat_offer'
+  );
+
+  insert into public.messages
+    (conversation_id, sender_id, body, message_type, offer_amount_myr)
+  values (
+    msg.conversation_id, uid,
+    'Car sold at RM ' || to_char(msg.offer_amount_myr, 'FM999,999,999'),
+    'sold', msg.offer_amount_myr
   );
 end;
 $$;

@@ -42,6 +42,9 @@ already has data instead of re-running `0001`.
   and a private `chat-media` storage bucket (scoped to the two people in the
   conversation) for the "send a photo" button in a chat thread. Without it,
   picking a photo fails to upload (storage bucket not found / RLS denies it).
+- `0004_chat_sold_message.sql` — adds `message_type = 'sold'` and updates
+  `buy_at_offer` to post a "Car sold at RM X" message into the conversation
+  once a chat-offer purchase completes.
 
 A fresh project that has just run `0001` already contains all of them; running
 the patches anyway changes nothing.

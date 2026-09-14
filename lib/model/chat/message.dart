@@ -2,7 +2,7 @@ import 'package:assignment/utils/json.dart';
 
 const Object _unset = Object();
 
-enum MessageType { text, offer, image }
+enum MessageType { text, offer, image, sold }
 
 class Message {
   const Message({

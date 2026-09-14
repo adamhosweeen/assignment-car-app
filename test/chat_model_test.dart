@@ -92,6 +92,21 @@ void main() {
       expect(Message.fromJson(json), m);
     });
 
+    test('round-trips a sold message through JSON', () {
+      final m = Message(
+        id: 'm5',
+        conversationId: 'c1',
+        senderId: 'buyer',
+        body: 'Car sold at RM 40,000',
+        messageType: MessageType.sold,
+        offerAmountMyr: 40000,
+        createdAt: DateTime.utc(2026, 8, 30, 9),
+      );
+      final json = m.toJson();
+      expect(json['message_type'], 'sold');
+      expect(Message.fromJson(json), m);
+    });
+
     test('isRecalled is false until recalledAt is set', () {
       final m = Message(
         id: 'm1',

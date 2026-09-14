@@ -376,7 +376,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       onBuy: () =>
                           _goToOfferCheckout(m, conversation.listingId),
                       onCounter: _makeOffer,
-                      onLongPress: isMine && !m.isRecalled
+                      onLongPress:
+                          isMine &&
+                              !m.isRecalled &&
+                              m.messageType != MessageType.sold
                           ? () => _showMessageActions(m)
                           : null,
                     );
@@ -466,6 +469,39 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+
+    if (message.messageType == MessageType.sold) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space12,
+              vertical: AppSpacing.space8,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.successMuted,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusNotice),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  size: AppSpacing.iconSm,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: AppSpacing.space8),
+                Text(
+                  message.body,
+                  style: text.footnote.copyWith(color: AppColors.success),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     if (message.isRecalled) {
       return Padding(
