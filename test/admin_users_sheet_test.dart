@@ -42,6 +42,9 @@ class _FakeAdmin implements AdminRepository {
   Future<Result<void>> resolveReport(String reportId) async => const Ok(null);
 
   @override
+  Future<Result<void>> deleteReport(String reportId) async => const Ok(null);
+
+  @override
   Future<Result<void>> setBanned(String userId, bool banned) async =>
       const Ok(null);
 

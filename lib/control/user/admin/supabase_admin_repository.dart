@@ -55,6 +55,18 @@ class SupabaseAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<Result<void>> deleteReport(String reportId) async {
+    try {
+      await _client
+          .rpc<void>('admin_delete_report', params: {'report_id': reportId})
+          .timeout(_fetchTimeout);
+      return const Ok(null);
+    } catch (e) {
+      return Err(mapError(e));
+    }
+  }
+
+  @override
   Future<Result<void>> setBanned(String userId, bool banned) async {
     try {
       await _client
