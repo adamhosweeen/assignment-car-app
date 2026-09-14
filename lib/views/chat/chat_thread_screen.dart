@@ -52,8 +52,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
   List<Message>? _seenMessages;
 
-  final Set<String> _counteredOfferIds = {};
-
   @override
   void initState() {
     super.initState();
@@ -165,14 +163,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
     }
-  }
-
-  Future<void> _counterOffer(Message original) async {
-    final amount = await _promptForOfferAmount(context);
-    if (amount == null) return;
-    final sent = await _send(offerAmountMyr: amount);
-    if (!mounted || !sent) return;
-    setState(() => _counteredOfferIds.add(original.id));
   }
 
   Future<void> _confirmOffer(Message offer) async {
@@ -381,11 +371,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       iAmBuyer: uid != null && uid == conversation.buyerId,
                       listingActive: listing?.status == ListingStatus.selling,
                       acting: _actingOnMessageId == m.id,
-                      countered: _counteredOfferIds.contains(m.id),
+                      superseded: _offerSuperseded(msgs, i),
                       onConfirm: () => _confirmOffer(m),
                       onBuy: () =>
                           _goToOfferCheckout(m, conversation.listingId),
-                      onCounter: () => _counterOffer(m),
+                      onCounter: _makeOffer,
                       onLongPress: isMine && !m.isRecalled
                           ? () => _showMessageActions(m)
                           : null,
@@ -433,6 +423,21 @@ class _CenteredNote extends StatelessWidget {
   }
 }
 
+// True if `msgs[index]` is a pending offer that a later offer has moved past.
+bool _offerSuperseded(List<Message> msgs, int index) {
+  final m = msgs[index];
+  if (m.messageType != MessageType.offer || m.offerConfirmedAt != null) {
+    return false;
+  }
+  for (var i = index + 1; i < msgs.length; i++) {
+    final other = msgs[i];
+    if (other.messageType == MessageType.offer && !other.isRecalled) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
@@ -440,7 +445,7 @@ class _MessageBubble extends StatelessWidget {
     required this.iAmBuyer,
     required this.listingActive,
     required this.acting,
-    required this.countered,
+    required this.superseded,
     required this.onConfirm,
     required this.onBuy,
     required this.onCounter,
@@ -452,7 +457,7 @@ class _MessageBubble extends StatelessWidget {
   final bool iAmBuyer;
   final bool listingActive;
   final bool acting;
-  final bool countered;
+  final bool superseded;
   final VoidCallback onConfirm;
   final VoidCallback onBuy;
   final VoidCallback onCounter;
@@ -564,7 +569,7 @@ class _MessageBubble extends StatelessWidget {
                         isMine: isMine,
                         iAmBuyer: iAmBuyer,
                         confirmed: confirmed,
-                        countered: countered,
+                        superseded: superseded,
                         acting: acting,
                         fg: fg,
                         onConfirm: onConfirm,
@@ -619,7 +624,7 @@ class _OfferActionRow extends StatelessWidget {
     required this.isMine,
     required this.iAmBuyer,
     required this.confirmed,
-    required this.countered,
+    required this.superseded,
     required this.acting,
     required this.fg,
     required this.onConfirm,
@@ -630,7 +635,7 @@ class _OfferActionRow extends StatelessWidget {
   final bool isMine;
   final bool iAmBuyer;
   final bool confirmed;
-  final bool countered;
+  final bool superseded;
   final bool acting;
   final Color fg;
   final VoidCallback onConfirm;
@@ -641,16 +646,16 @@ class _OfferActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
 
+    if (superseded) {
+      return Text(
+        'A newer price was proposed',
+        style: text.caption.copyWith(color: fg),
+      );
+    }
     if (!isMine && iAmBuyer && !confirmed) {
       return _button(text, 'Confirm and buy', onBuy);
     }
     if (!isMine && !iAmBuyer && !confirmed) {
-      if (countered) {
-        return Text(
-          'You proposed a new price',
-          style: text.caption.copyWith(color: fg),
-        );
-      }
       return Row(
         children: [
           Expanded(child: _button(text, 'Confirm', onConfirm)),
