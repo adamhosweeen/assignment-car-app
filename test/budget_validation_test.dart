@@ -8,7 +8,7 @@ import 'package:assignment/utils/app_theme.dart';
 import 'package:assignment/widgets/user/car_interest_fields.dart';
 
 const _tooHigh = 'That’s too high. Enter an amount under RM 100,000,000.';
-const _notPositive = 'Enter an amount more than RM 0.';
+const _belowMinimum = 'Enter an amount more than RM 1,000.';
 const _maxBelowMin = 'The maximum can’t be lower than the minimum.';
 
 CarInterests _budget({int? min, int? max}) =>
@@ -32,10 +32,22 @@ void main() {
       );
     });
 
-    test('RM 0 is refused on either side, even alone', () {
-      expect(CarInterestFields.budgetMinError(_budget(min: 0)), _notPositive);
-      expect(CarInterestFields.budgetMaxError(_budget(max: 0)), _notPositive);
-      expect(CarInterestFields.isBudgetValid(_budget(min: 0)), isFalse);
+    test('RM 1,000 or less is refused on either side, even alone', () {
+      expect(CarInterestFields.budgetMinError(_budget(min: 0)), _belowMinimum);
+      expect(
+        CarInterestFields.budgetMinError(_budget(min: 1000)),
+        _belowMinimum,
+      );
+      expect(
+        CarInterestFields.budgetMaxError(_budget(max: 1000)),
+        _belowMinimum,
+      );
+      expect(CarInterestFields.isBudgetValid(_budget(min: 1000)), isFalse);
+    });
+
+    test('anything above RM 1,000 is allowed', () {
+      expect(CarInterestFields.budgetMinError(_budget(min: 1001)), isNull);
+      expect(CarInterestFields.budgetMaxError(_budget(max: 1001)), isNull);
     });
 
     test('the same ceiling as a listing price', () {
@@ -105,7 +117,7 @@ void main() {
 
       await tester.enterText(budgetField('Min'), '0');
       await tester.pump();
-      expect(find.text(_notPositive), findsOneWidget);
+      expect(find.text(_belowMinimum), findsOneWidget);
     });
 
     testWidgets('shows RM on both fields, like the listing price', (
