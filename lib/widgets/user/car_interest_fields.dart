@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:assignment/model/listing/car_catalog.dart';
+import 'package:assignment/model/listing/listing_draft.dart' show kMaxPriceMyr;
 import 'package:assignment/model/user/car_interests.dart';
 import 'package:assignment/model/listing/listing_enums.dart';
 import 'package:assignment/utils/app_spacing.dart';
 import 'package:assignment/utils/app_theme.dart';
+import 'package:assignment/utils/formatters.dart';
 import 'package:assignment/widgets/common/grouped_section.dart';
 import 'package:assignment/widgets/common/multi_select_sheet.dart';
 import 'package:assignment/widgets/common/select_sheet.dart';
 import 'package:assignment/widgets/common/sell_step_scaffold.dart';
 
 const String _noPreference = 'No preference';
+
+const int _budgetMaxDigits = 9;
 
 class CarInterestFields extends StatefulWidget {
   const CarInterestFields({
@@ -22,6 +26,35 @@ class CarInterestFields extends StatefulWidget {
 
   final CarInterests value;
   final ValueChanged<CarInterests> onChanged;
+
+  static String? _amountError(int? amount) {
+    if (amount == null) return null;
+    if (amount <= 0) return 'Enter an amount more than RM 0.';
+    if (amount > kMaxPriceMyr) {
+      return 'That’s too high. Enter an amount under ${formatPrice(kMaxPriceMyr)}.';
+    }
+    return null;
+  }
+
+  static String? budgetMinError(CarInterests interests) =>
+      _amountError(interests.budgetMinMyr);
+
+  static String? budgetMaxError(CarInterests interests) {
+    final own = _amountError(interests.budgetMaxMyr);
+    if (own != null) return own;
+    final min = interests.budgetMinMyr;
+    final max = interests.budgetMaxMyr;
+    if (min != null &&
+        max != null &&
+        budgetMinError(interests) == null &&
+        max < min) {
+      return 'The maximum can’t be lower than the minimum.';
+    }
+    return null;
+  }
+
+  static bool isBudgetValid(CarInterests interests) =>
+      budgetMinError(interests) == null && budgetMaxError(interests) == null;
 
   @override
   State<CarInterestFields> createState() => _CarInterestFieldsState();
@@ -151,34 +184,86 @@ class _CarInterestFieldsState extends State<CarInterestFields> {
           ],
         ),
         const SizedBox(height: AppSpacing.space20),
-        const FieldLabel('Budget (RM)'),
+        const FieldLabel('Budget'),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: TextField(
+              child: _BudgetField(
                 controller: _budgetMin,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(hintText: 'Min'),
-                onChanged: (v) => widget.onChanged(
-                  widget.value.copyWith(budgetMinMyr: int.tryParse(v)),
-                ),
+                hint: 'Min',
+                error: CarInterestFields.budgetMinError(value),
+                onChanged: (v) =>
+                    widget.onChanged(widget.value.copyWith(budgetMinMyr: v)),
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
-              child: TextField(
+              child: _BudgetField(
                 controller: _budgetMax,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(hintText: 'Max'),
-                onChanged: (v) => widget.onChanged(
-                  widget.value.copyWith(budgetMaxMyr: int.tryParse(v)),
-                ),
+                hint: 'Max',
+                error: CarInterestFields.budgetMaxError(value),
+                onChanged: (v) =>
+                    widget.onChanged(widget.value.copyWith(budgetMaxMyr: v)),
               ),
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+class _BudgetField extends StatelessWidget {
+  const _BudgetField({
+    required this.controller,
+    required this.hint,
+    required this.error,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final String? error;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final message = error;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(_budgetMaxDigits),
+          ],
+          decoration: InputDecoration(
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.space12,
+                right: AppSpacing.space8,
+              ),
+              child: Text('RM', style: text.body),
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
+            hintText: hint,
+          ),
+          onChanged: (v) => onChanged(int.tryParse(v)),
+        ),
+        if (message != null) ...[
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            message,
+            style: text.footnote.copyWith(color: AppColors.destructive),
+          ),
+        ],
       ],
     );
   }

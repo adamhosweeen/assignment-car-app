@@ -13,9 +13,7 @@ class StepInterests extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<RegistrationController>().state;
-    final min = s.interests.budgetMinMyr;
-    final max = s.interests.budgetMaxMyr;
-    final badBudget = min != null && max != null && (min <= 0 || min > max);
+    final validBudget = CarInterestFields.isBudgetValid(s.interests);
 
     return SellStepScaffold(
       eyebrow: 'Optional',
@@ -29,13 +27,8 @@ class StepInterests extends StatelessWidget {
           onChanged: context.read<RegistrationController>().setInterests,
         ),
         const SizedBox(height: AppSpacing.space16),
-        if (badBudget)
-          const InlineNotice(
-            kind: NoticeKind.error,
-            text:
-                'The minimum budget must be more than RM 0 and no higher '
-                'than the maximum.',
-          )
+        if (!validBudget)
+          const SizedBox.shrink()
         else if (s.interests.isEmpty)
           const InlineNotice(
             text:

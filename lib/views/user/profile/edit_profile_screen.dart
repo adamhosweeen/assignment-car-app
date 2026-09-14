@@ -94,15 +94,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return;
       }
     }
-    final min = _interests.budgetMinMyr;
-    final max = _interests.budgetMaxMyr;
-    if (min != null && max != null && (min <= 0 || min > max)) {
-      _showMessage(
-        'The minimum budget must be more than RM 0 and no higher than '
-        'the maximum.',
-      );
-      return;
-    }
+    if (!CarInterestFields.isBudgetValid(_interests)) return;
     setState(() => _saving = true);
     final result = await context.read<AuthRepository>().updateProfile(
       firstName: firstName,
@@ -196,7 +188,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           const SizedBox(height: AppSpacing.space24),
           FilledButton(
-            onPressed: _saving ? null : _save,
+            onPressed: _saving || !CarInterestFields.isBudgetValid(_interests)
+                ? null
+                : _save,
             child: _saving ? const ButtonSpinner() : const Text('Save'),
           ),
         ],

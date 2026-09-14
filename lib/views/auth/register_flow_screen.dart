@@ -16,6 +16,7 @@ import 'package:assignment/views/auth/register_steps/step_location.dart';
 import 'package:assignment/widgets/auth/auth_hero.dart';
 import 'package:assignment/widgets/common/button_spinner.dart';
 import 'package:assignment/widgets/common/inline_notice.dart';
+import 'package:assignment/widgets/user/car_interest_fields.dart';
 
 const int _lastStep = 3;
 
@@ -95,11 +96,7 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
           isAtLeast18(s.dob!) &&
           nationalToE164(s.phoneInput) != null,
     2 => s.stateName != null,
-    _ =>
-      s.interests.budgetMinMyr == null ||
-          s.interests.budgetMaxMyr == null ||
-          (s.interests.budgetMinMyr! > 0 &&
-              s.interests.budgetMinMyr! <= s.interests.budgetMaxMyr!),
+    _ => CarInterestFields.isBudgetValid(s.interests),
   };
 
   @override
