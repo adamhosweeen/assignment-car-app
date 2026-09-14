@@ -158,14 +158,11 @@ void main() {
       expect(find.text('Edit'), findsNothing);
     });
 
-    testWidgets('a sold car offers no destructive action at all', (
-      tester,
-    ) async {
-      await _openActions(tester, _FakeListings(_car(ListingStatus.sold)));
+    testWidgets('a sold car has no three-dot menu at all', (tester) async {
+      await tester.pumpWidget(_app(_FakeListings(_car(ListingStatus.sold))));
+      await tester.pumpAndSettle();
 
-      expect(find.text('Delete'), findsNothing);
-      expect(find.text('Mark as sold'), findsNothing);
-      expect(find.text('Edit'), findsNothing);
+      expect(find.byIcon(Icons.more_horiz), findsNothing);
     });
 
     testWidgets('a car on sale can be sold, edited, hidden or deleted', (

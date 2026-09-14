@@ -277,6 +277,7 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
   }
 
   Widget _tile(Listing l) {
+    final hasActions = l.status != ListingStatus.sold;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space16),
       child: ListingCard(
@@ -284,15 +285,20 @@ class _SellHomeScreenState extends State<SellHomeScreen> {
         cover: CoverImage(media: l.cover),
         statusBadge: StatusBadge(status: l.status),
         onTap: () => Navigator.pushNamed(context, '/listing/${l.id}'),
-        onLongPress: () => _showActions(l),
-        trailing: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _showActions(l),
-          child: const Padding(
-            padding: EdgeInsets.only(left: AppSpacing.space8),
-            child: Icon(Icons.more_horiz, color: AppColors.secondaryLabel),
-          ),
-        ),
+        onLongPress: hasActions ? () => _showActions(l) : null,
+        trailing: hasActions
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _showActions(l),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.space8),
+                  child: Icon(
+                    Icons.more_horiz,
+                    color: AppColors.secondaryLabel,
+                  ),
+                ),
+              )
+            : null,
       ),
     );
   }
