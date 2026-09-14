@@ -492,9 +492,7 @@ class _MessageBubble extends StatelessWidget {
         (!isOffer ||
             message.body != 'Offer: ${formatPrice(message.offerAmountMyr!)}');
     final confirmed = message.offerConfirmedAt != null;
-    // Once the seller confirms the buyer's own offer, show it like the
-    // seller's offer bubble (white block, black "Buy now" button) instead of
-    // the usual solid "mine" bubble.
+    // True once the buyer's own confirmed offer is ready to buy.
     final isConfirmedBuyNow = isOffer && isMine && iAmBuyer && confirmed;
     final bubbleFilled = isMine && !isConfirmedBuyNow;
     final fg = bubbleFilled ? AppColors.onPrimary : AppColors.label;
@@ -585,8 +583,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-// Mirrors listing_detail_screen.dart's _FullscreenGallery, minus paging —
-// a chat message carries exactly one photo.
+// Full-screen, zoomable view of one chat photo.
 class _FullscreenChatImage extends StatelessWidget {
   const _FullscreenChatImage({required this.path});
 

@@ -33,7 +33,6 @@ abstract interface class ChatRepository {
   /// Withdraws the caller's own message within its 2-minute recall window.
   Future<Result<void>> recallMessage(String messageId);
 
-  /// Hides this thread from the caller's own Chat tab only. A later message
-  /// from either side brings it back.
+  /// Hides this thread from the caller's own Chat tab.
   Future<Result<void>> hideConversation(String conversationId);
 }

@@ -60,9 +60,7 @@ class SupabaseChatRepository implements ChatRepository {
         .toList();
   }
 
-  // A conversation hidden by `uid` (swipe-to-delete on the Chat tab) stays
-  // hidden only until the other side's activity moves last_message_at past
-  // the moment it was hidden — there is no separate "unhide".
+  // True if `uid` has hidden this conversation and there's no newer message.
   bool _isHiddenForMe(Map<String, dynamic> row, String uid) {
     final isBuyer = row['buyer_id'] == uid;
     final deletedAtRaw =
@@ -275,11 +273,7 @@ class SupabaseChatRepository implements ChatRepository {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const Err('You need to be signed in.');
     try {
-      // last_message_at is set server-side by the messages_touch_conversation
-      // trigger (on the same clock as buyer_deleted_at/seller_deleted_at) —
-      // see 0001_schema.sql §4. Setting it here from the device's clock would
-      // race hide_conversation's "later message" check against a different
-      // clock and could leave a hidden thread stuck hidden.
+      // last_message_at is updated server-side by a trigger.
       final row = await _client
           .from('messages')
           .insert({
@@ -306,10 +300,7 @@ class SupabaseChatRepository implements ChatRepository {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const Err('You need to be signed in.');
     try {
-      // Path convention mirrors listing-media's {seller_id}/{listing_id}/...,
-      // but keyed by conversation so chat_media_read/insert can check
-      // participancy with a join instead of a plain uid match — a chat photo
-      // is private to the two people in the thread, not "anyone signed in".
+      // Uploads the photo, then sends it as an image message.
       final objectPath = '$conversationId/${newId()}.jpg';
       await _client.storage
           .from(_mediaBucket)

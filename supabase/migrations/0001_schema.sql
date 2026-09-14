@@ -329,10 +329,7 @@ create table public.conversations (
   seller_id          uuid not null references public.users (id),
   created_at         timestamptz not null default now(),
   last_message_at    timestamptz,
-  -- Per-user "hide this chat" (Chat tab swipe-to-delete). Never touched by
-  -- the other participant's side; a later message on either side naturally
-  -- brings the thread back since the app compares this against
-  -- last_message_at rather than deleting anything.
+  -- When each side hid this conversation from their own Chat tab.
   buyer_deleted_at   timestamptz,
   seller_deleted_at  timestamptz,
   unique (listing_id, buyer_id)
@@ -347,14 +344,11 @@ create table public.messages (
                        check (message_type in ('text', 'offer', 'image')),
   offer_amount_myr   int,
   offer_confirmed_at timestamptz,
-  -- Object path in the chat-media bucket for an image message (see §12);
-  -- null for text/offer messages.
+  -- Storage object path for an image message.
   image_path         text,
   created_at         timestamptz not null default now(),
   read_at            timestamptz,
-  -- Set by recall_message() within its 2-minute window. The row (and its
-  -- body/offer_amount_myr/image_path) is kept, not erased — the client swaps
-  -- in a "Message recalled" placeholder whenever this is non-null.
+  -- When the message was recalled.
   recalled_at        timestamptz
 );
 
@@ -386,12 +380,7 @@ create policy "messages_participants" on public.messages
     )
   );
 
--- last_message_at must come from the same clock as buyer_deleted_at /
--- seller_deleted_at (both server-side `now()`), or hide_conversation's "a
--- later message brings the thread back" check compares two different clocks:
--- a message genuinely sent after a hide could still carry an earlier
--- timestamp than the hide if the *sender's device* clock lags the server's,
--- leaving the thread stuck hidden. So this is a trigger, not a client update.
+-- Updates last_message_at on the parent conversation after every insert.
 create function public.touch_conversation_last_message()
 returns trigger
 language plpgsql
@@ -409,8 +398,7 @@ create trigger messages_touch_conversation
   after insert on public.messages
   for each row execute function public.touch_conversation_last_message();
 
--- The two people in a conversation keep seeing the car (and its photos)
--- after it is sold or hidden, so the thread never loses its subject.
+-- Lets both participants keep seeing the listing, even sold or hidden.
 create policy "listings_select_conversation_participant" on public.listings
   for select to authenticated
   using (
@@ -430,8 +418,7 @@ create policy "listing_media_select_conversation_participant" on public.listing_
     )
   );
 
--- The messages policy only lets a *sender* update their own message, which is
--- the wrong direction for a read receipt (the recipient marks it read).
+-- Marks the other participant's messages as read.
 create function public.mark_conversation_read(p_conversation_id uuid)
 returns void
 language plpgsql
@@ -458,8 +445,7 @@ $$;
 revoke all on function public.mark_conversation_read(uuid) from public;
 grant execute on function public.mark_conversation_read(uuid) to authenticated;
 
--- The recipient of an offer accepts its price. Anyone but the sender who is a
--- participant may confirm.
+-- Confirms a chat offer's price.
 create function public.confirm_offer(p_message_id uuid)
 returns void
 language plpgsql
@@ -501,11 +487,7 @@ $$;
 revoke all on function public.confirm_offer(uuid) from public;
 grant execute on function public.confirm_offer(uuid) to authenticated;
 
--- The sender may withdraw their own message within 2 minutes, as long as it
--- isn't an offer the other side has already confirmed (that's a real
--- transaction in flight — see buy_at_offer below). Recalling never erases the
--- row, it only flips `recalled_at`; the client swaps in a "Message recalled"
--- placeholder instead of the original content.
+-- Recalls the sender's own message within 2 minutes of sending it.
 create function public.recall_message(p_message_id uuid)
 returns void
 language plpgsql
@@ -549,10 +531,7 @@ $$;
 revoke all on function public.recall_message(uuid) from public;
 grant execute on function public.recall_message(uuid) to authenticated;
 
--- Hides the thread from the caller's own Chat tab only — the other
--- participant's copy, and every message row, is untouched. A later message in
--- either direction naturally brings it back (the app compares last_message_at
--- against this timestamp), so there is deliberately no separate "unhide".
+-- Hides a conversation from the caller's own Chat tab.
 create function public.hide_conversation(p_conversation_id uuid)
 returns void
 language plpgsql
@@ -1603,12 +1582,7 @@ create policy "listing_media_delete_own" on storage.objects
     bucket_id = 'listing-media' and (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- A chat image, unlike a listing photo, is private between two people — not
--- anyone signed in — so this checks conversation participancy (a join
--- against public.conversations) rather than listing-media's plain "does the
--- first path segment match my own uid". Path: {conversation_id}/{uuid}.jpg.
--- No update/delete policy: a sent image isn't editable, and recall_message()
--- never touches storage, only recalled_at.
+-- Private chat photos. Path: {conversation_id}/{uuid}.jpg.
 insert into storage.buckets (id, name, public)
 values ('chat-media', 'chat-media', false)
 on conflict (id) do nothing;

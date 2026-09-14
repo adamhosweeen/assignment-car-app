@@ -27,10 +27,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  // Ids hidden by a swipe whose server confirmation (the next realtime-driven
-  // refetch, which will simply stop including the row) hasn't landed yet.
-  // Once a thread genuinely drops out of `threads` this id is pruned, so a
-  // later message on the same conversation can bring it back.
+  // Threads hidden locally while waiting for the server to confirm it.
   final Set<String> _pendingHiddenIds = {};
 
   Future<void> _refresh(BuildContext context) async {
@@ -49,10 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  // Calls the RPC before the row leaves the tree; the local hide only happens
-  // in onDismissed. Returning false the other way around — hiding, then
-  // discovering the call failed — would need to un-hide an already-dismissed
-  // Dismissible, which trips Flutter's "still part of the tree" assertion.
+  // Hides a conversation on the server before removing its row.
   Future<bool> _confirmHide(ConversationThread thread) async {
     final res = await context.read<ChatRepository>().hideConversation(
       thread.conversation.id,
